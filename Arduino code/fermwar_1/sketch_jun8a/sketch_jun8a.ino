@@ -99,15 +99,18 @@ enum COMMAND_INDEX  // list of all command indexes
 
 Servo Gripper;                 // Gripper servo
 Servo GripperAngle;            // Gripper angle servo
-MultiStepper steppersControl;  // Create instance of MultiStepper
 
-// Define the stepper motor and the pins that are connected to
-AccelStepper bace(1, baceStepPin, baceDirPin);  // Type of driver: with 2 pins (STEP, DIR)
-AccelStepper shoulder(1, shoulderStepPin, shoulderDirPin);
-AccelStepper elbow(1, elbowStepPin, elbowDirPin);
-AccelStepper elbowRevolut(1, elbowRevolutStepPin, elbowRevolutDirPin);
-AccelStepper wrist(1, wristStepPin, wristDirPin);
-AccelStepper wristRevolut(1, wristRevolutStepPin, wristRevolutDirPin);
+
+// structure to map command keyword string to a command index
+typedef struct STEPPER_MOTOR {
+  const int stepPin;
+  const int dirPin;
+  const long pulesRev;
+  const double current;
+  long speed;
+  double Acceleration;
+  const char* name;
+} STEPPER_MOTOR;
 
 // structure to map command keyword string to a command index
 typedef struct COMMAND {
