@@ -10,22 +10,39 @@
 
 //---------------------------- Program Constants ----------------------------------------------------------------------
 
-const double L1 = 160.0;                // Length of the bace
-const double L2 = 160.0;                // Length of the shoulder arm
-const double L3 = 160.0;                // Length of the elbow arm
-const double L4 = 100.0;                // Length of the wrist arm
-const double ABS_THETA1_DEG_MAX = 180;  // Maximum magnitude of bace angle in degrees
-const double ABS_THETA2_DEG_MAX = 180;  // Maximum magnitude of shoulder angle in degrees
-const double ABS_THETA3_DEG_MAX = 180;  // Maximum magnitude of elbow angle in degrees
-const double ABS_THETA4_DEG_MAX = 180;  // Maximum magnitude of wrist angle in degrees
-const double LMAX = L1 + L2 + L3 + L4;  // Maximum reach of the robot
+
+const double ABS_THETA_DEG_MAX[6] = { 180.0 };  // Maximum magnitude of bace angle in degrees
 
 const int COMMAND_INDEX_NOT_FOUND = -1;  // Index value indicating command not found
 
-const double RESOLUTIONS[15] = {400/400, 400/800 , 400/1600, 400/3200, 400/6400, 400/12800, 400/25600, 400/1000, 400/2000, 400/4000, 400/5000, 400/8000, 400/10000, 400/20000, 400,25000 }
-const double STEP_RESOLUTION = 1 / 32;                   // Possible resolutions for the driver
-const double STEP_PER_REV = (75000 / STEP_RESOLUTION);  // Steps per rotation
-const double DEG_PER_STEP = 360.0 / STEP_PER_REV;        // Degrees per step
+const double DEFULT_STEP_PER_REV = 75000;
+const double RSOLUTIONS[16] = { 1, 0.5, 0.25, 0.125, 0.0625, 0.03125, 0.015625, 0.4, 0.2, 0.1, 0.08, 0.05, 0.04, 0.02, 0.015 };
+const double STEP_RESOLUTIONS[6] = {
+  RSOLUTIONS[0],
+  RSOLUTIONS[0],
+  RSOLUTIONS[0],
+  RSOLUTIONS[0],
+  RSOLUTIONS[0],
+  RSOLUTIONS[0]
+};  // Possible resolutions for the driver
+
+const long STEP_PER_REV[6] = {
+  (long)(DEFULT_STEP_PER_REV / STEP_RESOLUTIONS[0]),
+  (long)(DEFULT_STEP_PER_REV / STEP_RESOLUTIONS[1]),
+  (long)(DEFULT_STEP_PER_REV / STEP_RESOLUTIONS[2]),
+  (long)(DEFULT_STEP_PER_REV / STEP_RESOLUTIONS[3]),
+  (long)(DEFULT_STEP_PER_REV / STEP_RESOLUTIONS[4]),
+  (long)(DEFULT_STEP_PER_REV / STEP_RESOLUTIONS[5])
+};  // Steps per rotation
+
+const double DEG_PER_STEP[6] = {
+  360.0 / STEP_PER_REV[0],
+  360.0 / STEP_PER_REV[1],
+  360.0 / STEP_PER_REV[2],
+  360.0 / STEP_PER_REV[3],
+  360.0 / STEP_PER_REV[4],
+  360.0 / STEP_PER_REV[5],
+};  // Degrees per step
 
 const long baceHomeAngle = 0;          // Home angle for the bace joint
 const long shoulderHomeAngle = 0;      // Home angle for the shoulder joint
@@ -63,6 +80,13 @@ enum COMMAND_INDEX  // list of all command indexes
   NUM_COMMANDS     // The Number of commands
 };
 
+enum MOTOR_NAMES { BACE,
+                   SHOULDER,
+                   ELBOW,
+                   ELBOWREVOLUT,
+                   WRIST,
+                   WRISTREVOLUT };
+
 //---------------------------- Program Global ----------------------------------------------------------------------
 
 // Defines pins for bace stepper motor
@@ -99,9 +123,9 @@ typedef struct COMMAND {
   const char* strCommand;
 } COMMAND;
 
-// tooltip coordinates
+// robot angles
 typedef struct JOINT_ANGLES {
-  double theta1Deg, theta2Deg, theta3Deg, theta4Deg, theta5Deg, theta6Deg;
+  double thetaDeg[6] = { 0 };
 } JOINT_ANGLES;
 
 // tooltip coordinates
@@ -110,11 +134,6 @@ typedef struct TOOL_ORIENTATION {
   double x, y, z;  // the poshion of the grippers active area
 } TOOL_ORIENTATION;
 
-// forward kinematics solution data
-typedef struct GRIPPER_STATE {
-  double angle;  // ratashion of gripper
-  bool actuste;  // true if gripper is close, false if open
-} GRIPPER_STATE;
 
 // Setup the stepper motor
 MultiStepper steppersControl;
@@ -128,28 +147,27 @@ AccelStepper wristRevolut(AccelStepper::FULL2WIRE, wristRevolutStepPin, wristRev
 
 
 
-
 //----------------------------- Globals -------------------------------------------------------------------------------
 // global array of command keyword string to command index associations
 const COMMAND m_Commands[NUM_COMMANDS] = { { ROTATE_JOINT, "ROTATE_JOINT" }, { MOTOR_SPEED, "MOTOR_SPEED" }, { GRIPPER_CLOSE, "GRIPPER_CLOSE" }, { GRIPPER_OPEN, "GRIPPER_OPEN" }, { GRIPPER_OFFSET, "GRIPPER_OFFSET" }, { END, "END" }, { HOME, "HOME" } };
 
 //----------------------------- Function Prototypes -------------------------------------------------------------------
 
-int nint(double);                                  // Computes the nearest integer from a double value
-double degToRad(double);                           // Returns angle in radians from input angle in degrees
-double radToDeg(double);                           // Returns angle in degrees from input angle in radians
-double mapAngle(double);                           // Make sure inverseKinematic angles are mapped in range the robot understands
-void makeStringUpperCase(char*);                   // Makes an input string all uppercase
-void robotAngles(JOINT_ANGLES*, int);              // Gets or updates the current SCARA angles
-bool setJointAngles(char*);                        // Set the angles of the joints based on the input command string
-bool setMotorSpeed(char*);                         // Set the motor speed based on the input command string
-bool setGripperState(char*);                       // Turn the gripper on or off based on the input command string
-bool setGripperRevolutAngle(char*);                // Set the gripper angle based on the input command string
-void processCommand(int commandIndex, char*);      // Processes a command string from the Serial input
-void runStepperAngles(JOINT_ANGLES);               // Set the angles of the robot's joints and run the stepper motors accordingly
-void stepperMotorSetup();                          // Setup everything for the stepper motors
-void ServoSetup();                                 // Setup the servo motors
-int getCommandIndex(char*);                        // Get the command keyword index from a string
+int nint(double);                              // Computes the nearest integer from a double value
+double degToRad(double);                       // Returns angle in radians from input angle in degrees
+double radToDeg(double);                       // Returns angle in degrees from input angle in radians
+double mapAngle(double);                       // Make sure inverseKinematic angles are mapped in range the robot understands
+void makeStringUpperCase(char*);               // Makes an input string all uppercase
+void robotAngles(JOINT_ANGLES*, int);          // Gets or updates the current SCARA angles
+bool setJointAngles(char*);                    // Set the angles of the joints based on the input command string
+bool setMotorSpeed(char*);                     // Set the motor speed based on the input command string
+bool setGripperState(char*);                   // Turn the gripper on or off based on the input command string
+bool setGripperRevolutAngle(char*);            // Set the gripper angle based on the input command string
+void processCommand(int commandIndex, char*);  // Processes a command string from the Serial input
+void RunStepperAngles(JOINT_ANGLES);           // Set the angles of the robot's joints and run the stepper motors accordingly
+void stepperMotorSetup();                      // Setup everything for the stepper motors
+void ServoSetup();                             // Setup the servo motors
+int getCommandIndex(char*);                    // Get the command keyword index from a string
 
 void setup() {
 
@@ -162,9 +180,9 @@ void setup() {
   bace.setMaxSpeed(800);
   shoulder.setMaxSpeed(800);
   elbow.setMaxSpeed(800);
-  elbowRevolut.setMaxSpeed(800);
-  wrist.setMaxSpeed(800);
-  wristRevolut.setMaxSpeed(6000);
+  elbowRevolut.setMaxSpeed(2000);
+  wrist.setMaxSpeed(2000);
+  wristRevolut.setMaxSpeed(2000);
 
   // add the each stepper motor to the controller
   steppersControl.addStepper(bace);
@@ -176,25 +194,33 @@ void setup() {
 
   Serial.begin(9600);  // Start serial communication at 9600 baud
 
-  long positions[6] = { 0 };  // Array of desired stepper positions
+  while (!Serial);
 
-  positions[5] = 75000;
-
-
-  Serial.println("done");
-  steppersControl.moveTo(positions);
-  steppersControl.runSpeedToPosition();  // Blocks until all are in position
-  delay(1000);
-
-  // Move to a different coordinate
-  positions[5] = 0;
+  // JOINT_ANGLES testAngles = { { 0, 0, 0, 0, 0, 0 } };
 
 
-  steppersControl.moveTo(positions);
-  steppersControl.runSpeedToPosition();  // Blocks until all are in position
-  delay(1000);
+  // testAngles.thetaDeg[WRIST] = 90;
+  // RunStepperAngles(testAngles);
+  // delay(500);
 
-  Serial.println("done");
+  // testAngles.thetaDeg[ELBOWREVOLUT] = 90;
+  // RunStepperAngles(testAngles);
+  // delay(500);
+
+  // testAngles.thetaDeg[WRISTREVOLUT] = 180;
+  // RunStepperAngles(testAngles);
+  // delay(500);
+
+  // testAngles.thetaDeg[ELBOWREVOLUT] = 0;
+  // testAngles.thetaDeg[WRISTREVOLUT] = 0;
+  // RunStepperAngles(testAngles);
+  // delay(500);
+
+  // testAngles.thetaDeg[WRIST] = 0;
+  // RunStepperAngles(testAngles);
+  // delay(500);
+
+  // Serial.println("done");
 }
 
 char strLine[MAX_LINE_SIZE] = { '\0' };  // Define input buffer
@@ -203,28 +229,28 @@ char *token = NULL, *next_token = NULL;  // Token pointers for command processin
 
 
 void loop() {
-  // if (Serial.available() > 0) {                         // If there is data available
-  //   char incoming = Serial.read();                      // Read the incoming character
-  //   if (incoming == '\n') {                             // If the incoming character is a newline
-  //     strLine[strnlen(strLine, MAX_LINE_SIZE)] = '\0';  // Terminate the input string
+  if (Serial.available() > 0) {                         // If there is data available
+    char incoming = Serial.read();                      // Read the incoming character
+    if (incoming == '\n') {                             // If the incoming character is a newline
+      strLine[strnlen(strLine, MAX_LINE_SIZE)] = '\0';  // Terminate the input string
 
-  //     // Get the command index and process it
-  //     makeStringUpperCase(strLine);  // Make line string all uppercase (makes commands case-insensitive)
-  //     commandIndex = getCommandIndex(strLine);
-  //     token = strtok(strLine, seps);
-  //     token = strtok(NULL, "");  // Get the rest of the line as the next token
-  //     processCommand(commandIndex, token);
+      // Get the command index and process it
+      makeStringUpperCase(strLine);  // Make line string all uppercase (makes commands case-insensitive)
+      commandIndex = getCommandIndex(strLine);
+      token = strtok(strLine, seps);
+      token = strtok(NULL, "");  // Get the rest of the line as the next token
+      processCommand(commandIndex, token);
 
-  //     // Reset command variable to wait for the next command
-  //     memset(strLine, '\0', sizeof(strLine));                         // Clear the input buffer
-  //   } else {                                                          // If the incoming character is not a newline
-  //     if (strnlen(strLine, MAX_LINE_SIZE - 1) < MAX_LINE_SIZE - 2) {  // If there is room in the input buffer
-  //       strncat(strLine, &incoming, 1);                               // Add the incoming character to the input buffer
-  //     } else {                                                        // If the input buffer is full
-  //       Serial.println("Input buffer full, command ignored.");
-  //     }
-  //   }
-  // }
+      // Reset command variable to wait for the next command
+      memset(strLine, '\0', sizeof(strLine));                         // Clear the input buffer
+    } else {                                                          // If the incoming character is not a newline
+      if (strnlen(strLine, MAX_LINE_SIZE - 1) < MAX_LINE_SIZE - 2) {  // If there is room in the input buffer
+        strncat(strLine, &incoming, 1);                               // Add the incoming character to the input buffer
+      } else {                                                        // If the input buffer is full
+        Serial.println("Input buffer full, command ignored.");
+      }
+    }
+  }
 }
 
 
@@ -239,11 +265,13 @@ void processCommand(int commandIndex, char* strCommandLine) {
 
   switch (commandIndex) {
     case ROTATE_JOINT:
-      Serial.println("ROTATE_JOINT command selected, N.A");
+      Serial.println("ROTATE_JOINT command selected");
+      bSuccess = setJointAngles(strCommandLine);
       break;
 
     case MOTOR_SPEED:
-      Serial.println("MOTOR_SPEED command selected, N.A");
+      Serial.println("MOTOR_SPEED command selected");
+      bSuccess = setMotorSpeed(strCommandLine);
       break;
 
     case GRIPPER_CLOSE:
@@ -274,9 +302,34 @@ void processCommand(int commandIndex, char* strCommandLine) {
 
 //---------------------------------------------------------------------------------------------------------------------
 // DESCRIPTION:  will set all the joint and revolut angles
-// ARGUMENTS:    angles holdes all 6 angles to be setr
+// ARGUMENTS:    angles: holdes all 6 angles for all the joints
 // RETURN VALUE: none
 void RunStepperAngles(JOINT_ANGLES angles) {
+  long MAX_STEP_COUNT = 0;
+  double angle = 0;
+  double scalingFactor = 0;
+  long stepCount = 0;
+  long angleStep[6] = { 0 };
+
+  for (int i = 0; i < 6; i++) {
+    MAX_STEP_COUNT = STEP_PER_REV[i];
+    angle = angles.thetaDeg[i];
+    scalingFactor = MAX_STEP_COUNT / 360.0;
+    stepCount = (long)(angle * scalingFactor);
+
+    // Handle out-of-range step counts
+    stepCount = stepCount < (-MAX_STEP_COUNT / 2) ? (-MAX_STEP_COUNT / 2) : stepCount;
+    stepCount = stepCount > (MAX_STEP_COUNT / 2) ? (MAX_STEP_COUNT / 2) : stepCount;
+
+    angleStep[i] = stepCount;
+
+    Serial.print("angle ");
+    Serial.print(i);
+    Serial.print(": ");
+    Serial.println(angleStep[i]);
+  }
+  steppersControl.moveTo(angleStep);
+  steppersControl.runSpeedToPosition();  // Blocks until all are in position
 
   robotAngles(&angles, UPDATE_CURRENT_ANGLES);
 }
@@ -307,7 +360,7 @@ int getCommandIndex(char* strLine) {
 // ARGUMENTS:    the string wiht the info for seting the angles
 // RETURN VALUE: true if the command ran, false if not
 bool setJointAngles(char* strCommandLine) {
-  const int paramaterNnumber = 2;  // the number of paramaters to deal with
+  const int paramaterNnumber = 6;  // the number of paramaters to deal with
   bool goodCom = true;             // is the command good or not
   JOINT_ANGLES angles = { 0, 0 };  // holds the angles of the command
   char* token = NULL;              // if there is any garbage
@@ -316,12 +369,7 @@ bool setJointAngles(char* strCommandLine) {
     token = strtok(i == 0 ? strCommandLine : NULL, seps);
 
     if (token != NULL) {
-      if (i == 0) angles.theta1Deg = (double)strtod(token, &token);  // set the first token to the theta1Deg
-      if (i == 1) angles.theta2Deg = (double)strtod(token, &token);  // set the second token to the theta2Deg
-      if (i == 2) angles.theta3Deg = (double)strtod(token, &token);  // set the second token to the theta2Deg
-      if (i == 3) angles.theta4Deg = (double)strtod(token, &token);  // set the second token to the theta2Deg
-      if (i == 4) angles.theta5Deg = (double)strtod(token, &token);  // set the second token to the theta2Deg
-      if (i == 5) angles.theta6Deg = (double)strtod(token, &token);  // set the second token to the theta2Deg
+      angles.thetaDeg[i] = (double)strtod(token, &token);
 
       if (token[0] != '\0')  // theres was garbace traling the current string
       {
@@ -354,14 +402,14 @@ bool setJointAngles(char* strCommandLine) {
 bool setMotorSpeed(char* strCommandLine) {
   const int paramaterNnumber = 1;  // the number of paramaters to deal with
   bool goodCom = true;             // is the command good or not
-  double motorSpeed = 0;           // holds the angle of the command
+  double motorSpeed[6] = { 0 };    // holds the angle of the command
   char* token = NULL;              // if there is any garbage
 
   for (int i = 0; i < paramaterNnumber; i++) {
     token = strtok(i == 0 ? strCommandLine : NULL, seps);
 
     if (token != NULL) {
-      if (i == 0) motorSpeed = (double)strtod(token, &token);  // set the first token to the theta1Deg
+      motorSpeed[i] = (double)strtod(token, &token);  // set the first token to the theta1Deg
 
       if (token[0] != '\0')  // theres was garbace traling the current string
       {
@@ -380,8 +428,12 @@ bool setMotorSpeed(char* strCommandLine) {
 
   if (goodCom)  // run if the command was good, can be run
   {
-    shoulder.setMaxSpeed(motorSpeed);
-    elbow.setMaxSpeed(motorSpeed);
+    bace.setMaxSpeed(motorSpeed[BACE]);
+    shoulder.setMaxSpeed(motorSpeed[SHOULDER]);
+    elbow.setMaxSpeed(motorSpeed[ELBOW]);
+    elbowRevolut.setMaxSpeed(motorSpeed[ELBOWREVOLUT]);
+    wrist.setMaxSpeed(motorSpeed[WRIST]);
+    wristRevolut.setMaxSpeed(motorSpeed[WRISTREVOLUT]);
   }
   return goodCom;
 }
@@ -534,8 +586,10 @@ void robotAngles(JOINT_ANGLES* pAngles, int getOrUpdate) {
 }
 
 
-void ServoSetup() {
-  //
+float mapf(float x, float in_min, float in_max, float out_min, float out_max) {
+  float result = 0;
+  result = (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+  return result;
 }
 
 size_t strnlen(const char* s, size_t len) {
