@@ -234,6 +234,7 @@ void loop() {
     if (incoming == '\n') {                             // If the incoming character is a newline
       strLine[strnlen(strLine, MAX_LINE_SIZE)] = '\0';  // Terminate the input string
 
+      Serial.println("Prossessing command");
       // Get the command index and process it
       makeStringUpperCase(strLine);  // Make line string all uppercase (makes commands case-insensitive)
       commandIndex = getCommandIndex(strLine);
@@ -243,6 +244,7 @@ void loop() {
 
       // Reset command variable to wait for the next command
       memset(strLine, '\0', sizeof(strLine));                         // Clear the input buffer
+      Serial.println("Done prossessing command");
     } else {                                                          // If the incoming character is not a newline
       if (strnlen(strLine, MAX_LINE_SIZE - 1) < MAX_LINE_SIZE - 2) {  // If there is room in the input buffer
         strncat(strLine, &incoming, 1);                               // Add the incoming character to the input buffer
