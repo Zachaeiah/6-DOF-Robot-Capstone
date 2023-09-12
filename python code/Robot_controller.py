@@ -4,12 +4,6 @@ import time
 import logging
 import math
 
-
-
-import serial
-import time
-import logging
-
 class RobotConnectionTimeout(Exception):
     pass
 
