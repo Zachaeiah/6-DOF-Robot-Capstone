@@ -8,10 +8,9 @@ class motor:
         name (str): The name or identifier of the motor.
         max_speed (float): The maximum speed of the motor in RPM (Revolutions Per Minute).
         max_acceleration (float): The maximum acceleration of the motor in RPM/s (Revolutions Per Minute per second).
-        steps_per_revolution (int): The number of steps per revolution for the motor.
     """
 
-    def __init__(self, name: str, max_speed: float, max_acceleration: float, steps_per_revolution: int):
+    def __init__(self, name: str, max_speed: float, max_acceleration: float):
         """
         Initialize a Motor instance with the specified parameters.
 
@@ -19,12 +18,10 @@ class motor:
             name (str): The name or identifier of the motor.
             max_speed (float): The maximum speed of the motor in RPM (Revolutions Per Minute).
             max_acceleration (float): The maximum acceleration of the motor in RPM/s (Revolutions Per Minute per second).
-            steps_per_revolution (int): The number of steps per revolution for the motor.
         """
         self.name = name
         self.max_speed = max_speed
         self.max_acceleration = max_acceleration
-        self.steps_per_revolution = steps_per_revolution
         self.velocity_profile = None
         self.is_activate = False
 
@@ -38,7 +35,7 @@ class motor:
         self.velocity_profile = profile
     
     def activate(self, state = True):
-        self.is_activate = True
+        self.is_activate = state
 
     def __str__(self) -> str:
         """
@@ -53,7 +50,7 @@ class motor:
             f"  Max Speed: {self.max_speed} RPM\n"
             f"  Max Acceleration: {self.max_acceleration} RPM/s\n"
             f"  Velocity Profile: {self.velocity_profile}\n"
-            f"  Steps per Revolution: {self.steps_per_revolution}"
+            f"  Activate state: {self.is_activate}"
         )
 
     def __repr__(self) -> str:
@@ -63,10 +60,32 @@ class motor:
         Returns:
             str: A string representation of the motor.
         """
-        return f"Motor({self.name}, {self.max_speed}, {self.max_acceleration}, {self.steps_per_revolution}), {self.is_activate}"
+        return f"Motor({self.name}, {self.max_speed}, {self.max_acceleration}, {self.is_activate})"
+    
+class StepperMotor(motor):
+    def __init__(self, name: str, max_speed: float, max_acceleration: float, steps_per_revolution: int):
+        # Call the constructor of the base class (motor)
+        super().__init__(name, max_speed, max_acceleration)
+        self.steps_per_revolution = steps_per_revolution
+
+    def __str__(self) -> str:
+        # Call the __str__ method of the base class (motor)
+        motor_info = super().__str__()
+        return f"{motor_info}\n  Steps per Revolution: {self.steps_per_revolution}"
+
+    def __repr__(self) -> str:
+        # Call the __repr__ method of the base class (motor)
+        motor_repr = super().__repr__()
+        return f"{motor_repr}, Steps per Revolution: {self.steps_per_revolution}"
+
     
 def main():
+    test_motor = StepperMotor(f"Motor: 1", 100, 10, 7e4)
+    print(test_motor)
+
     print(__name__)
+
+
         
 if __name__ == "__main__":
     main()
