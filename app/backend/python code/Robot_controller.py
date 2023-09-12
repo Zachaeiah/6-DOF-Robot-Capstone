@@ -107,7 +107,6 @@ class Robot:
         if self.serial and self.serial.is_open:
             self.serial.close()
 
-
 class Messager:
     """
     A class responsible for creating and sending messages to control robot joints.
@@ -151,8 +150,7 @@ class Messager:
             return message
         else:
             raise ValueError("Both angles and speeds must be lists of floats")
-
-        
+      
 class Motor:
     """
     A class representing a motor.
@@ -257,8 +255,7 @@ class Sigmoid:
         except OverflowError as e:
             raise ValueError(f"OverflowError: {e}. Growth rate too high for the given time and time shift")
 
-
-        
+  
 def main():
     robot = Robot('CON3')
     messager = Messager(robot)
