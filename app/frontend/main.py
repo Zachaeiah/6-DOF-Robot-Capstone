@@ -51,7 +51,7 @@ def update_chart():
     # Schedule the next update
     root.after(100, update_chart)
 
-# Create a Tkinter window for the chart
+# Create a Tkinter window
 root = tk.Tk()
 root.title("Live Sine Wave Chart")
 
@@ -78,23 +78,23 @@ default_max_data = 100
 
 # Frequency entry with default value
 freq_label = ttk.Label(root, text="Frequency:")
-freq_label.grid(row=0, column=0, padx=5, pady=5)
+freq_label.pack()
 freq_entry = ttk.Entry(root)
-freq_entry.grid(row=0, column=1, padx=5, pady=5)
+freq_entry.pack()
 freq_entry.insert(0, str(default_frequency))
 
 # Amplitude entry with default value
 amp_label = ttk.Label(root, text="Amplitude:")
-amp_label.grid(row=1, column=0, padx=5, pady=5)
+amp_label.pack()
 amp_entry = ttk.Entry(root)
-amp_entry.grid(row=1, column=1, padx=5, pady=5)
+amp_entry.pack()
 amp_entry.insert(0, str(default_amplitude))
 
 # Max data points entry with default value
 max_data_label = ttk.Label(root, text="Max Data Points:")
-max_data_label.grid(row=2, column=0, padx=5, pady=5)
+max_data_label.pack()
 max_data_entry = ttk.Entry(root)
-max_data_entry.grid(row=2, column=1, padx=5, pady=5)
+max_data_entry.pack()
 max_data_entry.insert(0, str(default_max_data))
 
 # Start updating the chart

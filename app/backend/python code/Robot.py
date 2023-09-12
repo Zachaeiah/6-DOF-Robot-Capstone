@@ -1,6 +1,8 @@
 import serial
 import time
 import logging
+import numpy as np
+import Motors
 
 class RobotConnectionTimeout(Exception):
     pass
@@ -105,7 +107,56 @@ class robot:
         if self.serial and self.serial.is_open:
             self.serial.close()
 
+class MotorManager:
+    def __init__(self, motors):
+        """
+        Initialize the MotorManager.
+
+        :param motors: A list of Motor objects.
+        """
+        self.motors = motors
+        # Create a dictionary mapping motor names to their instances for quick lookup
+        self.motor_name_to_instance = {motor.name: motor for motor in motors}
+        # Create a dictionary to track the activation status of motors
+        self.active_motors = {motor.name: False for motor in motors}
+
+    def activate_motor(self, motor_name):
+        """
+        Activate a motor by its name.
+
+        :param motor_name: The name of the motor to activate.
+        """
+        if motor_name not in self.motor_name_to_instance:
+            print(f"Motor '{motor_name}' not found.")
+            return
+
+        if self.active_motors[motor_name]:
+            print(f"Motor '{motor_name}' is already active.")
+        else:
+            self.active_motors[motor_name] = True
+            print(f"Motor '{motor_name}' is now active.")
+
+    def __iter__(self):
+        # Allow iteration over the MotorManager, which will iterate over its Motor instances
+        return iter(self.motors)
+
+        
+
+
 def main():
+    
+    test_motors = []
+    for i in range(0, 6, 1):
+        test_motors.append(Motors.motor(f"Motor: {i}", 100, 10, 7e4))
+    
+    manager = MotorManager(test_motors)
+
+    for motor in manager:
+        print(motor)
+
+
+
+
     print(__name__)
         
 if __name__ == "__main__":

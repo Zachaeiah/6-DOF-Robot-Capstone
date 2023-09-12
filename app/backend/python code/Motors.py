@@ -26,6 +26,7 @@ class motor:
         self.max_acceleration = max_acceleration
         self.steps_per_revolution = steps_per_revolution
         self.velocity_profile = None
+        self.is_activate = False
 
     def set_velocity_profile(self, profile):
         """
@@ -35,6 +36,9 @@ class motor:
             profile: The velocity profile to set.
         """
         self.velocity_profile = profile
+    
+    def activate(self, state = True):
+        self.is_activate = True
 
     def __str__(self) -> str:
         """
@@ -59,7 +63,7 @@ class motor:
         Returns:
             str: A string representation of the motor.
         """
-        return f"Motor({self.name}, {self.max_speed}, {self.max_acceleration}, {self.steps_per_revolution})"
+        return f"Motor({self.name}, {self.max_speed}, {self.max_acceleration}, {self.steps_per_revolution}), {self.is_activate}"
     
 def main():
     print(__name__)
