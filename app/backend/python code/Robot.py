@@ -155,16 +155,7 @@ class MotorManager:
         return iter(self.motors)
 
 def main():
-    test_motors = []
-    for i in range(0, 6, 1):
-        test_motors.append(Motors.StepperMotor(f"Motor: {i}", 100, 10, 7e4))
-    
-    manager = MotorManager(test_motors)
-
-    manager.activate_motor("Motor: 3")
-
-    for motor in manager:
-        print(motor.is_activate)
+    pass
 
 if __name__ == "__main__":
     main()
