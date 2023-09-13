@@ -2,7 +2,7 @@ import serial
 import time
 import logging
 import numpy as np
-import Motors
+from Motors import *
 
 class RobotConnectionTimeout(Exception):
     pass
@@ -107,52 +107,6 @@ class Robot:
         if self.serial and self.serial.is_open:
             self.serial.close()
 
-class MotorManager:
-    def __init__(self, motors):
-        """
-        Initialize the MotorManager.
-
-        :param motors: A list of Motor objects.
-        """
-        self.motors = motors
-        # Create a dictionary mapping motor names to their instances for quick lookup
-        self.motor_name_to_instance = {motor.name: motor for motor in motors}
-
-    def activate_motor(self, motor_name: str):
-        """
-        Activate a motor by its name.
-
-        :param motor_name: The name of the motor to activate.
-        """
-        motor = self.motor_name_to_instance.get(motor_name)
-        if motor:
-            if not motor.is_activate:
-                motor.activate(True)
-                print(f"Motor '{motor_name}' is now active.")
-            else:
-                print(f"Motor '{motor_name}' is already active.")
-        else:
-            print(f"Motor '{motor_name}' not found.")
-
-    def deactivate_motor(self, motor_name: str):
-        """
-        Deactivate a motor by its name.
-
-        :param motor_name: The name of the motor to deactivate.
-        """
-        motor = self.motor_name_to_instance.get(motor_name)
-        if motor:
-            if motor.is_activate:
-                motor.activate(False)
-                print(f"Motor '{motor_name}' is now deactivated.")
-            else:
-                print(f"Motor '{motor_name}' is already deactivated.")
-        else:
-            print(f"Motor '{motor_name}' not found.")
-
-    def __iter__(self):
-        # Allow iteration over the MotorManager, which will iterate over its Motor instances
-        return iter(self.motors)
 
 def main():
     pass

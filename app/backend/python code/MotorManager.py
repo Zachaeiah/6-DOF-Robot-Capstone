@@ -1,7 +1,7 @@
-import Motors
+from Motors import *
 
 class MotorManager:
-    def __init__(self, motors: Motors.motor):
+    def __init__(self, motors: motor):
         """
         Initialize the MotorManager.
 
@@ -50,7 +50,7 @@ class MotorManager:
 def main():
     test_motors = []
     for i in range(0, 6, 1):
-        test_motors.append(Motors.StepperMotor(f"Motor: {i}", 100, 10, 7e4))
+        test_motors.append(StepperMotor(f"Motor: {i}", 100, 10, 7e4))
         
     manager = MotorManager(test_motors)
 

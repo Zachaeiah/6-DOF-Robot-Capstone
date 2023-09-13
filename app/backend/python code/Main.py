@@ -1,8 +1,8 @@
 import numpy as np
-import Messager
-import Motors
-import Robot
-import VelocityPFP
+from Messager import *
+from Motors import *
+from Robot import *
+from VelocityPFP import *
 
 activeMotors = range(3, 6, 1)
 
@@ -10,7 +10,7 @@ activeMotors = range(3, 6, 1)
   
 def main():
     robot = Robot.robot('CON3')
-    messager = Messager.messager(robot)
+    messager = messager(robot)
 
     for motor in activeMotors:
         print(motor)

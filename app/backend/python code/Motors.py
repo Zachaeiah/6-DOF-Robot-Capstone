@@ -1,5 +1,4 @@
 
-
 class motor:
     """
     A class representing a motor.
