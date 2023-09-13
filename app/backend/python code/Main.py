@@ -1,5 +1,6 @@
 import numpy as np
 from Messager import *
+from MotorManager import *
 from Motors import *
 from Robot import *
 from VelocityPFP import *
