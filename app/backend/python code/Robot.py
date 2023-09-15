@@ -79,12 +79,13 @@ class Robot:
                     self.communications_message["isConnected"] = True
                 # Check if the timeout has been reached
                 if time.time() - start_time > timeout:
-                    raise RobotConnectionTimeout("Timeout reached. No connection confirmation received.")
+                    raise Exception("Timeout reached. No connection confirmation received.")
 
-        except serial.SerialException as e:
+        except Exception as e:
             logger = logging.getLogger(__name__)
             logger.error(f"Serial port error: {e}")
             raise  # Re-raise the exception to indicate a failure
+
 
     def send_message(self, message: str):
         """
@@ -109,7 +110,24 @@ class Robot:
 
 
 def main():
-    pass
+    # Initialize the Robot instance with the serial port
+    robot = Robot("COM3")  # Replace "COM3" with your actual serial port
+
+    try:
+        # Attempt to establish a connection with the Arduino
+        robot.connect()
+
+        # Continue with the rest of your code once the connection is established
+        print("Connection with Arduino established.")
+        
+        # Your code here - you can perform actions with the robot
+
+    except RobotConnectionTimeout as e:
+        print(f"Error: {e}")
+    finally:
+        # Close the serial connection when done
+        robot.close_connection()
 
 if __name__ == "__main__":
     main()
+

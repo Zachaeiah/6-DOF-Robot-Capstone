@@ -10,21 +10,25 @@ activeMotors = range(3, 6, 1)
 
   
 def main():
-    robot = Robot.robot('CON3')
-    messager = messager(robot)
+    # Initialize the Robot instance with the serial port
+    robot = Robot("COM3")  # Replace "COM3" with your actual serial port
 
-    for motor in activeMotors:
-        print(motor)
+    try:
+        # Attempt to establish a connection with the Arduino
+        robot.connect()
 
+        # Continue with the rest of your code once the connection is established
+        print("Connection with Arduino established.")
+        
+        # Your code here - you can perform actions with the robot
 
+    except RobotConnectionTimeout as e:
+        print(f"Error: {e}")
+    finally:
+        # Close the serial connection when done
+        robot.close_connection()
 
-
-    # motor = Motors.motor('test Motor', 100, 10, 70000)
-    # PFP = VelocityPFP.Sigmoid(1, 0)
-    # motor.set_velocity_profile(PFP)
-    # speed = motor.velocity_profile.velocity(0)
-    # print(speed)
-
+    Rmessager = messager(robot)
 
 
 if __name__ == "__main__":
