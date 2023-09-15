@@ -128,6 +128,9 @@ def main():
         # Close the serial connection when done
         robot.close_connection()
 
+
+    
+
 if __name__ == "__main__":
     main()
 

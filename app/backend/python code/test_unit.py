@@ -15,7 +15,7 @@ def test_MotorManager_adding_motors():
         test_motors.append(StepperMotor(f"Motor: {index}", 100, 10, 7e4))
     
     # Initialize a MotorManager with the test motors
-    manager = MotorManager(test_motors)
+    manager = motorManager(test_motors)
     
     for index, motor in enumerate(manager):
         # Check if the names of the motors match the expected pattern
@@ -36,7 +36,7 @@ def test_MotorManager_activate():
         test_motors.append(StepperMotor(f"Motor: {index}", 100, 10, 7e4))
     
     # Initialize a MotorManager with the test motors
-    manager = MotorManager(test_motors)
+    manager = motorManager(test_motors)
     
     for index in range(0, 6, 1):
         if index % 2 == 0:
@@ -65,7 +65,7 @@ def test_MotorManager_deactivate():
         test_motors.append(StepperMotor(f"Motor: {index}", 100, 10, 7e4))
     
     # Initialize a MotorManager with the test motors
-    manager = MotorManager(test_motors)
+    manager = motorManager(test_motors)
     
     for index in range(0, 6, 1):
         manager.activate_motor(f"Motor: {index}")
