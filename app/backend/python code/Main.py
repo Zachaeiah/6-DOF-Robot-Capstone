@@ -6,6 +6,9 @@ from Robot import *
 from intrerpolation import *
 from VelocityPFP import *
 from DP_parts import *
+import tkinter as tk
+
+LARGE_FONT = ("Verdana", 12)
 
 AllMotorNames = ["BACE", 
               "SHOULDER", 
@@ -15,41 +18,115 @@ AllMotorNames = ["BACE",
               "WRISTREVOLUT"]
 
 
-  
-def main():
-    # Initialize the Robot instance with the serial port
-    robot = Robot("COM3")  # Replace "COM3" with your actual serial port
+# Define a custom Tkinter application class
+class RobotCart(tk.Tk):
+    def __init__(self, *args, **kwargs):
+        """
+        Initialize the main application.
 
-    try:
-        # Attempt to establish a connection with the Arduino
-        robot.connect()
-        print("Connection with Arduino established.")
+        Args:
+            *args: Additional positional arguments.
+            **kwargs: Additional keyword arguments.
+        """
+        # Initialize the Tkinter application
+        tk.Tk.__init__(self, *args, **kwargs)
         
-        # Create a messager instance for communication
-        robot_messager = messager(robot)
+        # Create a container frame to hold the pages
+        container = tk.Frame(self)
+        container.pack(side="top", fill="both", expand=True)
 
-        # Create and configure StepperMotor instances
-        active_motors = range(3, 6, 1)  
-        motors = [StepperMotor(AllMotorNames[i], 3000, 100, 7e4) for i in active_motors]
+        # Configure the container's grid layout
+        container.grid_rowconfigure(0, weight=1)
+        container.grid_columnconfigure(0, weight=1)
 
-        # Create a MotorManager instance
-        motor_manager = motorManager(motors)
-        print(motor_manager)
+        # Dictionary to store different pages
+        self.frames = {}
+
+        # Create and add pages to the application
+        for F in (MainUserPage, InventoryPage):
+            frame = F(container, self)
+            self.frames[F] = frame
+            frame.grid(row=0, column=0, sticky="nsew")
+
+        # Show the MainUserPage by default
+        self.show_frame(MainUserPage)
 
         # Create a PartsDatabase instance and create the Parts table
         parts_db = PartsDatabase()
         parts_db.create_parts_table()
 
-        # Your code here - you can perform actions with the robot
+    def show_frame(self, cont):
+        """
+        Show the specified frame.
 
-    except RobotConnectionTimeout as e:
-        print(f"Error: {e}")
-    finally:
-        # Close the serial connection when done
-        robot.close_connection()
+        Args:
+            cont: The frame to be displayed.
+        """
+        frame = self.frames[cont]
+        frame.tkraise()
+
+# Base class for pages
+class PageBase(tk.Frame):
+    def __init__(self, parent, controller, title):
+        """
+        Initialize a page.
+
+        Args:
+            parent (tk.Frame): The parent frame.
+            controller (tk.Tk): The main application controller.
+            title (str): The title to be displayed on the page.
+        """
+        tk.Frame.__init__(self, parent)
+        
+        # Title label
+        label = tk.Label(self, text=title, font=LARGE_FONT)
+        label.pack(pady=10, padx=10)
+
+# MainUserPage class
+class MainUserPage(PageBase):
+    def __init__(self, parent, controller):
+        def Connect_to_robot():
+            # Initialize the Robot instance with the serial port
+            robot = Robot("COM3")  # Replace "COM3" with your actual serial port
+
+            try:
+                # Attempt to establish a connection with the Arduino
+                robot.connect()
+                print("Connection with Arduino established.")
+
+                # Create a messager instance for communication
+                robot_messager = messager(robot)
+
+            except RobotConnectionTimeout as e:
+                print(f"Error: {e}")
+            finally:
+                # Close the serial connection when done
+                robot.close_connection()
+
+        super().__init__(parent, controller, "MainUserPage")
+
+        # Button to navigate to Page One
+        RconnectBTN = tk.Button(self, text="Connect to Robot", command=lambda: Connect_to_robot())
+        RconnectBTN.pack()
+
+# Page One class
+class InventoryPage(PageBase):
+    def __init__(self, parent, controller):
+
+        """
+        Initialize Page One.
+
+        Args:
+            parent (tk.Frame): The parent frame.
+            controller (tk.Tk): The main application controller.
+        """
+        super().__init__(parent, controller, "InventoryPage")
+
 
 if __name__ == "__main__":
-    main()
+    # Create and run the main application
+    app = RobotCart()
+    app.mainloop()
 
 
 

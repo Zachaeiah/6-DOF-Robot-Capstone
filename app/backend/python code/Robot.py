@@ -1,100 +1,52 @@
 import serial
 import time
 import logging
-import numpy as np
-from Motors import *
 
 class RobotConnectionTimeout(Exception):
     pass
 
 class Robot:
-    """
-    A class representing a robot with a serial connection to an Arduino.
-
-    Attributes:
-        port (str): The serial port used for communication.
-        baud_rate (int): The default baud rate for serial communication.
-        timeout (int): The default maximum timeout for connection confirmation.
-        communications_message (dict): A dictionary containing communication-related messages and status.
-        serial (serial.Serial): The serial connection object.
-
-    Methods:
-        connect(baud_rate: int, timeout: int): Establish a serial connection with the Arduino.
-        send_message(message: str): Send a message to the Arduino.
-        close_connection(): Close the serial connection with the Arduino.
-    """
-
     DEFAULT_BAUD_RATE = 9600
     DEFAULT_TIMEOUT = 10
 
     def __init__(self, serial_port: str):
-        """
-        Initialize a Robot instance.
-
-        Args:
-            serial_port (str): The serial port for communication.
-        """
         self.port = serial_port
         self.baud_rate = self.DEFAULT_BAUD_RATE
         self.timeout = self.DEFAULT_TIMEOUT
-        self.communications_message = {
-            "isConnected": False,
-            "connection_message_sent": "leftHand\n",
-            "connection_message_received": "rightHand",
-            "battery_status": "Unknown",
-            "temperature": "N/A",
-        }
+        self.is_connected = False
         self.serial = None
 
     def connect(self, baud_rate: int = None, timeout: int = None):
-        """
-        Establish a serial connection with the Arduino.
-
-        Args:
-            baud_rate (int, optional): The baud rate for serial communication.
-            timeout (int, optional): The maximum time to wait for a connection confirmation.
-        """
         if baud_rate is None:
             baud_rate = self.baud_rate
         if timeout is None:
             timeout = self.timeout
 
         try:
-            # Check if the specified serial port is available
+            # Reset the connection status
+            self.is_connected = False
+
             self.serial = serial.Serial(self.port, baud_rate, timeout=1)
-            # Wait for a moment to let the Arduino initialize
             time.sleep(2)
 
-            # Send the connection message to the Arduino
-            self.send_message(self.communications_message["connection_message_sent"])
+            self.send_message("leftHand\n")
 
             start_time = time.time()
 
-            while not self.communications_message["isConnected"]:
-                # Read data from the Arduino
+            while not self.is_connected:
                 data = self.serial.readline().decode('utf-8').strip()
-                # Check if the Arduino has sent a confirmation
-                if data == self.communications_message["connection_message_received"]:
+                if data == "rightHand":
                     print("Arduino has confirmed the connection.")
-                    self.communications_message["isConnected"] = True
-                # Check if the timeout has been reached
+                    self.is_connected = True
                 if time.time() - start_time > timeout:
                     raise Exception("Timeout reached. No connection confirmation received.")
 
         except Exception as e:
             logger = logging.getLogger(__name__)
             logger.error(f"Serial port error: {e}")
-            raise  # Re-raise the exception to indicate a failure
-
+            raise
 
     def send_message(self, message: str):
-        """
-        Send a message from self.communications_message to the Arduino.
-
-        Args:
-            message (str): The message sent to the Arduino.
-        """
-        
         if self.serial and self.serial.is_open:
             if message is not None:
                 self.serial.write(message.encode('utf-8'))
@@ -102,35 +54,30 @@ class Robot:
                 print(f"Message not found and is empty")
 
     def close_connection(self):
-        """
-        Close the serial connection with the Arduino.
-        """
         if self.serial and self.serial.is_open:
             self.serial.close()
-
+            self.is_connected = False
 
 def main():
-    # Initialize the Robot instance with the serial port
-    robot = Robot("COM3")  # Replace "COM3" with your actual serial port
+    robot = Robot("COM3")  
 
+    print("connecting")
     try:
-        # Attempt to establish a connection with the Arduino
         robot.connect()
 
-        # Continue with the rest of your code once the connection is established
-        print("Connection with Arduino established.")
-        
-        # Your code here - you can perform actions with the robot
+        if robot.is_connected:
+            print("Connection with Arduino established.")
+            # Your code here - you can perform actions with the robot
+        else:
+            print("Failed to establish a connection with Arduino.")
 
     except RobotConnectionTimeout as e:
         print(f"Error: {e}")
     finally:
-        # Close the serial connection when done
         robot.close_connection()
 
-
-    
+    print("connecting agine")
+    robot.connect()
 
 if __name__ == "__main__":
     main()
-
