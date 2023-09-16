@@ -98,8 +98,7 @@ def main():
 
     manager.activate_motor("Motor: 3")
 
-    for motor in manager:
-        print(motor.is_activate)
+    
 
 if __name__ == '__main__':
     main()

@@ -1,6 +1,7 @@
 import serial
 import time
 import logging
+from MotorManager import *
 
 class RobotConnectionTimeout(Exception):
     pass
@@ -23,11 +24,8 @@ class Robot:
             timeout = self.timeout
 
         try:
-            # Reset the connection status
-            self.is_connected = False
-
             self.serial = serial.Serial(self.port, baud_rate, timeout=1)
-            time.sleep(2)
+            time.sleep(1)
 
             self.send_message("leftHand\n")
 
@@ -57,6 +55,18 @@ class Robot:
         if self.serial and self.serial.is_open:
             self.serial.close()
             self.is_connected = False
+
+    def include_motor_anager(self, manager: motorManager):
+        self.motorManager = manager
+
+    def __str__(self):
+        motor_list = "\n".join([f"\t{motor.name} {'active' if motor.is_activate else 'inactive'}" for motor in self.motorManager.motors])
+        return f"Robot connected to port {self.port}\n\nConnected: {self.is_connected}\n\nMotors:\n{motor_list}"
+
+
+
+    def __repr__(self):
+        return f"Robot('{self.port}')"
 
 def main():
     robot = Robot("COM3")  

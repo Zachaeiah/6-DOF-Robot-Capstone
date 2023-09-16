@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
+from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 from pyquaternion import Quaternion
 from itertools import cycle
 
@@ -141,11 +142,37 @@ class PathPlanner:
         y_min, y_max = float('inf'), float('-inf')
         z_min, z_max = float('inf'), float('-inf')
 
+        # Plot a red solid cube at the origin (0, 0, 0)
+        cube_size = 10  # Adjust the size of the cube as needed
+
+        # Define the vertices and faces of the cube
+        vertices = np.array([[-cube_size, -cube_size, -cube_size],
+                            [cube_size, -cube_size, -cube_size],
+                            [cube_size, cube_size, -cube_size],
+                            [-cube_size, cube_size, -cube_size],
+                            [-cube_size, -cube_size, cube_size],
+                            [cube_size, -cube_size, cube_size],
+                            [cube_size, cube_size, cube_size],
+                            [-cube_size, cube_size, cube_size]])
+
+        faces = [[vertices[0], vertices[1], vertices[2], vertices[3]],
+                [vertices[4], vertices[5], vertices[6], vertices[7]],
+                [vertices[0], vertices[1], vertices[5], vertices[4]],
+                [vertices[2], vertices[3], vertices[7], vertices[6]],
+                [vertices[1], vertices[2], vertices[6], vertices[5]],
+                [vertices[4], vertices[7], vertices[3], vertices[0]]]
+
+        # Create a Poly3DCollection for the cube
+        cube = Poly3DCollection(faces, color='red', alpha=0.5)
+
+        # Add the cube to the plot
+        ax.add_collection3d(cube)
+
         for path, color in self.saved_paths:
             x_coords, y_coords, z_coords = path.T
 
             # Customize marker size and transparency
-            ax.scatter(x_coords, y_coords, z_coords, c=color, s=20, marker='o', alpha=0.5)
+            ax.scatter(x_coords, y_coords, z_coords, c=[color] * len(x_coords), s=20, marker='o', alpha=0.5)
 
             # Update min and max values for each axis
             x_min = min(x_min, np.min(x_coords))
@@ -162,9 +189,9 @@ class PathPlanner:
         ax.grid(True)
 
         # Set axes limits to fit the largest path
-        ax.set_xlim(x_min, x_max)
-        ax.set_ylim(y_min, y_max)
-        ax.set_zlim(z_min, z_max)
+        ax.set_xlim(x_min - cube_size, x_max + cube_size)
+        ax.set_ylim(y_min - cube_size, y_max + cube_size)
+        ax.set_zlim(-cube_size, z_max + cube_size)
 
         # Add titles and labels
         if self.linear:
@@ -176,13 +203,19 @@ class PathPlanner:
         ax.set_ylabel('Y')
         ax.set_zlabel('Z')
 
-        if label_start:
-            # Label for the start point
-            ax.text(*self.saved_paths[0][0][0], 'Start', color='red', fontsize=12, ha='center')
+        
 
-        if label_end:
-            # Label for the end point
-            ax.text(*self.saved_paths[-1][0][-1], 'End', color='blue', fontsize=12, ha='center')
+        # Add a red cube at the origin (0, 0, 0)
+        cube_size = 100  # Adjust the size of the cube as needed
+        cube_coords = np.array([[-cube_size, -cube_size, -cube_size],
+                                [cube_size, -cube_size, -cube_size],
+                                [cube_size, cube_size, -cube_size],
+                                [-cube_size, cube_size, -cube_size],
+                                [-cube_size, -cube_size, cube_size],
+                                [cube_size, -cube_size, cube_size],
+                                [cube_size, cube_size, cube_size],
+                                [-cube_size, cube_size, cube_size]])
+        ax.scatter(*cube_coords.T, c='red', s=50, marker='o', alpha=0.5)
 
         # Show the plot
         plt.show()
