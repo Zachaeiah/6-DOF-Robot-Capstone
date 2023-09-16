@@ -5,9 +5,8 @@ from Motors import *
 from Robot import *
 from intrerpolation import *
 from VelocityPFP import *
+from DP_parts import *
 
-activeMotors = range(3, 6, 1)
-Motors = []
 AllMotorNames = ["BACE", 
               "SHOULDER", 
               "ELBOW",
@@ -19,32 +18,35 @@ AllMotorNames = ["BACE",
   
 def main():
     # Initialize the Robot instance with the serial port
-   
-
-    # try:
-    #     # Attempt to establish a connection with the Arduino
-    #     robot.connect()
-
-    #     # Continue with the rest of your code once the connection is established
-    #     print("Connection with Arduino established.")
-        
-    #     # Your code here - you can perform actions with the robot
-
-    # except RobotConnectionTimeout as e:
-    #     print(f"Error: {e}")
-    # finally:
-    #     # Close the serial connection when done
-    #     robot.close_connection()
     robot = Robot("COM3")  # Replace "COM3" with your actual serial port
-    robotMessager = messager(robot)
-    
-    for i in activeMotors:
-        Motors.append(StepperMotor(f"{AllMotorNames[i]}", 3000, 100, 7e4))
 
-    MotorManager = motorManager(Motors)
+    try:
+        # Attempt to establish a connection with the Arduino
+        robot.connect()
+        print("Connection with Arduino established.")
+        
+        # Create a messager instance for communication
+        robot_messager = messager(robot)
 
-    print(MotorManager)
+        # Create and configure StepperMotor instances
+        active_motors = range(3, 6, 1)  
+        motors = [StepperMotor(AllMotorNames[i], 3000, 100, 7e4) for i in active_motors]
 
+        # Create a MotorManager instance
+        motor_manager = motorManager(motors)
+        print(motor_manager)
+
+        # Create a PartsDatabase instance and create the Parts table
+        parts_db = PartsDatabase()
+        parts_db.create_parts_table()
+
+        # Your code here - you can perform actions with the robot
+
+    except RobotConnectionTimeout as e:
+        print(f"Error: {e}")
+    finally:
+        # Close the serial connection when done
+        robot.close_connection()
 
 if __name__ == "__main__":
     main()
