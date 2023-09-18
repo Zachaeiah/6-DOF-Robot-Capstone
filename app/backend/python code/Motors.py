@@ -8,7 +8,7 @@ class motor:
         max_acceleration (float): The maximum acceleration of the motor in RPM/s (Revolutions Per Minute per second).
     """
 
-    def __init__(self, name: str, max_speed: float, max_acceleration: float):
+    def __init__(self, name: str, max_speed: float, max_acceleration: float, max_torqu: float):
         """
         Initialize a Motor instance with the specified parameters.
 
@@ -22,6 +22,8 @@ class motor:
         self.max_acceleration = max_acceleration
         self.velocity_profile = None
         self.is_activate = False
+        self.max_torqu = max_torqu
+        self.parint = motor("", 0, 0, 0)
 
     def set_velocity_profile(self, profile):
         """
@@ -34,6 +36,9 @@ class motor:
     
     def activate(self, state = True):
         self.is_activate = state
+
+    def add_parint(self, parint):
+        self.parint = parint
 
     def __str__(self) -> str:
         """
@@ -48,7 +53,8 @@ class motor:
             f"  Max Speed: {self.max_speed} RPM\n"
             f"  Max Acceleration: {self.max_acceleration} RPM/s\n"
             f"  Velocity Profile: {self.velocity_profile}\n"
-            f"  Activate state: {self.is_activate}"
+            f"  Activate state: {self.is_activate}\n"
+            f"  Parint: {self.parint.name}"
         )
 
     def __repr__(self) -> str:
@@ -61,9 +67,9 @@ class motor:
         return f"Motor({self.name}, {self.max_speed}, {self.max_acceleration}, {self.is_activate})"
     
 class StepperMotor(motor):
-    def __init__(self, name: str, max_speed: float, max_acceleration: float, steps_per_revolution: int):
+    def __init__(self, name: str, max_speed: float, max_acceleration: float, steps_per_revolution: int, max_torqu: float):
         # Call the constructor of the base class (motor)
-        super().__init__(name, max_speed, max_acceleration)
+        super().__init__(name, max_speed, max_acceleration, max_torqu)
         self.steps_per_revolution = steps_per_revolution
 
     def __str__(self) -> str:
@@ -78,7 +84,7 @@ class StepperMotor(motor):
 
     
 def main():
-    test_motor = StepperMotor(f"Motor: 1", 100, 10, 7e4)
+    test_motor = StepperMotor(f"Motor: 1", 100, 10, 7e4, 27)
     print(test_motor)
 
     print(__name__)

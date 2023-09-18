@@ -74,15 +74,16 @@ class motorManager:
         """
         Return a string representation of the MotorManager that can be used to recreate it.
         """
-        motor_list = [f"Motor(name='{motor.name}', is_activate={motor.is_activate})" for motor in self.motors]
+        motor_list = [f"Motor(name='{motor.name}', is_activate={motor.is_activate}, parent='{motor.parint.name}')" for motor in self.motors]
         return f"motorManager(motors=[{', '.join(motor_list)}])"
 
     def __str__(self):
         """
         Return a human-readable string representation of the MotorManager.
         """
-        motor_list = [f"Motor '{motor.name}' {'active' if motor.is_activate else 'inactive'}" for motor in self.motors]
+        motor_list = [f"Motor '{motor.name}' {'active' if motor.is_activate else 'inactive'} (Parent: {motor.parint.name})" for motor in self.motors]
         return '\n'.join(motor_list)
+    
 
     def __iter__(self):
         # Allow iteration over the MotorManager, which will iterate over its Motor instances
@@ -92,11 +93,16 @@ class motorManager:
 def main():
     test_motors = []
     for i in range(0, 6, 1):
-        test_motors.append(StepperMotor(f"Motor: {i}", 100, 10, 7e4))
+        test_motors.append(StepperMotor(f"Motor: {i}", 100, 10, 7e3, 27))
+        if i > 0:
+            test_motors[i].add_parint(test_motors[i-1])
+
         
     manager = motorManager(test_motors)
 
     manager.activate_motor("Motor: 3")
+
+    print(manager)
 
     
 
