@@ -35,7 +35,7 @@ def main1():
 
         # Create and configure StepperMotor instances
         active_motors = range(3, 6, 1)  
-        motors = [StepperMotor(AllMotorNames[i], 3000, 100, 7e4) for i in active_motors]
+        motors = [StepperMotor(AllMotorNames[i], 3000, 100, 7e4, 27) for i in active_motors]
 
         # Create a MotorManager instance
         motor_manager = motorManager(motors)

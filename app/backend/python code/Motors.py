@@ -80,7 +80,7 @@ class StepperMotor(motor):
         # Call the __repr__ method of the base class (motor)
         motor_repr = super().__repr__()
         return f"{motor_repr}, Steps per Revolution: {self.steps_per_revolution}"
-
+ 
     
 def main():
     test_motor = StepperMotor(f"Motor: 1", 100, 10, 7e4, 24)

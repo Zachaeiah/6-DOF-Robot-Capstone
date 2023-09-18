@@ -11,6 +11,10 @@ class motorManager:
         # Create a dictionary mapping motor names to their instances for quick lookup
         self.motor_name_to_instance = {motor.name: motor for motor in motors}
 
+        for i in range(len(self.motors), 1, 1):
+            link = (self.motors[i], self.motors[i-1])
+            self.linked_order.append(link)
+
     def activate_motor(self, motor_name: str):
         """
         Activate a motor by its name.
@@ -56,7 +60,8 @@ class motorManager:
             print(f"Motor '{motor_name}' removed.")
         else:
             print(f"Motor '{motor_name}' not found.")
-
+        
+        print()
     def __repr__(self):
         """
         Return a string representation of the MotorManager that can be used to recreate it.
@@ -71,7 +76,6 @@ class motorManager:
         motor_list = [f"Motor '{motor.name}' {'active' if motor.is_activate else 'inactive'}" for motor in self.motors]
         return '\n'.join(motor_list)
     
-
     def __iter__(self):
         # Allow iteration over the MotorManager, which will iterate over its Motor instances
         return iter(self.motors)
@@ -85,7 +89,7 @@ def main():
         
     manager = motorManager(test_motors)
 
-    manager.activate_motor("Motor: 3")
+    # manager.activate_motor("Motor: 3")
 
     print(manager)
 
