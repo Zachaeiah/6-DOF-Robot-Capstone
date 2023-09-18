@@ -1,51 +1,67 @@
-import math
-  
-class Linear:
-    def __init__(self, slope: float, offset: float):
-        """
-        Initialize a linear function.
+import numpy as np
+import matplotlib.pyplot as plt
 
-        :param slope: The slope of the linear function.
-        :param offset: The offset of the linear function.
+class LSPB:
+    def __init__(self, initial_time, final_time, initial_velocity, final_velocity, max_acceleration):
         """
-        self.slope = slope
-        self.offset = offset
+        Initialize an LSPB (Limited S-shaped Trapezoidal Velocity Profile) object.
 
-    def velocity(self, time: float) -> float:
-        """
-        Calculate the velocity at a given time using the linear function.
+        Args:
+            initial_time (float): Initial time.
+            final_time (float): Final time.
+            initial_velocity (float): Initial velocity.
+            final_velocity (float): Final velocity.
+            max_acceleration (float): Maximum acceleration.
 
-        :param time: The time at which to calculate the velocity.
-        :return: The calculated velocity.
         """
-        return self.slope * time + self.offset
+        self.initial_time = initial_time
+        self.final_time = final_time
+        self.initial_velocity = initial_velocity
+        self.final_velocity = final_velocity
+        self.max_acceleration = max_acceleration
 
-class Sigmoid:
-    def __init__(self, growth_rate: float, time_shift: float):
-        """
-        Initialize a sigmoid function.
-
-        :param growth_rate: The growth rate of the sigmoid function.
-        :param time_shift: The time shift of the sigmoid function.
-        """
-        self.growth_rate = growth_rate
-        self.time_shift = time_shift
+        self.blend_time = (self.initial_velocity - self.final_velocity + self.max_acceleration * self.final_time) / (self.max_acceleration)
 
     def velocity(self, time: float) -> float:
         """
-        Calculate the velocity at a given time using the sigmoid function.
+        Calculate the velocity at a given time.
 
-        :param time: The time at which to calculate the velocity.
-        :return: The calculated velocity.
+        Args:
+            time (float): Time at which to calculate velocity.
+
+        Returns:
+            float: Velocity at the specified time.
+
         """
-        try:
-            return 1 / math.exp(-self.growth_rate * (time - self.time_shift))
-        except OverflowError as e:
-            raise ValueError(f"OverflowError: {e}. Growth rate too high for the given time and time shift")
-        
+        if 0 <= time <= self.blend_time:
+            return self.initial_velocity + (self.max_acceleration * time ** 2) / (2 * self.blend_time)
+
+        elif self.blend_time < time <= (self.final_time - self.blend_time):
+            return ((self.final_velocity + self.initial_velocity - self.max_acceleration * self.final_time) / 2) + self.max_acceleration * time
+
+        elif (self.final_time - self.blend_time) < time <= self.final_time:
+            return self.final_velocity - ((self.max_acceleration * self.final_time ** 2) / (2 * self.blend_time)) + (
+                        (self.max_acceleration * self.final_time * time) / self.blend_time) - (
+                               self.max_acceleration * time ** 2) / (2 * self.blend_time)
 
 def main():
-    print(__name__)
-        
+    initial_time = 0
+    final_time = 1
+    initial_velocity = 0
+    final_velocity = 30
+    max_acceleration = 40
+
+    vel_plan = LSPB(initial_time, final_time, initial_velocity, final_velocity, max_acceleration)
+    times = np.linspace(initial_time, final_time, 100)
+    velocities = [vel_plan.velocity(time) for time in times]
+
+    plt.plot(times, velocities, label='Velocity Profile')
+    plt.xlabel('Time')
+    plt.ylabel('Velocity')
+    plt.legend()
+    plt.grid(True)
+    plt.title('Limited S-shaped Trapezoidal Velocity Profile')
+    plt.show()
+
 if __name__ == "__main__":
     main()

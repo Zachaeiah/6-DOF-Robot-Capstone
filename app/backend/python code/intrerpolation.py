@@ -6,6 +6,7 @@ from pyquaternion import Quaternion
 from itertools import cycle
 
 class PathPlanner:
+    
     def __init__(self):
         """
         Initializes the PathPlanner class.
@@ -114,9 +115,13 @@ class PathPlanner:
         self.linear = linear
 
         if linear:
-            self.points = self.points_on_linear_path_3d(self.start_point, self.end_point, self.resolution)
+            distance = self.linear_path_length(self.start_point, self.end_point)
+            self.num_points = self.get_number_of_points(distance, self.resolution)
+            self.points = self.points_on_linear_path_3d(self.start_point, self.end_point, self.num_points)
         else:
-            self.points = self.points_on_circular_path_3d(self.start_point, self.end_point, self.resolution)
+            distance = self.approximate_circular_path_length(self.start_point, self.end_point)
+            self.num_points = self.get_number_of_points(distance, self.resolution)
+            self.points = self.points_on_circular_path_3d(self.start_point, self.end_point, self.num_points)
 
         # Get the next color from the colormap cycle
         color = next(self.color_cycle)
@@ -126,7 +131,7 @@ class PathPlanner:
 
         return self.points, color
 
-    def plot_3d_path(self, label_start=True, label_end=True):
+    def plot_3d_path(self):
         """
         Plot and visualize the 3D paths.
 
@@ -193,17 +198,10 @@ class PathPlanner:
         ax.set_ylim(y_min - cube_size, y_max + cube_size)
         ax.set_zlim(-cube_size, z_max + cube_size)
 
-        # Add titles and labels
-        if self.linear:
-            ax.set_title('3D linear path plan')
-        else:
-            ax.set_title('3D circular path plan')
-
         ax.set_xlabel('X')
         ax.set_ylabel('Y')
         ax.set_zlabel('Z')
 
-        
 
         # Add a red cube at the origin (0, 0, 0)
         cube_size = 100  # Adjust the size of the cube as needed
@@ -220,6 +218,68 @@ class PathPlanner:
         # Show the plot
         plt.show()
 
+    @staticmethod
+    def approximate_circular_path_length(start_point, end_point):
+        """
+        Approximate the length of a circular path between two points.
+
+        Args:
+            start_point (tuple): The starting point (x, y, z).
+            end_point (tuple): The ending point (x, y, z).
+
+        Returns:
+            float: The approximate length of the circular path.
+        """
+        start_x, start_y, start_z = start_point
+        end_x, end_y, end_z = end_point
+
+        # Calculate the radius of the circle
+        radius = np.linalg.norm(np.array(start_point)[:2])
+
+        # Calculate the angle between the start and end points
+        start_angle = np.arctan2(start_y, start_x)
+        end_angle = np.arctan2(end_y, end_x)
+
+        # Calculate the angle difference (arc length)
+        angle_difference = end_angle - start_angle
+
+        # Ensure the angle difference is positive
+        if angle_difference < 0:
+            angle_difference += 2 * np.pi
+
+        # Calculate the approximate length of the circular path
+        path_length = radius * angle_difference
+
+        return path_length
+
+    @staticmethod
+    def linear_path_length(point1, point2):
+        """
+        Calculate the Euclidean distance between two points.
+
+        Args:
+            point1 (np.ndarray): The coordinates of the first point [x1, y1, z1].
+            point2 (np.ndarray): The coordinates of the second point [x2, y2, z2].
+
+        Returns:
+            float: The Euclidean distance between the two points.
+        """
+        return np.linalg.norm(point2 - point1)
+
+    @staticmethod
+    def get_number_of_points(length, resolution):
+        # Number of points used to check/draw the path points
+
+        NP = round((length / 100.0) * resolution)
+    
+        
+
+        NP = max(NP, 2)  # Safety
+
+        return NP
+    def get_all_path_data(self):
+        return self.saved_paths[0]
+
     def clear_saved_paths(self):
         """Clear the list of saved paths."""
         self.saved_paths = []
@@ -230,23 +290,21 @@ def main():
     planner = PathPlanner()
 
     # Define start and end points for the paths
-    start_point_linear = (2, 2, 2)
-    end_point_linear = (-1, -1, -1)
+    start_point_linear = np.array((2000, 2000, 2000))  # Convert to NumPy array
+    end_point_linear = np.array((-1000, -1000, -1000))  # Convert to NumPy array
 
-    start_point_circular = (-1, -1, -1)
-    end_point_circular = (2, 2, 2)
+    start_point_circular = (-1000, -1000, -1000)
+    end_point_circular = (2000, 2000, 2000)
 
     # Set the resolution for both paths
-    resolution = 500
+    resolution = 50
 
-    # Generate a linear path and store the points and color
-    linear_path_points, linear_path_color = planner.generate_path(start_point_linear, end_point_linear, resolution, linear=True)
+    planner.generate_path(start_point_linear, end_point_linear, resolution, linear=True)
 
-    # Generate a circular path and store the points and color
-    circular_path_points, circular_path_color = planner.generate_path(start_point_circular, end_point_circular, resolution, linear=False)
+    planner.generate_path(start_point_circular, end_point_circular, resolution, linear=False)
 
     # Plot the 3D paths
-    planner.plot_3d_path(label_start=True, label_end=True)
+    planner.plot_3d_path()
 
     # Clear the saved paths (optional)
     planner.clear_saved_paths()
@@ -256,3 +314,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
