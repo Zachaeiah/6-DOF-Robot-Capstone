@@ -23,7 +23,6 @@ class motor:
         self.velocity_profile = None
         self.is_activate = False
         self.max_torqu = max_torqu
-        self.parint = motor("", 0, 0, 0)
 
     def set_velocity_profile(self, profile):
         """
@@ -54,7 +53,7 @@ class motor:
             f"  Max Acceleration: {self.max_acceleration} RPM/s\n"
             f"  Velocity Profile: {self.velocity_profile}\n"
             f"  Activate state: {self.is_activate}\n"
-            f"  Parint: {self.parint.name}"
+            f""
         )
 
     def __repr__(self) -> str:
@@ -75,7 +74,7 @@ class StepperMotor(motor):
     def __str__(self) -> str:
         # Call the __str__ method of the base class (motor)
         motor_info = super().__str__()
-        return f"{motor_info}\n  Steps per Revolution: {self.steps_per_revolution}"
+        return f"{motor_info}  Steps per Revolution: {self.steps_per_revolution}"
 
     def __repr__(self) -> str:
         # Call the __repr__ method of the base class (motor)
@@ -84,7 +83,7 @@ class StepperMotor(motor):
 
     
 def main():
-    test_motor = StepperMotor(f"Motor: 1", 100, 10, 7e4, 27)
+    test_motor = StepperMotor(f"Motor: 1", 100, 10, 7e4, 24)
     print(test_motor)
 
     print(__name__)
