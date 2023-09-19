@@ -101,7 +101,11 @@ def main1():
 
                     # Plot the 3D paths
                     planner.plot_3d_path(label_start=True, label_end=True)
+                    print(planner.saved_paths[0][0])
 
+                    state = 4  # Transition to the next state
+                case 4:
+                    ## inverce kinamatics
                     run = False  # Exit the loop when done
 
     except RobotConnectionTimeout as e:
