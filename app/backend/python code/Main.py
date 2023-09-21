@@ -100,8 +100,8 @@ def main1():
                         planner.generate_path(location, DROP_OFF_ZONE, resolution, linear=False)
 
                     # Plot the 3D paths
-                    planner.plot_3d_path(label_start=True, label_end=True)
-                    print(planner.saved_paths[0][0])
+                    planner.plot_3d_path()
+                    print(planner.saved_paths[0])
 
                     state = 4  # Transition to the next state
                 case 4:

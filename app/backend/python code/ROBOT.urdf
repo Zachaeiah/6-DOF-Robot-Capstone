@@ -2,14 +2,15 @@
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="robot">
 
 
-    <!-- Define the "world" link -->
+    Define the "world" link
     <link name="world"></link>
 
     <!-- Define the joint connecting the "world" link to the "table_link" -->
-    <joint name="table_joint" type="fixed">
+    <joint name="table_joint" type="revolute">
         <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
         <parent link="world"/>
         <child link="table_link"/>
+        <axis xyz="0 0 1"/>
     </joint>
 
     <!-- Define the "table_link" -->
@@ -24,21 +25,21 @@
             </material>
         </visual>
         <collision>
-            <origin xyz="0 0 0.05" rpy="0 0 0"/>
+            <origin xyz="0.0 0.0 0.0273625" rpy="0.0 0.0 0.0"/>
             <geometry>
                 <cylinder length="0.054725" radius="0.05080"/>
             </geometry>
         </collision>
     </link>
 
-    <!-- Define the joint connecting the "table_link" to the "base_link" -->
-    <joint name="bace_joint" type="revolute">
-        <origin xyz="0.0 0.0 0.054725" rpy="0.0 0.0 -1.570796"/>
+    <joint name="base_joint" type="revolute">
+        <origin xyz="0.0 0.0 0.054725" rpy="0.0 0.0 0.0"/>
         <parent link="table_link"/>
         <child link="base_link"/>
-        <axis xyz="0.0 0.0 1"/>
+        <axis xyz="0.0 0.0 1.0"/>  
         <limit lower="-3.141692" upper="3.141692" effort="60.0" velocity="100.0"/>
     </joint>
+    
 
     <!-- Define the "base_link" -->
     <link name="base_link">

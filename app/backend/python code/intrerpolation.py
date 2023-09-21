@@ -4,6 +4,7 @@ from mpl_toolkits.mplot3d import Axes3D
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 from pyquaternion import Quaternion
 from itertools import cycle
+from intrerpolation import *
 
 class PathPlanner:
     def __init__(self):
@@ -118,15 +119,14 @@ class PathPlanner:
         else:
             self.points = self.points_on_circular_path_3d(self.start_point, self.end_point, self.resolution)
 
-        # Get the next color from the colormap cycle
-        color = next(self.color_cycle)
+        
 
         # Store the generated path and its color
-        self.saved_paths.append((self.points, color))
+        self.saved_paths.append(self.points)
 
-        return self.points, color
+        return self.points
 
-    def plot_3d_path(self, label_start=True, label_end=True):
+    def plot_3d_path(self):
         """
         Plot and visualize the 3D paths.
 
@@ -168,11 +168,11 @@ class PathPlanner:
         # Add the cube to the plot
         ax.add_collection3d(cube)
 
-        for path, color in self.saved_paths:
+        for path in self.saved_paths:
             x_coords, y_coords, z_coords = path.T
 
             # Customize marker size and transparency
-            ax.scatter(x_coords, y_coords, z_coords, c=[color] * len(x_coords), s=20, marker='o', alpha=0.5)
+            ax.scatter(x_coords, y_coords, z_coords, color = "green",s=20, marker='o', alpha=0.5)
 
             # Update min and max values for each axis
             x_min = min(x_min, np.min(x_coords))
@@ -240,13 +240,13 @@ def main():
     resolution = 500
 
     # Generate a linear path and store the points and color
-    linear_path_points, linear_path_color = planner.generate_path(start_point_linear, end_point_linear, resolution, linear=True)
+    linear_path_points = planner.generate_path(start_point_linear, end_point_linear, resolution, linear=True)
 
     # Generate a circular path and store the points and color
-    circular_path_points, circular_path_color = planner.generate_path(start_point_circular, end_point_circular, resolution, linear=False)
+    circular_path_points = planner.generate_path(start_point_circular, end_point_circular, resolution, linear=False)
 
     # Plot the 3D paths
-    planner.plot_3d_path(label_start=True, label_end=True)
+    planner.plot_3d_path()
 
     # Clear the saved paths (optional)
     planner.clear_saved_paths()
