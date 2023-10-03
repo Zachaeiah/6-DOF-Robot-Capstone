@@ -4,7 +4,7 @@ from mpl_toolkits.mplot3d import Axes3D
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 from pyquaternion import Quaternion
 from itertools import cycle
-from intrerpolation import *
+
 
 class PathPlanner:
     def __init__(self):

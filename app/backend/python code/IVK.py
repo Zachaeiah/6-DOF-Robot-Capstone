@@ -74,7 +74,9 @@ class RobotController:
 
 def main():
     urdf_file_path = r"E:\\Capstone\\app\backend\\python code\\ROBOT.urdf"
-    active_links_mask = [False, True, False, True, True, False, True, True]
+    active_links_mask = [True, True, True, True, True, True, True, True]
+
+    #active_links_mask = [True, True]
 
     controller = RobotController(urdf_file_path, active_links_mask)
 
@@ -89,7 +91,7 @@ def main():
     end_point_circular = (-1, 0.2, 0.5)
 
     # Set the resolution for both paths
-    resolution = 100
+    resolution = 30
 
     # In your main function:
     circular_path_points = planner.generate_path(start_point_circular, end_point_circular, resolution, linear=False)

@@ -2,6 +2,7 @@ import numpy as np
 import sympy as sym
 from sympy import Matrix
 from sympy import *
+import math
 init_printing()
 
 # Define constants
@@ -11,79 +12,93 @@ PI = sym.pi
 
 def rotation_z(theta, matrix):
     rot_matrix = Matrix([
-        [sym.cos(theta), -sym.sin(theta), 0, 0],
-        [sym.sin(theta), sym.cos(theta), 0, 0],
-        [0, 0, 1, 0],
-        [0, 0, 0, 1]
+        [sym.cos(theta), -sym.sin(theta), 0],
+        [sym.sin(theta), sym.cos(theta), 0],
+        [0, 0, 1]
     ]) * matrix
     return rot_matrix
 
 def rotation_y(theta, matrix):
     rot_matrix = Matrix([
-        [sym.cos(theta), 0, sym.sin(theta), 0],
-        [0, 1, 0, 0],
-        [-sym.sin(theta), 0, sym.cos(theta), 0],
-        [0, 0, 0, 1]
+        [sym.cos(theta), 0, sym.sin(theta)],
+        [0, 1, 0],
+        [-sym.sin(theta), 0, sym.cos(theta)]
     ]) * matrix
     return rot_matrix
 
 def rotation_x(theta, matrix):
     rot_matrix = Matrix([
-        [1, 0, 0, 0],
-        [0, sym.cos(theta), -sym.sin(theta), 0],
-        [0, sym.sin(theta), sym.cos(theta), 0],
-        [0, 0, 0, 1]
+        [1, 0, 0],
+        [0, sym.cos(theta), -sym.sin(theta)],
+        [0, sym.sin(theta), sym.cos(theta)]
     ]) * matrix
     return rot_matrix
 
-def translate(dx, dy, dz, matrix):
-    trans_matrix = Matrix([
-        [1, 0, 0, dx],
-        [0, 1, 0, dy],
-        [0, 0, 1, dz],
-        [0, 0, 0, 1]
-    ]) * matrix
-    return trans_matrix
 
-# Define the theta values as NumPy arrays
-theta_values = {
-    Theta0: 0.5,  # Replace with the actual values
-    Theta1: 0.3,
-    Theta2: 0.7,
-    Theta3: 0.9,
-    Theta4: 0.2,
-    Theta5: 0.4
-}
+# Calculate theta0, theta1, and theta2 using your formulas
+a0 = 0
+a1 = 350
+a2 = 250
 
-distances0_3 = {A0:123, A1:535, A2:114, A3:210}
-distances3_6 = {A4:232, A5:110, A6:140}
+x =  100
+y =  100
+z =  100
+
+Transform0_6 = Matrix([[-1, 0, 0],
+                       [0, -1, 0],
+                       [0, 0, 1]])
+
+theta0 = math.degrees(math.atan2(y, x))
+rotLength = math.sqrt(x**2 + y**2)
+length0_3 = math.sqrt(rotLength**2 + (z - a0)**2)
+beta = math.atan2((z - a0), length0_3)
+alpha = math.acos((a2**2 - length0_3**2 - a1**2) / (-2 * length0_3 * a1))
+theta1 = math.degrees(beta + alpha)
+theta2 = math.degrees(math.atan2((z - a0) - a1 * math.sin(math.radians(theta1)),
+                                 length0_3 - a1 * math.cos(math.radians(theta1))))
 
 # Define the transformations as NumPy arrays
-base_matrix_np = sym.eye(4)
+base_matrix_sym = sym.eye(3)
 
-frame1_np = translate(0, 0, A0, base_matrix_np) * rotation_x(-PI, base_matrix_np) * rotation_z(Theta0, base_matrix_np)
-frame2_np = translate(0, -A1, 0, frame1_np) * rotation_z(Theta1, frame1_np)
-frame3_np = translate(0, -A3, A2, frame2_np) * rotation_x(PI, frame2_np) * rotation_x(Theta2, frame2_np)
-Tranform0_3 = frame3_np.subs(distances0_3)
-print(Tranform0_3)
-# Tranform0_3_inv = Tranform0_3.inv()
-# print("done 0_3")
+# Calculate the transformation matrix
+frame1_sym = rotation_x(sym.pi/2, base_matrix_sym) * rotation_z(Theta0, base_matrix_sym) 
+frame2_sym = rotation_z(Theta1, frame1_sym)
+frame3_sym = rotation_x(Theta2, frame2_sym)
+Transform0_3 = frame3_sym
 
-# frame4_np = translate(0, 0, A4, base_matrix_np) * rotation_x(-PI, base_matrix_np) * rotation_z(Theta3, frame3_np)
-# frame5_np = translate(0, -A6, A5, frame4_np) * rotation_x(PI, frame4_np) * rotation_z(Theta4, frame4_np)
-# frame6_np = rotation_z(Theta5, frame5_np)
-# Tranform3_6 = frame6_np.subs(distances3_6)
-# print("done 3_5")
+# Substitute the numerical values into the matrix
+Transform0_3_with_values = Transform0_3.subs({Theta0: math.radians(theta0), Theta1: math.radians(theta1), Theta2: math.radians(theta2)})
 
-# Tranform0_6 = Matrix([
-#         [1, 0, 0, 0],
-#         [0, 1, 0, 0],
-#         [0, 0, 1, 0],
-#         [0, 0, 0, 1]
-#     ])
+Transform0_3_with_values_inv = Transform0_3_with_values.inv()
 
-# result = Tranform0_3_inv*Tranform0_6
-# print(result)
+Finle_M = Transform0_3_with_values_inv*Transform0_6
+# for row in range(3):
+#     for column in range(3):
+#         value = Transform3_6[row, column].evalf()
+#         print(f'Transform3_6[{row}, {column}]: \n{value}\n')
+
+# print(Finle_M)
+
+t5 = math.acos(Finle_M[2,2].evalf())
+t6 = math.acos(Finle_M[2,0].evalf()/-math.sin(t5))
+t4 = math.acos(Finle_M[1,2].evalf()/math.sin(t5))
+
+# print(f'theta5: {t5}, radians')
+# print(f'theta6: {t6}, radians')
+# print(f'theta6: {t4}, radians')
+
+R3_6_check = [[-math.sin(t4)*math.cos(t5)*math.cos(t6) - math.cos(t4)*math.sin(t6), math.sin(t4)*math.cos(t5)*math.sin(t6) - math.cos(t4)*math.cos(t6), -math.sin(t4)*math.sin(t5)],
+                [-math.cos(t4)*math.cos(t5)*math.cos(t6) - math.sin(t4)*math.sin(t6), -math.cos(t4)*math.cos(t5)*math.sin(t6) - math.sin(t4)*math.cos(t6), -math.cos(t4)*math.sin(t5)],
+                [-math.sin(t5)*math.cos(t6), math.sin(t5)*math.sin(t6) + math.cos(t5), math.cos(t5)]]
+
+
+
+print(Finle_M)
+
+print('\n\n')
+
+print(R3_6_check)
+
 
 
 
