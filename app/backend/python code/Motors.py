@@ -1,43 +1,30 @@
 class motor:
-    """
-    A class representing a motor.
-
-    Args:
-        name (str): The name or identifier of the motor.
-        max_speed (float): The maximum speed of the motor in RPM (Revolutions Per Minute).
-        max_acceleration (float): The maximum acceleration of the motor in RPM/s (Revolutions Per Minute per second).
-    """
-
-    def __init__(self, name: str, max_speed: float, max_acceleration: float, max_torqu: float):
-        """
-        Initialize a Motor instance with the specified parameters.
+    def __init__(self, name: str, index: int, max_speed: float, max_acceleration: float, max_torqu: float):
+        """_summary_
 
         Args:
-            name (str): The name or identifier of the motor.
-            max_speed (float): The maximum speed of the motor in RPM (Revolutions Per Minute).
-            max_acceleration (float): The maximum acceleration of the motor in RPM/s (Revolutions Per Minute per second).
+            name (str): Name of the motor
+            index (int): index of the motor
+            max_speed (float): top alowable speed 
+            max_acceleration (float): maximum acceleration
+            max_torqu (float): maximum torqu
         """
+        
         self.name = name
+        self.index = index
         self.max_speed = max_speed
         self.max_acceleration = max_acceleration
-        self.velocity_profile = None
         self.is_activate = False
         self.max_torqu = max_torqu
 
-    def set_velocity_profile(self, profile):
-        """
-        Set the velocity profile for the motor.
+    def SetMaxSpeed(self, NewSpeed: float):
+        self.max_speed = NewSpeed
 
-        Args:
-            profile: The velocity profile to set.
-        """
-        self.velocity_profile = profile
-    
+    def setMaxAcceleration(self, NewAcceleration):
+        self.max_acceleration = NewAcceleration
+
     def activate(self, state = True):
         self.is_activate = state
-
-    def add_parint(self, parint):
-        self.parint = parint
 
     def __str__(self) -> str:
         """
@@ -49,26 +36,17 @@ class motor:
         return (
             f"Motor Information:\n"
             f"  Name: {self.name}\n"
+            f"  index: {self.index}\n"
             f"  Max Speed: {self.max_speed} RPM\n"
             f"  Max Acceleration: {self.max_acceleration} RPM/s\n"
-            f"  Velocity Profile: {self.velocity_profile}\n"
+            f"  Max torqu: {self.max_torqu}\n"
             f"  Activate state: {self.is_activate}\n"
-            f""
         )
-
-    def __repr__(self) -> str:
-        """
-        Return a string representation of the motor object that can be used to recreate it.
-
-        Returns:
-            str: A string representation of the motor.
-        """
-        return f"Motor({self.name}, {self.max_speed}, {self.max_acceleration}, {self.is_activate})"
     
 class StepperMotor(motor):
-    def __init__(self, name: str, max_speed: float, max_acceleration: float, steps_per_revolution: int, max_torqu: float):
+    def __init__(self, name: str, index: int, max_speed: float, max_acceleration: float, max_torqu: float, steps_per_revolution: int):
         # Call the constructor of the base class (motor)
-        super().__init__(name, max_speed, max_acceleration, max_torqu)
+        super().__init__(name, index, max_speed,  max_acceleration, max_torqu)
         self.steps_per_revolution = steps_per_revolution
 
     def __str__(self) -> str:
@@ -76,19 +54,10 @@ class StepperMotor(motor):
         motor_info = super().__str__()
         return f"{motor_info}  Steps per Revolution: {self.steps_per_revolution}"
 
-    def __repr__(self) -> str:
-        # Call the __repr__ method of the base class (motor)
-        motor_repr = super().__repr__()
-        return f"{motor_repr}, Steps per Revolution: {self.steps_per_revolution}"
- 
     
 def main():
-    test_motor = StepperMotor(f"Motor: 1", 100, 10, 7e4, 24)
+    test_motor = StepperMotor(f"Motor: 1", 1, 100, 10, 1, 70_000)
     print(test_motor)
 
-    print(__name__)
-
-
-        
 if __name__ == "__main__":
     main()
