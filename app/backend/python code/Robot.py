@@ -11,6 +11,11 @@ class Robot:
     DEFAULT_TIMEOUT = 10
 
     def __init__(self, serial_port: str):
+        """_summary_
+
+        Args:
+            serial_port (str): Seril
+        """
         self.port = serial_port
         self.baud_rate = self.DEFAULT_BAUD_RATE
         self.timeout = self.DEFAULT_TIMEOUT
