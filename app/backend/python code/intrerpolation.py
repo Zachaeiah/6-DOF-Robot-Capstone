@@ -142,32 +142,6 @@ class PathPlanner:
         y_min, y_max = float('inf'), float('-inf')
         z_min, z_max = float('inf'), float('-inf')
 
-        # Plot a red solid cube at the origin (0, 0, 0)
-        cube_size = 10  # Adjust the size of the cube as needed
-
-        # Define the vertices and faces of the cube
-        vertices = np.array([[-cube_size, -cube_size, -cube_size],
-                            [cube_size, -cube_size, -cube_size],
-                            [cube_size, cube_size, -cube_size],
-                            [-cube_size, cube_size, -cube_size],
-                            [-cube_size, -cube_size, cube_size],
-                            [cube_size, -cube_size, cube_size],
-                            [cube_size, cube_size, cube_size],
-                            [-cube_size, cube_size, cube_size]])
-
-        faces = [[vertices[0], vertices[1], vertices[2], vertices[3]],
-                [vertices[4], vertices[5], vertices[6], vertices[7]],
-                [vertices[0], vertices[1], vertices[5], vertices[4]],
-                [vertices[2], vertices[3], vertices[7], vertices[6]],
-                [vertices[1], vertices[2], vertices[6], vertices[5]],
-                [vertices[4], vertices[7], vertices[3], vertices[0]]]
-
-        # Create a Poly3DCollection for the cube
-        cube = Poly3DCollection(faces, color='red', alpha=0.5)
-
-        # Add the cube to the plot
-        ax.add_collection3d(cube)
-
         for path, color in self.saved_paths:
             x_coords, y_coords, z_coords = path.T
 
@@ -188,11 +162,6 @@ class PathPlanner:
         # Add grid lines
         ax.grid(True)
 
-        # Set axes limits to fit the largest path
-        ax.set_xlim(x_min - cube_size, x_max + cube_size)
-        ax.set_ylim(y_min - cube_size, y_max + cube_size)
-        ax.set_zlim(-cube_size, z_max + cube_size)
-
         # Add titles and labels
         if self.linear:
             ax.set_title('3D linear path plan')
@@ -202,20 +171,6 @@ class PathPlanner:
         ax.set_xlabel('X')
         ax.set_ylabel('Y')
         ax.set_zlabel('Z')
-
-        
-
-        # Add a red cube at the origin (0, 0, 0)
-        cube_size = 100  # Adjust the size of the cube as needed
-        cube_coords = np.array([[-cube_size, -cube_size, -cube_size],
-                                [cube_size, -cube_size, -cube_size],
-                                [cube_size, cube_size, -cube_size],
-                                [-cube_size, cube_size, -cube_size],
-                                [-cube_size, -cube_size, cube_size],
-                                [cube_size, -cube_size, cube_size],
-                                [cube_size, cube_size, cube_size],
-                                [-cube_size, cube_size, cube_size]])
-        ax.scatter(*cube_coords.T, c='red', s=50, marker='o', alpha=0.5)
 
         # Show the plot
         plt.show()
@@ -230,11 +185,11 @@ def main():
     planner = PathPlanner()
 
     # Define start and end points for the paths
-    start_point_linear = (2, 2, 2)
-    end_point_linear = (-1, -1, -1)
+    start_point_linear = (20, 20, 20)
+    end_point_linear = (-10, -10, -10)
 
-    start_point_circular = (-1, -1, -1)
-    end_point_circular = (2, 2, 2)
+    start_point_circular = (-10, -10, -10)
+    end_point_circular = (20, 20, 20)
 
     # Set the resolution for both paths
     resolution = 500
