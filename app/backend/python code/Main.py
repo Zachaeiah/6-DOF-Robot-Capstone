@@ -26,14 +26,7 @@ def main1():
     robot = Robot("COM3")  # Replace "COM3" with your actual serial port
 
     try:
-        # Attempt to establish a connection with the Arduino
-        # robot.connect()
-        # print("Connection with Arduino established.\n")
-        
-        # Create a messager instance for communication
-        robot_messager = messager(robot)
 
-        # Create and configure StepperMotor instances
         active_motors = range(3, 6, 1)  
         motors = [StepperMotor(AllMotorNames[i], 3000, 100, 7e4, 27) for i in active_motors]
 
@@ -90,18 +83,15 @@ def main1():
                       
                     state = 3  # Transition to the next state
                 case 3:
-                    # Create an instance of the PathPlanner class
-                    planner = PathPlanner()
-
-                    # Set the resolution for both paths
-                    resolution = 100
+                   # Create an instance of the PathPlanner class
+                    planner = PathPlanner(100, 5)
+                    planner.setVelocityPFP(1)
 
                     for part_name, location in locations.items():
-                        planner.generate_path(location, DROP_OFF_ZONE, resolution, linear=False)
+                        planner.generate_path(location, DROP_OFF_ZONE, linear=False)
 
                     # Plot the 3D paths
-                    planner.plot_3d_path(label_start=True, label_end=True)
-                    print(planner.saved_paths[0][0])
+                    planner.plot_3d_path()
 
                     state = 4  # Transition to the next state
                 case 4:

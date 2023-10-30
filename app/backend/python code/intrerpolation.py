@@ -1,4 +1,6 @@
 import numpy as np
+from VelocityPFP import *
+import math
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
@@ -6,30 +8,49 @@ from pyquaternion import Quaternion
 from itertools import cycle
 
 class PathPlanner:
-    def __init__(self):
+    def __init__(self, maxTCPVel, maxDerivativeTCP):
         """
         Initializes the PathPlanner class.
 
         This class is used to generate and visualize 3D paths, both linear and circular.
         """
-        self.color_cycle = cycle(plt.cm.viridis(np.linspace(0, 1, 100)))  # Choose a colormap and number of colors
         self.saved_paths = []
-
-    def slerp(self, quat1, quat2, t):
+        self.VelocityType = VelocityTypes(maxTCPVel, maxDerivativeTCP)  # Example values
+    
+    def setVelocityPFP(self, Vid: int):
+        self.Vid = Vid
+    
+    def interpolate_angles(self, start_angle, end_angle):
         """
-        Spherical Linear Interpolation (SLERP) between two quaternions.
+        Returns a list of angles interpolated between the start and end angles.
 
         Args:
-            quat1 (Quaternion): The starting quaternion.
-            quat2 (Quaternion): The ending quaternion.
-            t (float): The interpolation parameter ranging from 0 to 1.
+        start_angle (float): The starting angle in degrees.
+        end_angle (float): The ending angle in degrees.
 
         Returns:
-            Quaternion: The interpolated quaternion.
+        List[float]: A list of interpolated angles.
         """
-        return Quaternion.slerp(quat1, quat2, t)
+        if self.Vid == 0:
+            t_values = self.VelocityType.linear()
+        elif self.Vid == 1:
+            t_values = self.VelocityType.sigmoid()
 
-    def points_on_linear_path_3d(self, start_point: tuple, end_point: tuple, resolution: int):
+        diff = end_angle - start_angle
+        if abs(diff) <= 180:
+            step_size = diff / len(t_values)
+            t_values = np.append(t_values, t_values[-1])
+            return [start_angle + i * step_size * t_values[i] for i in range(len(t_values))]
+        else:
+            if diff > 0:
+                end_angle -= 360
+            else:
+                end_angle += 360
+            step_size = (end_angle - start_angle) / len(t_values)
+            t_values = np.append(t_values, t_values[-1])
+            return [(start_angle + i * step_size * t_values[i]) % 360 for i in range(len(t_values))]
+
+    def points_on_linear_path_3d(self, start_point: tuple, end_point: tuple):
         """
         Generate points on a linear 3D path between two given points.
 
@@ -41,60 +62,48 @@ class PathPlanner:
         Returns:
             np.ndarray: An array of interpolated points along the linear path.
         """
-        if resolution < 2:
-            raise ValueError("Resolution must be at least 2.")
-
-        t_values = np.linspace(0, 1, resolution)
+        if self.Vid == 0:
+            t_values = self.VelocityType.linear()
+        elif self.Vid == 1:
+            t_values = self.VelocityType.sigmoid()
+        
         start_point = np.array(start_point)
         end_point = np.array(end_point)
         interpolated_points = [tuple(start_point + t * (end_point - start_point)) for t in t_values]
 
         return np.array(interpolated_points)
 
-    def points_on_circular_path_3d(self, start_point: tuple, end_point: tuple, resolution: int):
+
+    def points_on_circular_path_3d(self, start_point: tuple, end_point: tuple):
         """
         Generate points on a circular 3D path between two given points.
 
         Args:
             start_point (tuple): The starting point (x, y, z).
             end_point (tuple): The ending point (x, y, z).
-            resolution (int): The number of points to generate along the path.
 
         Returns:
             np.ndarray: An array of interpolated points along the circular path.
         """
-        start_x, start_y, start_z = start_point
-        end_x, end_y, end_z = end_point
 
-        start_angle = np.arctan2(start_y, start_x)
-        end_angle = np.arctan2(end_y, end_x)
+        init_radius = np.linalg.norm(np.array(start_point[:2]))
+        init_angle = math.degrees(math.atan2(start_point[1], start_point[0]))
+        final_radius = np.linalg.norm(np.array(end_point[:2]))
+        final_angle = math.degrees(math.atan2(end_point[1], end_point[0]))
+        angle_steps = self.interpolate_angles(init_angle, final_angle)
 
-        start_radius = np.linalg.norm(start_point[:2])
-        end_radius = np.linalg.norm(end_point[:2])
+        print(init_radius, final_radius, init_angle,final_angle)
 
-        # Create quaternions to represent the rotations
-        start_quaternion = Quaternion(axis=[0, 0, 1], radians=start_angle)
-        end_quaternion = Quaternion(axis=[0, 0, 1], radians=end_angle)
+        radii = np.linspace(init_radius, final_radius, len(angle_steps))
+        heights = np.linspace(start_point[2], end_point[2], len(angle_steps))
 
-        # Interpolate quaternions for rotation
-        t_values = np.linspace(0, 1, resolution)
-        interpolated_quaternions = [self.slerp(start_quaternion, end_quaternion, t) for t in t_values]
-
-        # Interpolate radii and heights
-        radii = np.linspace(start_radius, end_radius, resolution)
-        heights = np.linspace(start_z, end_z, resolution)
-
-        # Initialize arrays to store points
-        points = np.zeros((resolution, 3))
-
-        # Apply the rotations to the initial vector [start_radius, 0, 0]
-        for i, quaternion in enumerate(interpolated_quaternions):
-            rotated_vector = quaternion.rotate(np.array([radii[i], 0, 0]))
-            points[i] = rotated_vector + np.array([0, 0, heights[i]])
+        points = np.array([(r * np.cos(math.radians(angle)), r * np.sin(math.radians(angle)), z) for angle, r, z in zip(angle_steps, radii, heights)])
+        print(angle_steps)
+        
 
         return points
 
-    def generate_path(self, start_point, end_point, resolution, linear: bool):
+    def generate_path(self, start_point, end_point, linear: bool):
         """
         Generate a 3D path between two points and store it.
 
@@ -110,21 +119,18 @@ class PathPlanner:
         """
         self.start_point = start_point
         self.end_point = end_point
-        self.resolution = resolution
         self.linear = linear
 
         if linear:
-            self.points = self.points_on_linear_path_3d(self.start_point, self.end_point, self.resolution)
+            self.points = self.points_on_linear_path_3d(self.start_point, self.end_point)
         else:
-            self.points = self.points_on_circular_path_3d(self.start_point, self.end_point, self.resolution)
+            self.points = self.points_on_circular_path_3d(self.start_point, self.end_point)
 
-        # Get the next color from the colormap cycle
-        color = next(self.color_cycle)
 
         # Store the generated path and its color
-        self.saved_paths.append((self.points, color))
+        self.saved_paths.append(self.points)
 
-        return self.points, color
+        return self.points
 
     def plot_3d_path(self, label_start=True, label_end=True):
         """
@@ -142,11 +148,11 @@ class PathPlanner:
         y_min, y_max = float('inf'), float('-inf')
         z_min, z_max = float('inf'), float('-inf')
 
-        for path, color in self.saved_paths:
+        for path in self.saved_paths:
             x_coords, y_coords, z_coords = path.T
 
             # Customize marker size and transparency
-            ax.scatter(x_coords, y_coords, z_coords, c=[color] * len(x_coords), s=20, marker='o', alpha=0.5)
+            ax.scatter(x_coords, y_coords, z_coords, s=20, marker='o', alpha=0.5)
 
             # Update min and max values for each axis
             x_min = min(x_min, np.min(x_coords))
@@ -182,23 +188,18 @@ class PathPlanner:
 def main():
         
     # Create an instance of the PathPlanner class
-    planner = PathPlanner()
+    planner = PathPlanner(100, 5)
+    planner.setVelocityPFP(1)
 
     # Define start and end points for the paths
     start_point_linear = (20, 20, 20)
     end_point_linear = (-10, -10, -10)
 
-    start_point_circular = (-10, -10, -10)
-    end_point_circular = (20, 20, 20)
-
-    # Set the resolution for both paths
-    resolution = 500
-
     # Generate a linear path and store the points and color
-    linear_path_points, linear_path_color = planner.generate_path(start_point_linear, end_point_linear, resolution, linear=True)
+    planner.generate_path(start_point_linear, end_point_linear, linear=False)
 
     # Generate a circular path and store the points and color
-    circular_path_points, circular_path_color = planner.generate_path(start_point_circular, end_point_circular, resolution, linear=False)
+    #circular_path_points, circular_path_color = planner.generate_path(start_point_circular, end_point_circular, resolution, linear=False)
 
     # Plot the 3D paths
     planner.plot_3d_path(label_start=True, label_end=True)

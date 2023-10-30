@@ -1,133 +1,85 @@
-import math
-import numpy as np
-  
-class Linear:
-    def __init__(self, slope: float, offset: float):
-        """
-        Initialize a linear function.
-
-        :param slope: The slope of the linear function.
-        :param offset: The offset of the linear function.
-        """
-        self.slope = slope
-        self.offset = offset
-
-    def velocity(self, time: float) -> float:
-        """
-        Calculate the velocity at a given time using the linear function.
-
-        :param time: The time at which to calculate the velocity.
-        :return: The calculated velocity.
-        """
-        return self.slope * time + self.offset
-
-class Sigmoid:
-    def __init__(self, growth_rate: float, time_shift: float):
-        """
-        Initialize a sigmoid function.
-
-        :param growth_rate: The growth rate of the sigmoid function.
-        :param time_shift: The time shift of the sigmoid function.
-        """
-        self.growth_rate = growth_rate
-        self.time_shift = time_shift
-
-    def velocity(self, time: float) -> float:
-        """
-        Calculate the velocity at a given time using the sigmoid function.
-
-        :param time: The time at which to calculate the velocity.
-        :return: The calculated velocity.
-        """
-        try:
-            return 1 / math.exp(-self.growth_rate * (time - self.time_shift))
-        except OverflowError as e:
-            raise ValueError(f"OverflowError: {e}. Growth rate too high for the given time and time shift")
-        
 import numpy as np
 import matplotlib.pyplot as plt
 
-# Trapezoidal Velocity Profile
-def trapezoidal_velocity_profile(distance, max_velocity, acceleration, deceleration):
-    acceleration_time = max_velocity / acceleration
-    deceleration_time = max_velocity / deceleration
+class VelocityTypes:
+    def __init__(self, max_value, max_derivative):
+        """Initialize the VelocityTypes class.
 
-    if acceleration_time + deceleration_time >= distance / max_velocity:
-        acceleration_time = distance / max_velocity - deceleration_time
+        Args:
+            max_value (float): The maximum value for the velocity.
+            max_derivative (float): The maximum derivative value.
+        """
+        self.max_value = max_value
+        self.max_derivative = max_derivative
 
-    t1 = acceleration_time
-    t2 = distance / max_velocity - deceleration_time
-    t3 = distance / max_velocity
+    def linear(self) -> np.ndarray:
+        """Generate a linear acceleration array.
 
-    time = np.arange(0, t3, 0.01)
-    velocity = np.zeros_like(time)
+        Returns:
+            np.ndarray: An array representing linear acceleration.
+        """
+        acceleration_time = self.max_value / self.max_derivative
 
-    for i, t in enumerate(time):
-        if t <= t1:
-            velocity[i] = acceleration * t
-        elif t <= t2:
-            velocity[i] = max_velocity
-        else:
-            velocity[i] = max_velocity - deceleration * (t - t2)
+        t_values = np.unique(np.concatenate((
+            np.linspace(0, 0.25 * acceleration_time, int(2 * acceleration_time)),
+            np.linspace(0.25 * acceleration_time, 0.75 * acceleration_time, int(acceleration_time)),
+            np.linspace(0.75 * acceleration_time, acceleration_time, int(2 * acceleration_time))
+        )))
 
-    return time, velocity
+        scaled_values = (t_values - t_values[0]) / (t_values[-1] - t_values[0])
+        return scaled_values
 
-# S-Curve (Seven-Segment) Motion Profile
-def s_curve_motion_profile(distance, max_velocity, acceleration, jerk):
-    t1 = acceleration / jerk
-    t2 = max_velocity / acceleration - t1
-    t3 = t1
+    def sigmoid(self, start_point=(0, 0), end_point=(1, 1)):
+        """Generate a sigmoid-like acceleration array.
 
-    if t1 + t2 + t3 >= distance / max_velocity:
-        t2 = distance / max_velocity - t1 - t3
+        Args:
+            start_point (tuple, optional): Starting point coordinates. Defaults to (0, 0).
+            end_point (tuple, optional): Ending point coordinates. Defaults to (1, 1).
 
-    time = np.arange(0, t1 + t2 + t3, 0.01)
-    velocity = np.zeros_like(time)
-    acceleration_values = np.zeros_like(time)
+        Returns:
+            np.ndarray: An array representing sigmoid-like acceleration.
+        """
+        def custom_sigmoid(x, growth_rate, mid_point, max_value_change):
+            """Compute the custom sigmoid function.
 
-    for i, t in enumerate(time):
-        if t <= t1:
-            acceleration_values[i] = jerk * t
-            velocity[i] = 0.5 * jerk * t ** 2
-        elif t <= t1 + t2:
-            acceleration_values[i] = acceleration
-            velocity[i] = max_velocity * (t - 0.5 * t1)
-        else:
-            acceleration_values[i] = -jerk * (t - t1 - t2)
-            t_rel = t - t1 - t2
-            velocity[i] = max_velocity - 0.5 * jerk * (t_rel) ** 2 - jerk * t_rel * (t_rel - t3)
+            Args:
+                x (float): The input value.
+                growth_rate (float): The growth rate parameter.
+                mid_point (float): The midpoint of the sigmoid function.
+                max_value_change (float): The maximum value change.
 
-    return time, velocity, acceleration_values
+            Returns:
+                float: The result of the custom sigmoid function.
+            """
+            return max_value_change / (1 + np.exp(-growth_rate * (x - mid_point)))
 
-# Combined Profile
-def combined_velocity_profile(distance, max_velocity, acceleration, deceleration, jerk):
-    t_trap, vel_trap = trapezoidal_velocity_profile(distance, max_velocity, acceleration, deceleration)
-    t_s_curve, vel_s_curve, _ = s_curve_motion_profile(distance, max_velocity, acceleration, jerk)
+        acceleration_time = self.max_value / self.max_derivative
 
-    min_len = min(len(vel_trap), len(vel_s_curve))
-    vel_trap = vel_trap[:min_len]
-    vel_s_curve = vel_s_curve[:min_len]
+        growth_rate = 4 * self.max_derivative / (end_point[0] - start_point[0])
+        mid_point = (start_point[0] + end_point[0]) / 2
+        max_value_change = end_point[1] - start_point[1]
 
-    combined_velocity = np.minimum(vel_trap, vel_s_curve)
+        x_values = np.linspace(start_point[0], end_point[0], int(5 * acceleration_time))
+        y_values = custom_sigmoid(x_values, growth_rate, mid_point, max_value_change) + start_point[1]
 
-    return t_trap[:min_len], combined_velocity
+        return y_values
 
-# Plotting the Combined Profile
-def plot_combined_profile(time, velocity, title):
-    plt.plot(time, velocity, label='Combined Velocity')
-    plt.xlabel('Time')
-    plt.ylabel('Velocity')
-    plt.title(title)
+
+def main():
+    velocity_obj = VelocityTypes(100, 5)  # Example values
+
+    sigmoid_values = velocity_obj.sigmoid()
+    linear_values = velocity_obj.linear()
+
+    print(len(sigmoid_values))
+
+    # Plotting the velocity over time
+    plt.plot(sigmoid_values, label='Sigmoid', color='blue')
+    plt.plot(linear_values, label='Linear', color='red')
+
     plt.legend()
     plt.show()
 
-# Example usage for the combined profile
-distance = 1000
-max_velocity = 10
-acceleration = 2
-deceleration = 2
-jerk = 1
 
-time_combined, velocity_combined = combined_velocity_profile(distance, max_velocity, acceleration, deceleration, jerk)
-plot_combined_profile(time_combined, velocity_combined, 'Combined Velocity Profile')
-
+if __name__ == "__main__":
+    main()
