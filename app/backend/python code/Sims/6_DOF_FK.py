@@ -109,7 +109,7 @@ class RobotArm:
 
         self.ax.set_xlim([-700, 700])
         self.ax.set_ylim([-700, 700])
-        self.ax.set_zlim([-700, 700])
+        self.ax.set_zlim([-100, 1200])
         self.ax.set_xlabel('X')
         self.ax.set_ylabel('Y')
         self.ax.set_zlabel('Z')

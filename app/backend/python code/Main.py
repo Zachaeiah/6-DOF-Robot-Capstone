@@ -1,4 +1,7 @@
+"""A script to manage the robotic arm and control its movements."""
+
 import numpy as np
+import tkinter as tk
 from Messager import *
 from MotorManager import *
 from Motors import *
@@ -6,33 +9,30 @@ from Robot import *
 from intrerpolation import *
 from VelocityPFP import *
 from DP_parts import *
-import tkinter as tk
 
 LARGE_FONT = ("Verdana", 12)
 DROP_OFF_ZONE = (-50, -100, 50)
 PICK_UP_ZONE = (50, -100, 50)
 
-AllMotorNames = ["BACE", 
-              "SHOULDER", 
-              "ELBOW",
-              "ELBOWREVOLUT",
-              "WRIST",
-              "WRISTREVOLUT"]
+AllMotorNames = ["BACE", "SHOULDER", "ELBOW", "ELBOWREVOLUT", "WRIST", "WRISTREVOLUT"]
+
+ERRORmsg = [
+    "Get the list of parts to fetch from the database",
+    "Get the part info from the database and organize it in a dictionary",
+    "Get the locations and orientations of all parts",
+    "Get the paths and Velocity profile for each path"
+]
 
 
-  
 def main1():
-    # Initialize the Robot instance with the serial port
-    robot = Robot("COM3")  # Replace "COM3" with your actual serial port
-
     try:
+        """Initialize the motors and the parts database."""
 
-        active_motors = range(3, 6, 1)  
-        motors = [StepperMotor(AllMotorNames[i], 3000, 100, 7e4, 27) for i in active_motors]
+        active_motors = range(3, 6, 1)
+        motors = {f"Motor: {i}": StepperMotor(f"Motor: {AllMotorNames[i]}", i, 100, 10, 1, 70000) for i in range(0, 6, 1)}
 
         # Create a MotorManager instance
         motor_manager = motorManager(motors)
-        robot.include_motor_anager(motor_manager)
 
         # Create a PartsDatabase instance and create the Parts table
         parts_db = PartsDatabase()
@@ -43,15 +43,18 @@ def main1():
 
         # State machine
         while run:
-            match state:
-                case 0:
-                    # This part of the code is where we need to get the list of parts to fetch
+            """Run the state machine to perform various actions."""
+
+            try:
+                if state == 0:
+                    """Retrieve the list of parts to fetch."""
 
                     # Array of part names to fetch
                     part_names_to_fetch = ['Part1', 'Part2', 'Part3']
                     state = 1  # Transition to the next state
-                case 1:
-                    # Get the part info from the database and organize it in a dictionary
+
+                elif state == 1:
+                    """Retrieve and store part information from the database."""
 
                     part_info_dict = {}  # Dictionary to store part information
 
@@ -71,8 +74,9 @@ def main1():
                                 'EmptyWeight': part[11]
                             }
                     state = 2  # Transition to the next state
-                case 2:
-                    # Get the locations of all parts
+
+                elif state == 2:
+                    """Retrieve and store locations of all parts."""
 
                     locations = {}  # Dictionary to store locations of each part
 
@@ -80,10 +84,11 @@ def main1():
                         location = (part_info['LocationX'], part_info['LocationY'], part_info['LocationZ'])
                         locations[part_name] = location
 
-                      
                     state = 3  # Transition to the next state
-                case 3:
-                   # Create an instance of the PathPlanner class
+
+                elif state == 3:
+                    """Generate paths and velocity profiles for each part."""
+
                     planner = PathPlanner(100, 5)
                     planner.setVelocityPFP(1)
 
@@ -94,18 +99,24 @@ def main1():
                     planner.plot_3d_path()
 
                     state = 4  # Transition to the next state
-                case 4:
-                    ## inverce kinamatics
+
+                elif state == 4:
+                    """Exit the loop."""
+
                     run = False  # Exit the loop when done
 
-    except RobotConnectionTimeout as e:
+            except Exception as e:
+                print(f"An error occurred at state {state}\n{ERRORmsg[state]}\t:", e)
+
+    except Exception as e:
         print(f"Error: {e}")
-    finally:
-        # Close the serial connection when done
-        robot.close_connection()
+
 
 if __name__ == "__main__":
-   main1()
+    """Entry point of the script."""
+
+    main1()
+
 
 
 # # Define a custom Tkinter application class
