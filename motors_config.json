@@ -1,52 +1,63 @@
 {
     "Motor: 0": {
-        "name": "Motor: 0",
+        "name": "Bace Motor",
         "index": 0,
-        "max_speed": 100,
-        "max_acceleration": 10,
-        "max_torqu": 1,
+        "max_speed": 2500,
+        "max_acceleration": 20,
+        "max_torqu": 10,
         "is_activate": false,
         "type": "Stepper Motor",
         "steps_per_revolution": 70000
     },
     "Motor: 1": {
-        "name": "Motor: 1",
+        "name": "Sholder Motor",
         "index": 1,
-        "max_speed": 100,
-        "max_acceleration": 10,
-        "max_torqu": 1,
+        "max_speed": 500,
+        "max_acceleration": 20,
+        "max_torqu": 10,
         "is_activate": false,
         "type": "Stepper Motor",
         "steps_per_revolution": 70000
     },
     "Motor: 2": {
-        "name": "Motor: 2",
+        "name": "Elbow Motor",
         "index": 2,
-        "max_speed": 100,
-        "max_acceleration": 10,
-        "max_torqu": 1,
+        "max_speed": 1000,
+        "max_acceleration": 20,
+        "max_torqu": 10,
         "is_activate": true,
         "type": "Stepper Motor",
         "steps_per_revolution": 70000
     },
+    "Motor: 3": {
+        "name": "Elbow revolut Motor",
+        "index": 3,
+        "max_speed": 5000,
+        "max_acceleration": 50,
+        "max_torqu": 5,
+        "is_activate": false,
+        "type": "Stepper Motor",
+        "steps_per_revolution": 70000
+    },
     "Motor: 4": {
-        "name": "Motor: 4",
+        "name": "Wirist Motor",
         "index": 4,
-        "max_speed": 100,
-        "max_acceleration": 10,
-        "max_torqu": 1,
+        "max_speed": 5000,
+        "max_acceleration": 50,
+        "max_torqu": 5,
         "is_activate": false,
         "type": "Stepper Motor",
         "steps_per_revolution": 70000
     },
     "Motor: 5": {
-        "name": "Motor: 5",
+        "name": "Wirist revolut Motor",
         "index": 5,
-        "max_speed": 100,
-        "max_acceleration": 10,
-        "max_torqu": 1,
+        "max_speed": 5000,
+        "max_acceleration": 50,
+        "max_torqu": 5,
         "is_activate": false,
         "type": "Stepper Motor",
         "steps_per_revolution": 70000
     }
+
 }

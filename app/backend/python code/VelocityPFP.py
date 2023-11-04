@@ -70,7 +70,6 @@ def main():
 
     sigmoid_values = velocity_obj.sigmoid()
     linear_values = velocity_obj.linear()
-
     print(len(sigmoid_values))
 
     # Plotting the velocity over time

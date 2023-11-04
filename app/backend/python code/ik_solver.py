@@ -9,10 +9,26 @@ import time
 
 class RobotArm:
     def __init__(self, urdf_file_path):
+        """Initialize the RobotArm class.
+
+        Args:
+            urdf_file_path (str): The file path to the URDF file.
+        """
         self.my_chain = ikpy.chain.Chain.from_urdf_file(urdf_file_path, active_links_mask=[False, True, True, False, True, True, False, True, True])
         self.last_angles = None  # Store the last calculated angles
 
     def calculate_ik(self, target_positions, target_orientations, precision=3, batch_size=1):
+        """Perform inverse kinematics calculation.
+
+        Args:
+            target_positions (list): List of target positions.
+            target_orientations (list): List of target orientations.
+            precision (int, optional): Precision for rounding. Defaults to 3.
+            batch_size (int, optional): Size of the batch for processing. Defaults to 1.
+
+        Yields:
+            list: Yields a list of rounded IK values.
+        """
         for i in range(0, len(target_positions), batch_size):
             positions_batch = target_positions[i:i + batch_size]
             orientations_batch = target_orientations[i:i + batch_size]
@@ -28,25 +44,43 @@ class RobotArm:
                 yield list(rounded_ik)
 
     def plot_robot(self, target_positions, target_orientations):
-            fig, ax = plot_utils.init_3d_figure()
-            fig.set_figheight(9)
-            fig.set_figwidth(13)
-            for i in range(len(target_positions)):
-                target_position = target_positions[i]
-                target_orientation = target_orientations[i]
-                ik_solution = list(self.calculate_ik([target_position], [target_orientation], precision=2, batch_size=1))[0] # Extract the IK solution as a list
-                self.my_chain.plot(np.radians(ik_solution), ax, target=np.array(target_position, dtype=np.float32)) # Convert angles to radians before plotting
-            plt.xlim(-1, 1)
-            plt.ylim(-1, 1)
-            ax.set_zlim(-1, 1)
-            plt.show()
+        """Plot the robotic arm.
+
+        Args:
+            target_positions (list): List of target positions.
+            target_orientations (list): List of target orientations.
+        """
+        fig, ax = plot_utils.init_3d_figure()
+        fig.set_figheight(9)
+        fig.set_figwidth(13)
+        for i in range(len(target_positions)):
+            target_position = target_positions[i]
+            target_orientation = target_orientations[i]
+            ik_solution = list(self.calculate_ik([target_position], [target_orientation], precision=2, batch_size=1))[0] # Extract the IK solution as a list
+            self.my_chain.plot(np.radians(ik_solution), ax, target=np.array(target_position, dtype=np.float32)) # Convert angles to radians before plotting
+        plt.xlim(-1, 1)
+        plt.ylim(-1, 1)
+        ax.set_zlim(-1, 1)
+        plt.show()
 
     def animate_robot(self, target_positions, target_orientations, interval=1):
+        """Animate the robotic arm.
+
+        Args:
+            target_positions (list): List of target positions.
+            target_orientations (list): List of target orientations.
+            interval (int, optional): Interval for the animation. Defaults to 1.
+        """
         fig, ax = plot_utils.init_3d_figure()
         fig.set_figheight(9)
         fig.set_figwidth(13)
 
         def update(frame):
+            """Update the animation frame.
+
+            Args:
+                frame (int): The frame number.
+            """
             ax.clear()
             target_position = target_positions[frame]
             target_orientation = target_orientations[frame]
@@ -148,8 +182,6 @@ def run_stress_test_with_batch_range(batch_size_range):
 
         # Append the elapsed time to the times list
         average_time_per_samples.append(average_time_per_sample)
-
-        
 
         # Free the memory used by the generator
         ik_generator = None

@@ -2,19 +2,18 @@
 
 import numpy as np
 import tkinter as tk
-from Messager import *
+from DP_parts import *
+from ik_solver import *
+from intrerpolation import *
 from MotorManager import *
 from Motors import *
-from Robot import *
-from intrerpolation import *
 from VelocityPFP import *
-from DP_parts import *
 
 LARGE_FONT = ("Verdana", 12)
 DROP_OFF_ZONE = (-50, -100, 50)
 PICK_UP_ZONE = (50, -100, 50)
 
-AllMotorNames = ["BACE", "SHOULDER", "ELBOW", "ELBOWREVOLUT", "WRIST", "WRISTREVOLUT"]
+AllMotorNames = ["Bace Motor", "Sholder Motor", "Elbow Motor", "Elbow revolut Motor", "Wirist Motor", "Wirist revolut Motor"]
 
 ERRORmsg = [
     "Get the list of parts to fetch from the database",
