@@ -5,7 +5,6 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 from pyquaternion import Quaternion
-from itertools import cycle
 
 class PathPlanner:
     def __init__(self, maxTCPVel, maxDerivativeTCP):
@@ -20,35 +19,43 @@ class PathPlanner:
     def setVelocityPFP(self, Vid: int):
         self.Vid = Vid
     
+    
     def interpolate_angles(self, start_angle, end_angle):
         """
-        Returns a list of angles interpolated between the start and end angles.
+        Returns a list of angles interpolated between the start and end angles, taking the shortest path.
 
         Args:
-        start_angle (float): The starting angle in degrees.
-        end_angle (float): The ending angle in degrees.
+            start_angle (float): The starting angle in degrees.
+            end_angle (float): The ending angle in degrees.
 
         Returns:
-        List[float]: A list of interpolated angles.
+            List[float]: A list of interpolated angles.
         """
+        t_values = None
         if self.Vid == 0:
             t_values = self.VelocityType.linear()
         elif self.Vid == 1:
             t_values = self.VelocityType.sigmoid()
+        elif self.Vid == 2:
+            t_values = np.linspace(0, 1, self.VelocityType.max_value)
+        else:
+            raise ValueError("Invalid Vid value. Please set Vid to either 0 or 2.")
+            
 
         diff = end_angle - start_angle
-        if abs(diff) <= 180:
-            step_size = diff / len(t_values)
-            t_values = np.append(t_values, t_values[-1])
-            return [start_angle + i * step_size * t_values[i] for i in range(len(t_values))]
-        else:
-            if diff > 0:
-                end_angle -= 360
-            else:
-                end_angle += 360
-            step_size = (end_angle - start_angle) / len(t_values)
-            t_values = np.append(t_values, t_values[-1])
-            return [(start_angle + i * step_size * t_values[i]) % 360 for i in range(len(t_values))]
+        print(diff)
+        if diff >= 0:
+            end_angle -= 360
+        elif diff < 0:
+            end_angle += 360
+
+        # Ensure that the start and end angles are within the range [0, 360)
+        start_angle = start_angle % 360
+        end_angle = end_angle % 360
+
+        step_size = diff / (len(t_values) - 1)
+        return [(start_angle + i * (end_angle - start_angle)) for i in t_values]
+
 
     def points_on_linear_path_3d(self, start_point: tuple, end_point: tuple):
         """
@@ -62,10 +69,16 @@ class PathPlanner:
         Returns:
             np.ndarray: An array of interpolated points along the linear path.
         """
+        t_values = None
         if self.Vid == 0:
             t_values = self.VelocityType.linear()
         elif self.Vid == 1:
             t_values = self.VelocityType.sigmoid()
+        elif self.Vid == 2:
+            t_values = np.linspace(0, 1, self.VelocityType.max_value)
+        else:
+            raise ValueError("Invalid Vid value. Please set Vid to either 0 or 2.")
+
         
         start_point = np.array(start_point)
         end_point = np.array(end_point)
@@ -85,21 +98,24 @@ class PathPlanner:
         Returns:
             np.ndarray: An array of interpolated points along the circular path.
         """
+        start_point = np.array(start_point)
+        end_point = np.array(end_point)
 
-        init_radius = np.linalg.norm(np.array(start_point[:2]))
-        init_angle = math.degrees(math.atan2(start_point[1], start_point[0]))
-        final_radius = np.linalg.norm(np.array(end_point[:2]))
-        final_angle = math.degrees(math.atan2(end_point[1], end_point[0]))
-        angle_steps = self.interpolate_angles(init_angle, final_angle)
+        init_radius = np.linalg.norm(start_point[:2])
+        init_angle = np.arctan2(start_point[1], start_point[0])
+        final_radius = np.linalg.norm(end_point[:2])
+        final_angle = np.arctan2(end_point[1], end_point[0])
 
-        print(init_radius, final_radius, init_angle,final_angle)
+        angle_steps = self.interpolate_angles(np.degrees(init_angle), np.degrees(final_angle))
 
         radii = np.linspace(init_radius, final_radius, len(angle_steps))
         heights = np.linspace(start_point[2], end_point[2], len(angle_steps))
 
-        points = np.array([(r * np.cos(math.radians(angle)), r * np.sin(math.radians(angle)), z) for angle, r, z in zip(angle_steps, radii, heights)])
-        print(angle_steps)
-        
+        angles = np.radians(angle_steps)
+        cos_angles = np.cos(angles)
+        sin_angles = np.sin(angles)
+
+        points = np.column_stack((radii * cos_angles, radii * sin_angles, heights))
 
         return points
 
@@ -161,6 +177,8 @@ class PathPlanner:
             y_max = max(y_max, np.max(y_coords))
             z_min = min(z_min, np.min(z_coords))
             z_max = max(z_max, np.max(z_coords))
+        
+        ax.scatter([0], [0], color="red")
 
         # Customize azimuth (horizontal viewing angle) and elevation (vertical viewing angle)
         ax.view_init(azim=-45, elev=20)
@@ -189,11 +207,11 @@ def main():
         
     # Create an instance of the PathPlanner class
     planner = PathPlanner(100, 5)
-    planner.setVelocityPFP(1)
+    planner.setVelocityPFP(2)
 
     # Define start and end points for the paths
-    start_point_linear = (20, 20, 20)
-    end_point_linear = (-10, -10, -10)
+    start_point_linear = (10, -5, -20)
+    end_point_linear = (20, 20, 20)
 
     # Generate a linear path and store the points and color
     planner.generate_path(start_point_linear, end_point_linear, linear=False)

@@ -93,8 +93,6 @@ class RobotArm:
         ani = animation.FuncAnimation(fig, update, frames=len(target_positions), interval=interval, repeat=False)
         plt.show()
 
-
-
 # Main function for execution
 def main():
     urdf_file_path = "urdf_tes1.urdf"

@@ -10,7 +10,7 @@ from Motors import *
 from VelocityPFP import *
 
 LARGE_FONT = ("Verdana", 12)
-DROP_OFF_ZONE = (-50, -100, 50)
+DROP_OFF_ZONE = (-50, -100, 0)
 PICK_UP_ZONE = (50, -100, 50)
 
 AllMotorNames = ["Bace Motor", "Sholder Motor", "Elbow Motor", "Elbow revolut Motor", "Wirist Motor", "Wirist revolut Motor"]
