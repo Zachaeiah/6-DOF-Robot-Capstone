@@ -1,5 +1,4 @@
 """A script to manage the robotic arm and control its movements."""
-
 import numpy as np
 import tkinter as tk
 from DP_parts import *
@@ -10,8 +9,8 @@ from Motors import *
 from VelocityPFP import *
 
 LARGE_FONT = ("Verdana", 12)
-DROP_OFF_ZONE = (-50, -100, 0)
-PICK_UP_ZONE = (50, -100, 50)
+DROP_OFF_ZONE = (-0.50, -0.100, 0.0)
+PICK_UP_ZONE = (0.50, -0.100, 0.50)
 
 AllMotorNames = ["Bace Motor", "Sholder Motor", "Elbow Motor", "Elbow revolut Motor", "Wirist Motor", "Wirist revolut Motor"]
 
@@ -45,6 +44,7 @@ def main1():
             """Run the state machine to perform various actions."""
 
             try:
+                print(f'state: {state}')
                 if state == 0:
                     """Retrieve the list of parts to fetch."""
 
@@ -88,19 +88,43 @@ def main1():
                 elif state == 3:
                     """Generate paths and velocity profiles for each part."""
 
-                    planner = PathPlanner(100, 5)
+                    planner = PathPlanner(20, 2)
                     planner.setVelocityPFP(1)
 
+                    direction_vector = []
+                    paths = []
                     for part_name, location in locations.items():
-                        planner.generate_path(location, DROP_OFF_ZONE, linear=False)
+                        direction_vector.append((np.array(location) / np.linalg.norm(location), 0, 0))  # Calculate direction vector from the origin to the current location
+                        paths.append(planner.generate_path(location, DROP_OFF_ZONE, linear=False))
 
                     # Plot the 3D paths
-                    planner.plot_3d_path()
+                    planner.plot_3d_path(label_start=True, label_end=True)
 
-                    state = 4  # Transition to the next state
+                    state = 4
 
                 elif state == 4:
-                    """Exit the loop."""
+                    """Perform inverse kinematics for the generated paths and visualize the motion using RobotArm."""
+
+                    # Initialize the RobotArm with the URDF file path
+                    urdf_file_path = "app\\backend\\python code\\urdf_tes1.urdf"  # Replace with the actual file path
+                    robot = RobotArm(urdf_file_path)
+
+                    target_positions = []
+                    target_orientations = []
+
+                    for path in paths:
+                        for point in path:
+                            target_positions.append(point)
+                            # Define a default orientation (you may need to adjust this based on your specific setup)
+                            target_orientations.append([0, 0, np.pi/4])
+
+                    print("animateing")
+                    # Animate the robotic arm along the generated path
+                    robot.animate_robot(target_positions, target_orientations, interval=1,save_as_gif=False)  # Adjust arguments as needed
+
+                    state = 5
+
+                elif state == 5:
 
                     run = False  # Exit the loop when done
 

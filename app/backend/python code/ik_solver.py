@@ -63,56 +63,77 @@ class RobotArm:
         ax.set_zlim(-1, 1)
         plt.show()
 
-    def animate_robot(self, target_positions, target_orientations, interval=1):
+    def animate_robot(self, target_positions, target_orientations, interval=1, save_as_gif=False, file_name="robot_animation.gif"):
         """Animate the robotic arm.
 
         Args:
             target_positions (list): List of target positions.
             target_orientations (list): List of target orientations.
             interval (int, optional): Interval for the animation. Defaults to 1.
+            save_as_gif (bool, optional): Save the animation as a GIF. Defaults to False.
+            file_name (str, optional): File name for the saved GIF. Defaults to "robot_animation.gif".
         """
-        fig, ax = plot_utils.init_3d_figure()
-        fig.set_figheight(9)
-        fig.set_figwidth(13)
+        fig, axes = plt.subplots(2, 2, figsize=(12, 8), subplot_kw={'projection': '3d'})
+        axes = axes.flatten()
 
-        def update(frame):
+        def update(frame, self, target_positions, target_orientations, axes):
             """Update the animation frame.
 
             Args:
                 frame (int): The frame number.
+                self: The current object instance.
+                target_positions (list): List of target positions.
+                target_orientations (list): List of target orientations.
+                axes (list): List of subplots for each axis and isometric view.
             """
-            ax.clear()
+            for ax in axes:
+                ax.clear()
+
             target_position = target_positions[frame]
             target_orientation = target_orientations[frame]
             ik_solution = list(self.calculate_ik([target_position], [target_orientation], precision=2, batch_size=1))[0]
-            self.my_chain.plot(ik_solution, ax, target=np.array(target_position, dtype=np.float32))
-            ax.set_xlim(-1, 1)
-            ax.set_ylim(-1, 1)
-            ax.set_zlim(-1, 1)
 
-        ani = animation.FuncAnimation(fig, update, frames=len(target_positions), interval=interval, repeat=False)
+            for i, ax in enumerate(axes):
+                self.my_chain.plot(np.radians(ik_solution), ax, target=np.array(target_position, dtype=np.float32))
+                ax.set_xlim(-1, 1)
+                ax.set_ylim(-1, 1)
+                ax.set_zlim(-1, 1)
+
+            # Set the views for the subplots
+            axes[0].view_init(elev=0, azim=0)
+            axes[1].view_init(elev=0, azim=90)
+            axes[2].view_init(elev=90, azim=0)
+            axes[3].view_init(elev=30, azim=45)
+
+        anim = animation.FuncAnimation(fig, update, frames=len(target_positions), fargs=(self, target_positions, target_orientations, axes), interval=interval, repeat=False)
+
+        if save_as_gif:
+            anim_var = anim.save(file_name, writer='pillow')
+            plt.show(anim_var)
+
         plt.show()
 
 # Main function for execution
 def main():
-    urdf_file_path = "urdf_tes1.urdf"
+    urdf_file_path = "app\\backend\\python code\\urdf_tes1.urdf"
     robot = RobotArm(urdf_file_path)
 
     # Example array of target positions
-    target_positions = [[0.5, 0.5 , 0.5], [-0.5, 0.5 , 0.1]]
+    target_positions = [[0.4, 0.4, 0.1] for _ in range(180)]
+
     # Example array of target orientations
-    target_orientations = [[-np.pi/4, 0.0, 0] for _ in range(2)]
+    target_orientations = [[0, i*(np.pi/180), 0] for i in range(180)]
+
 
     # Calculate IK and print the results
     ik_generator = robot.calculate_ik(target_positions, target_orientations, precision=1, batch_size=4)
     for ik in ik_generator:
-        print("The angles of each joint are:", ik)
+        pass
 
     # Free the memory used by the generator
     ik_generator = None
 
-    # Plot the robotic arm for the specified target positions
-    robot.plot_robot(target_positions, target_orientations)
+    robot.animate_robot(target_positions, target_orientations, interval=1/360)
 
 
 # Function for stress testing
@@ -205,4 +226,3 @@ def run_stress_test_with_batch_range(batch_size_range):
 
 if __name__ == "__main__":
     main()
-

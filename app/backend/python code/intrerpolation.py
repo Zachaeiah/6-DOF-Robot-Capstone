@@ -43,7 +43,6 @@ class PathPlanner:
             
 
         diff = end_angle - start_angle
-        print(diff)
         if diff >= 0:
             end_angle -= 360
         elif diff < 0:
