@@ -45,7 +45,9 @@ class PartsDatabase:
                 OrientationZ REAL,
                 FullWeight REAL NOT NULL,
                 HalfWeight REAL NOT NULL,
-                EmptyWeight REAL NOT NULL
+                EmptyWeight REAL NOT NULL,
+                CurrentWeight REAL,
+                InService INTEGER
             )
         """)
         self.conn.commit()
@@ -63,8 +65,8 @@ class PartsDatabase:
         self.cursor.execute("""
             INSERT INTO Parts (PartName, NumberOfParts, LocationX, LocationY, LocationZ,
             OrientationX, OrientationY, OrientationZ,
-            FullWeight, HalfWeight, EmptyWeight)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            FullWeight, HalfWeight, EmptyWeight, CurrentWeight, InService)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             part_data['PartName'],
             part_data['NumberOfParts'],
@@ -76,7 +78,9 @@ class PartsDatabase:
             orientation[2],
             part_data['FullWeight'],
             part_data['HalfWeight'],
-            part_data['EmptyWeight']
+            part_data['EmptyWeight'],
+            part_data.get('CurrentWeight', 0),  # default to 0 if not provided
+            part_data.get('InService', 1),  # default to 1 (True) if not provided
         ))
         self.conn.commit()
         self.disconnect()
@@ -118,6 +122,8 @@ class PartsDatabase:
             print("FullWeight:", part[9])
             print("HalfWeight:", part[10])
             print("EmptyWeight:", part[11])
+            print("CurrentWeight:", part[12])  # Adding CurrentWeight
+            print("InService:", "Yes" if part[13] else "No")  # Adding InService
         else:
             print("Part not found")
 
@@ -134,6 +140,8 @@ def demo_add_parts(parts_db):
             'FullWeight': 80.0,
             'HalfWeight': 40.0,
             'EmptyWeight': 8.0,
+            'CurrentWeight': 75.0,
+            'InService': 1,
         },
         {
             'PartName': 'Part2',
@@ -145,6 +153,8 @@ def demo_add_parts(parts_db):
             'FullWeight': 50.0,
             'HalfWeight': 25.0,
             'EmptyWeight': 5.0,
+            'CurrentWeight': 45.0,
+            'InService': 1,
         },
         {
             'PartName': 'Part3',
@@ -156,6 +166,8 @@ def demo_add_parts(parts_db):
             'FullWeight': 60.0,
             'HalfWeight': 30.0,
             'EmptyWeight': 6.0,
+            'CurrentWeight': 55.0,
+            'InService': 0,
         },
         {
             'PartName': 'Part4',
@@ -167,6 +179,8 @@ def demo_add_parts(parts_db):
             'FullWeight': 70.0,
             'HalfWeight': 35.0,
             'EmptyWeight': 7.0,
+            'CurrentWeight': 60.0,
+            'InService': 1,
         },
         {
             'PartName': 'Part5',
@@ -178,6 +192,8 @@ def demo_add_parts(parts_db):
             'FullWeight': 90.0,
             'HalfWeight': 45.0,
             'EmptyWeight': 9.0,
+            'CurrentWeight': 80.0,
+            'InService': 0,
         },
         {
             'PartName': 'Part6',
@@ -189,6 +205,8 @@ def demo_add_parts(parts_db):
             'FullWeight': 90.0,
             'HalfWeight': 45.0,
             'EmptyWeight': 9.0,
+            'CurrentWeight': 30.0,
+            'InService': 1,
         },
     ]
 
@@ -205,12 +223,20 @@ def main():
     # Input: List of new part data
     demo_add_parts(parts_db)
 
-    # Array of part names to fetch
-    part_names_to_fetch = ['Part1', 'Part3', 'Part5']
-
     # Retrieve and print information for specified parts
+    part_names_to_fetch = ['Part1', 'Part3', 'Part5']
     for part_name_to_find in part_names_to_fetch:
         part = parts_db.get_part_by_name(part_name_to_find)
+        parts_db.print_part_info(part)
+
+    # Retrieve and print the entire database
+    parts_db.connect()  # Make sure to connect before executing a query
+    parts_db.cursor.execute("SELECT * FROM Parts")
+    all_parts = parts_db.cursor.fetchall()
+    parts_db.disconnect()
+
+    print("\nAll Parts in the Database:")
+    for part in all_parts:
         parts_db.print_part_info(part)
 
 
