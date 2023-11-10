@@ -87,7 +87,6 @@ class PageBase(tk.Frame):
         self.grid_rowconfigure(1, weight=1)
         self.grid_columnconfigure(0, weight=1)
 
-
 class MainUserPage(PageBase):
     """Page class representing the main user interface for part selection.
 
@@ -224,7 +223,7 @@ class MainUserPage(PageBase):
     def create_buttons(self):
         """Create buttons for user interaction.
 
-        This method creates buttons for refreshing data, adding parts to the cart, and placing an order.
+        This method creates buttons for refreshing data, adding parts to the cart, placing an order, and searching data.
 
         """
         # Create a frame to hold the buttons
@@ -232,18 +231,22 @@ class MainUserPage(PageBase):
         button_frame.grid(row=2, column=0, columnspan=2, pady=10, sticky="nsew")  # Use 'grid' instead of 'pack'
 
         # Create a button to refresh the data
-        refresh_button = tk.Button(button_frame, text="Refresh Data", command=self.load_data)
+        refresh_button = tk.Button(button_frame, text="Refresh Data", command=self.load_data, bg='#4CAF50')
         refresh_button.grid(row=0, column=0, padx=10, pady=10)
 
+        # Create a button to search the data
+        search_button = tk.Button(button_frame, text="Search Data", command=self.serch_data, bg='#2196F3')
+        search_button.grid(row=0, column=1, padx=10, pady=10)
+
         # Create a button to add selected parts to the cart
-        add_to_cart_button = tk.Button(button_frame, text="Add to Cart", command=self.select_part)
-        add_to_cart_button.config(bg='yellow')
-        add_to_cart_button.grid(row=0, column=1, padx=10, pady=10)
+        add_to_cart_button = tk.Button(button_frame, text="Add to Cart", command=self.select_part, bg='#FFEB3B')
+        add_to_cart_button.grid(row=0, column=2, padx=10, pady=10)
 
         # Create a button to place an order with selected parts
-        place_order_button = tk.Button(button_frame, text="Place Order", command=self.place_order)
-        place_order_button.config(bg='green')
-        place_order_button.grid(row=0, column=2, padx=10, pady=10)
+        place_order_button = tk.Button(button_frame, text="Place Order", command=self.place_order, bg='#FF5722')  # Different color for Place Order
+        place_order_button.grid(row=0, column=3, padx=10, pady=10)
+
+
 
     def select_part(self):
         # Method to add selected part to the cart
@@ -318,9 +321,88 @@ class MainUserPage(PageBase):
         for col, heading in zip(cart_columns, cart_headings):
             self.cart_tree.heading(col, text=heading, anchor="center")
 
-    def shutDown(self):
-        pass
+    def serch_data(self):
+        serch = tk.Toplevel(self)
+        serch.title("Lookup parts")
+        serch.geometry("400x200")
 
+        # Create a reference to the search window to use in the closing event
+        self.search_window = serch
+
+        serch_frame = tk.LabelFrame(serch, text="Part Name")
+        serch_frame.pack(padx=10, pady=10)
+
+        Serch_entry = tk.Entry(serch_frame)
+        Serch_entry.pack(padx=20, pady=20)
+
+        # Pass a lambda function to the command parameter
+        Serch_button = tk.Button(serch, text="Search Part", command=lambda: self.search_and_update_treeview(Serch_entry.get()))
+        Serch_button.pack(padx=20, pady=20)
+
+        # Bind the closing event of the search window to the restore_treeview method
+        serch.protocol("WM_DELETE_WINDOW", self.restore_treeview)
+
+    def search_and_update_treeview(self, part_name):
+        """Search for parts and update the parts_treeview based on the search."""
+        self.serch_db_parts(part_name)
+
+    def restore_treeview(self):
+        """Restore the parts_treeview to show all parts."""
+        # Clear existing content in the parts_treeview
+        self.parts_treeview.delete(*self.parts_treeview.get_children())
+        
+        # Load all parts into the parts_treeview
+        self.load_data()
+
+        # Destroy the search window
+        self.search_window.destroy()
+
+    def serch_db_parts(self, partName):
+        """Search for parts in the database with the given name and update the parts_treeview.
+
+        Args:
+            partName (str): The name of the part to search for.
+        """
+        try:
+            # Establish a connection to the Parts database
+            self.parts_db.connect()
+
+            # Execute a SQL query to select records from the Parts table with a matching part name
+            query = "SELECT * FROM Parts WHERE PartName LIKE ?"
+            self.parts_db.cursor.execute(query, ('%' + partName + '%',))
+
+            # Fetch all the data from the executed query
+            data = self.parts_db.cursor.fetchall()
+
+            # Clear existing content in the parts_treeview
+            self.parts_treeview.delete(*self.parts_treeview.get_children())
+
+            # Configure tags for alternate row colors and low weight indication
+            self.parts_treeview.tag_configure('oddrow', background='white')
+            self.parts_treeview.tag_configure('evenrow', background='lightblue')
+            self.parts_treeview.tag_configure('lowweight', background='lightcoral')  # Add a tag for low weight
+
+            # Iterate through the retrieved data and insert it into the parts_treeview
+            for idx, record in enumerate(data):
+                # Determine the tag for alternate row coloring
+                tag = 'evenrow' if idx % 2 == 0 else 'oddrow'
+                # Determine the service status for display
+                service = "In Service" if record[13] == 1 else " "
+
+                # Check if CurrentWeight is below 5 and set a different tag for low weight
+                if record[12] < record[10]:
+                    tag = 'lowweight'
+
+                # Insert the data into the parts_treeview with specified tags
+                self.parts_treeview.insert(parent='', index='end', iid=idx, text='', values=(record[1], record[2], service, record[12]), tags=(tag,))
+
+        # Handle exceptions, print the error, and ensure database disconnection
+        except Exception as e:
+            print(e)
+
+        # Ensure the database is disconnected in the 'finally' block
+        finally:
+            self.parts_db.disconnect()
 
 # Page One class
 class InventoryPage(PageBase):
