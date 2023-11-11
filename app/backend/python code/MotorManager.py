@@ -126,15 +126,6 @@ class motorManager:
             return False
 
     def read_motor_config(self, file_path: str) -> bool:
-        """
-        Reads the motor configuration from a JSON file.
-
-        Args:
-            file_path (str): Path to the JSON file.
-
-        Returns:
-            bool: True if reading is successful, False otherwise.
-        """
         try:
             with open(file_path, 'r') as json_file:
                 data = json.load(json_file)
@@ -164,6 +155,34 @@ class motorManager:
             print(f"An error occurred: {e}")
             return False
 
+
+    def edit_motor(self, motor_name: str, **kwargs) -> bool:
+        """
+        Edit the attributes of a motor.
+
+        Args:
+            motor_name (str): Name of the motor to edit.
+            **kwargs: Keyword arguments representing the attributes to be modified.
+
+        Returns:
+            bool: True if editing is successful, False otherwise.
+        """
+        try:
+            if motor_name in self.motors:
+                motor = self.motors[motor_name]
+
+                # Update motor attributes with provided values
+                for key, value in kwargs.items():
+                    setattr(motor, key, value)
+
+                return True
+            else:
+                print(f"Error: Motor with name '{motor_name}' not found.")
+                return False
+        except Exception as e:
+            print(f"An unexpected error occurred: {e}")
+            return False
+            
     def __str__(self):
         """
         Returns a string containing information about all motors in the manager.
@@ -178,30 +197,22 @@ class motorManager:
         return result
 
 def main():
-    test_motors = {f"Motor: {i}": StepperMotor(f"Motor: {i}", i, 100, 10, 1, 70_000) for i in range(0, 6, 1)}
+    test_motors = {}
     manager = motorManager(test_motors)
-
-    # Activate a motor
-    print(manager.activate("Motor: 2", True))  # Should return True
-
-    # Print the motors' information
-    print(manager)
-
-    # Remove a motor
-    print(manager.remove_motor("Motor: 3"))  # Should return True
 
     # Write motor configurations to a JSON file
     file_path = "motors_config.json"
-    manager.write_motor_config(file_path)
-
-    # Clear the motors data
-    manager.motors = {}
 
     # Read motor configurations from the JSON file
     manager.read_motor_config(file_path)
 
-    # Print the motors' information
-    print(manager)
+    # Print the contents of test_motors for debugging
+    print("Test Motors after reading from JSON:")
+    print(test_motors)
+
+    if manager.edit_motor('Elbow revolut Motor', max_speed=150, is_activate=True):
+        # Print the motors' information
+        print(manager)
 
 if __name__ == '__main__':
     main()

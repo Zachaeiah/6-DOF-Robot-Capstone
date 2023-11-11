@@ -1,5 +1,7 @@
 import sqlite3
 import numpy as np
+from faker import Faker
+import random
 
 class PartsDatabase:
     def __init__(self, db_name="parts.db"):
@@ -127,6 +129,20 @@ class PartsDatabase:
         else:
             print("Part not found")
 
+    def generate_random_names(self, num_names):
+        """
+        Generate random part names using the Faker library.
+
+        Args:
+            num_names (int): The number of random names to generate.
+
+        Returns:
+            list: A list of random part names.
+        """
+        fake = Faker()
+        random_names = [fake.word() for _ in range(num_names)]
+        return random_names
+
 def demo_add_parts(parts_db):
     # Input: List of new part data
     parts_to_add = [
@@ -214,31 +230,42 @@ def demo_add_parts(parts_db):
     for part_data in parts_to_add:
         parts_db.add_part(part_data)
 
+def demo_add_random_parts(parts_db, num_parts):
+    # Generate random part names
+    random_part_names = parts_db.generate_random_names(num_parts)
+
+    # Input: List of random part data for testing
+    random_parts_to_add = []
+
+    for i, part_name in enumerate(random_part_names):
+        part_data = {
+            'PartName': part_name,
+            'NumberOfParts': i + 1,
+            'LocationX': i * 0.1,
+            'LocationY': i * 0.2,
+            'LocationZ': i * 0.3,
+            'Orientation': [0.1 * i, 0.2 * i, 0.3 * i],
+            'FullWeight': 10.0 * i,
+            'HalfWeight': 5.0 * i,
+            'EmptyWeight': random.uniform(0, i),
+            'CurrentWeight': 20*random.uniform(0, i),
+            'InService': i % 2,  # Alternate between 0 and 1
+        }
+        random_parts_to_add.append(part_data)
+
+    # Add the list of random parts to the database
+    for part_data in random_parts_to_add:
+        parts_db.add_part(part_data)
+
 def main():
     parts_db = PartsDatabase()
 
     # Create the Parts table
     parts_db.create_parts_table()
 
-    # Input: List of new part data
-    demo_add_parts(parts_db)
-
-    # Retrieve and print information for specified parts
-    part_names_to_fetch = ['Part1', 'Part3', 'Part5']
-    for part_name_to_find in part_names_to_fetch:
-        part = parts_db.get_part_by_name(part_name_to_find)
-        parts_db.print_part_info(part)
-
-    # Retrieve and print the entire database
-    parts_db.connect()  # Make sure to connect before executing a query
-    parts_db.cursor.execute("SELECT * FROM Parts")
-    all_parts = parts_db.cursor.fetchall()
-    parts_db.disconnect()
-
-    print("\nAll Parts in the Database:")
-    for part in all_parts:
-        parts_db.print_part_info(part)
-
+    # Input: Number of random parts to generate
+    num_random_parts = 100
+    demo_add_random_parts(parts_db, num_random_parts)
 
 
 if __name__ == "__main__":
