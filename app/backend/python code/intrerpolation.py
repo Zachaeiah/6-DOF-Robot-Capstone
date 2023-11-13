@@ -147,7 +147,7 @@ class PathPlanner:
 
         return self.points
 
-    def plot_3d_path(self, label_start=True, label_end=True):
+    def plot_3d_path(self):
         """
         Plot and visualize the 3D paths.
 

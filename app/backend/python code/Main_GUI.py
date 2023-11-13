@@ -4,6 +4,8 @@ import tkinter as tk
 from tkinter import ttk
 from tkinter import messagebox
 from tkinter import colorchooser
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from DP_parts import *
 from ik_solver import *
 from intrerpolation import *
@@ -731,6 +733,12 @@ class MoshionPlanningPage(PageBase):
         self.DROP_OFF_ZONE = (-0.50, -0.100, 0.0)
         self.PICK_UP_ZONE = (0.50, -0.100, 0.50)
 
+        # Create a canvas for displaying 3D paths
+        self.canvas_frame = ttk.Frame(self.content_frame)
+        self.canvas_frame.grid(row=0, column=0, columnspan=2, pady=10, sticky="nsew")
+
+        self.figsizes = (8, 6)
+
         # Additional attribute to store cart data
         self.cart_data = {}
 
@@ -752,15 +760,19 @@ class MoshionPlanningPage(PageBase):
 
         # Create a frame to hold the buttons
         button_frame = tk.Frame(self.content_frame)  # Change 'self' to 'self.content_frame'
-        button_frame.grid(row=0, column=0, columnspan=2, pady=10, sticky="nsew")  # Use 'grid' instead of 'pack'
+        button_frame.grid(row=1, column=0, columnspan=2, pady=10, sticky="nsew")  # Use 'grid' instead of 'pack'
 
         # Create a button to refresh the data
-        start_sim_button = tk.Button(button_frame, text="start Sim", command=self.get_select_part)
+        start_sim_button = tk.Button(button_frame, text="Start Sim", command = self.get_select_part)
         start_sim_button.grid(row=0, column=0, padx=10, pady=10)
 
+        # Create a button to refresh the data
+        conferm_path_button = tk.Button(button_frame, text="Conferm Path", command = self.show_animation)
+        conferm_path_button.grid(row=1, column=0, padx=10, pady=10)
+
         # Button to return to Part Selection
-        return_button = tk.Button(button_frame, text="Part Selection", command=lambda: controller.show_frame(MainUserPage))
-        return_button.grid(row=1, column=0, padx=10, pady=10, sticky="nw")
+        return_button = tk.Button(button_frame, text="Part Selection", command = lambda: controller.show_frame(MainUserPage))
+        return_button.grid(row=2, column=0, padx=10, pady=10, sticky="nw")
 
     def set_cart_data(self, cart_data):
         # Setter method to update cart data
@@ -806,12 +818,55 @@ class MoshionPlanningPage(PageBase):
             self.direction_vector.append((np.array(location) / np.linalg.norm(location), 0, 0))  # Calculate direction vector from the origin to the current location
             self.paths.append(planner.generate_path(location, self.DROP_OFF_ZONE, linear=False))
 
-        # Plot the 3D paths
-        planner.plot_3d_path()
+        self.show_path()
 
-        self.show_robot_path()
+    def show_path(self):
+        """Display the generated paths."""
 
-    def show_robot_path(self):
+        # Create a new figure and a single 3D plot for the existing paths
+        fig_path = plt.figure(figsize = self.figsizes)
+        ax_path = fig_path.add_subplot(111, projection='3d')
+
+        # Initialize variables to store min and max values for each axis
+        x_min, x_max = float('inf'), float('-inf')
+        y_min, y_max = float('inf'), float('-inf')
+        z_min, z_max = float('inf'), float('-inf')
+
+        for path in self.paths:
+            x_coords, y_coords, z_coords = path.T
+
+            # Customize marker size and transparency
+            ax_path.scatter(x_coords, y_coords, z_coords, s=20, marker='o', alpha=0.5)
+
+            # Update min and max values for each axis
+            x_min = min(x_min, np.min(x_coords))
+            x_max = max(x_max, np.max(x_coords))
+            y_min = min(y_min, np.min(y_coords))
+            y_max = max(y_max, np.max(y_coords))
+            z_min = min(z_min, np.min(z_coords))
+            z_max = max(z_max, np.max(z_coords))
+
+        ax_path.scatter([0], [0], color="red")
+
+        # Customize azimuth (horizontal viewing angle) and elevation (vertical viewing angle)
+        ax_path.view_init(azim=-45, elev=20)
+
+        # Add grid lines
+        ax_path.grid(True)
+
+        ax_path.set_xlabel('X')
+        ax_path.set_ylabel('Y')
+        ax_path.set_zlabel('Z')
+
+        # Embed the matplotlib figure in the Tkinter window on the left side
+        canvas_path = FigureCanvasTkAgg(fig_path, master=self.canvas_frame)
+        canvas_path.draw()
+        canvas_path.get_tk_widget().pack(side=tk.LEFT, fill=tk.BOTH, expand=1)
+
+        # Show the plot in the Tkinter window
+        canvas_path.get_tk_widget().pack(side=tk.LEFT, fill=tk.BOTH, expand=1)
+
+    def show_animation(self):
         """Perform inverse kinematics for the generated paths and visualize the motion using RobotArm."""
 
         # Initialize the RobotArm with the URDF file path
@@ -821,15 +876,47 @@ class MoshionPlanningPage(PageBase):
         target_positions = []
         target_orientations = []
 
-        for vector, path  in enumerate(self.paths):
+        for vector, path in enumerate(self.paths):
             for point in path:
                 target_positions.append(point)
-                # Define a default orientation (you may need to adjust this based on your specific setup)
                 target_orientations.append([0, 0, np.pi/4])
 
-        print("animateing")
-        # Animate the robotic arm along the generated path
-        robot.animate_robot(target_positions, target_orientations, interval=1,save_as_gif=False)  # Adjust arguments as needed
+        print("Animating")
+
+        # Create a new figure and a single 3D plot for the robot arm animation
+        fig_robot = plt.figure(figsize = self.figsizes)
+        ax_robot = fig_robot.add_subplot(111, projection='3d')
+
+        def update(frame, self, target_positions, target_orientations, ax):
+            """Update the animation frame.
+
+            Args:
+                frame (int): The frame number.
+                self: The current object instance.
+                target_positions (list): List of target positions.
+                target_orientations (list): List of target orientations.
+                ax: The subplot for the 3D plot.
+            """
+            ax.clear()
+
+            target_position = target_positions[frame]
+            target_orientation = target_orientations[frame]
+            ik_solution = list(robot.calculate_ik([target_position], [target_orientation], precision=2, batch_size=1))[0]
+
+            robot.my_chain.plot(np.radians(ik_solution), ax, target=np.array(target_position, dtype=np.float32))
+            ax.set_xlim(-1, 1)
+            ax.set_ylim(-1, 1)
+            ax.set_zlim(-1, 1)
+
+            # Set the view for the plot
+            # ax.view_init(elev=30, azim=45)
+
+        anim = animation.FuncAnimation(fig_robot, update, frames=len(target_positions), fargs=(self, target_positions, target_orientations, ax_robot), interval=1, repeat=False)
+
+        # Embed the Matplotlib figure in the Tkinter window on the right side
+        canvas_robot = FigureCanvasTkAgg(fig_robot, master=self.canvas_frame)
+        canvas_robot.draw()
+        canvas_robot.get_tk_widget().pack(side=tk.RIGHT, fill=tk.BOTH, expand=1)
 
 if __name__ == "__main__":
     """Entry point of the script."""

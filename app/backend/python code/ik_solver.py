@@ -119,16 +119,16 @@ def main():
     robot = RobotArm(urdf_file_path)
 
     # Example array of target positions
-    target_positions = [[0.4, 0.4, 0.1] for _ in range(180)]
+    target_positions = [[0.4, 0.4, 0.1] for _ in range(10)]
 
     # Example array of target orientations
-    target_orientations = [[0, i*(np.pi/180), 0] for i in range(180)]
+    target_orientations = [[0, i*(np.pi/180), 0] for i in range(10)]
 
 
     # Calculate IK and print the results
     ik_generator = robot.calculate_ik(target_positions, target_orientations, precision=1, batch_size=4)
     for ik in ik_generator:
-        pass
+        print(ik)
 
     # Free the memory used by the generator
     ik_generator = None

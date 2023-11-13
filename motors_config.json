@@ -2,7 +2,7 @@
     "Bace Motor": {
         "name": "Bace Motor",
         "index": 0,
-        "max_speed": 2500,
+        "max_speed": 25,
         "max_acceleration": 20,
         "max_torqu": 10,
         "is_activate": false,
@@ -12,7 +12,7 @@
     "Sholder Motor": {
         "name": "Sholder Motor",
         "index": 1,
-        "max_speed": 500,
+        "max_speed": 50,
         "max_acceleration": 20,
         "max_torqu": 10,
         "is_activate": false,
@@ -22,7 +22,7 @@
     "Elbow Motor": {
         "name": "Elbow Motor",
         "index": 2,
-        "max_speed": 1000,
+        "max_speed": 10,
         "max_acceleration": 20,
         "max_torqu": 10,
         "is_activate": true,
@@ -32,7 +32,7 @@
     "Elbow revolut Motor": {
         "name": "Elbow revolut Motor",
         "index": 3,
-        "max_speed": 5000.0,
+        "max_speed": 50.0,
         "max_acceleration": 50.0,
         "max_torqu": 5.0,
         "is_activate": true,
@@ -42,7 +42,7 @@
     "Wirist Motor": {
         "name": "Wirist Motor",
         "index": 4,
-        "max_speed": 5000.0,
+        "max_speed": 50.0,
         "max_acceleration": 50.0,
         "max_torqu": 5.0,
         "is_activate": true,
@@ -52,7 +52,7 @@
     "Wirist revolut Motor": {
         "name": "Wirist revolut Motor",
         "index": 5,
-        "max_speed": 5000,
+        "max_speed": 50,
         "max_acceleration": 50,
         "max_torqu": 5,
         "is_activate": false,
