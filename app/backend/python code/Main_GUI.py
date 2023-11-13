@@ -15,16 +15,10 @@ LARGE_FONT = ("Verdana", 12)
 
 class RobotCart(tk.Tk):
     def __init__(self, *args, **kwargs):
-        """
-        Initialize the main application.
-
-        Args:
-            *args: Additional positional arguments.
-            **kwargs: Additional keyword arguments.
-        """
-        # Initialize the Tkinter application
         tk.Tk.__init__(self, *args, **kwargs)
-        
+
+        self.logged_in = False
+
         # Create a container frame to hold the pages
         container = tk.Frame(self)
         container.pack(side="top", fill="both", expand=True)
@@ -37,13 +31,13 @@ class RobotCart(tk.Tk):
         self.frames = {}
 
         # Create and add pages to the application
-        for F in (MainUserPage, MotorSetUpPage):
+        for F in (MainUserPage, SecurityPage, MotorSetUpPage, MoshionPlanningPage):
             frame = F(container, self)
             self.frames[F] = frame
             frame.grid(row=0, column=0, sticky="nsew")
 
         # Show the working page by default
-        self.show_frame(MotorSetUpPage)
+        self.show_frame(MainUserPage)
 
         # Create a PartsDatabase instance and create the Parts table
         parts_db = PartsDatabase()
@@ -51,28 +45,54 @@ class RobotCart(tk.Tk):
 
         menuBar = tk.Menu(container)
         settingMenu = tk.Menu(menuBar, tearoff=0)
-        settingMenu.add_command(label='Motor Set Up ', command=lambda: self.show_frame(MotorSetUpPage))
+        settingMenu.add_command(label='Motor Set Up', command = self.show_motor_setup_or_security)
         settingMenu.add_separator()
         settingMenu.add_command(label='Primary Color', command=self.primary_color)
         settingMenu.add_command(label='Secondary Color', command=self.secondary_color)
         settingMenu.add_command(label='Highlight Color', command=self.highlight_color)
-        settingMenu.add_command(label='Low Weight', command = self.low_weight_color)
-        menuBar.add_cascade(label="Settings", menu=settingMenu)
+        settingMenu.add_command(label='Low Weight', command=self.low_weight_color)
+        menuBar.add_cascade(label="Menu", menu=settingMenu)
 
+        tk.Tk.config(self, menu=menuBar)
+
+        # Configure the style for Treeview widgets
+        style = ttk.Style()
+        style.theme_use('default')
+
+        # Specify your tag configurations here
+        style.configure("OddRow.TTreeview", background='white')
+        style.configure("EvenRow.TTreeview", background='lightblue')
+        style.configure("LowWeight.TTreeview", background='lightcoral')
+        # Add more tag configurations as needed
 
         tk.Tk.config(self, menu = menuBar)
 
-    def show_frame(self, cont):
+    def show_frame(self, cont: tk.Frame, cart_data=None) -> None:
         """
         Show the specified frame.
 
         Args:
             cont: The frame to be displayed.
+            cart_data: Additional data to pass to the frame.
         """
         frame = self.frames[cont]
-        frame.tkraise()
 
-    def popupmsg(self, msg):
+        # Pass the cart_data to the frame
+        if hasattr(frame, 'set_cart_data'):
+            frame.set_cart_data(cart_data)
+
+        frame.tkraise()
+    
+    def show_motor_setup_or_security(self) -> None:
+        # Check if the user is logged in
+        if not self.logged_in:
+            # If not logged in, show the SecurityPage
+            self.show_frame(SecurityPage)
+        else:
+            # If logged in, show the MotorSetUpPage
+            self.show_frame(MotorSetUpPage)
+
+    def popupmsg(self, msg: str) -> None:
         popup = tk.Tk()
 
         def leavemini():
@@ -84,61 +104,36 @@ class RobotCart(tk.Tk):
         B1 = ttk.Button(popup, text = "Okay", command = leavemini)
         B1.pack(side = "bottom", fill="x", pady=10)
 
-    def primary_color(self):
+    def primary_color(self) -> None:
         primary_color = colorchooser.askcolor()[1]
-
         if primary_color:
-            # Access the current frame and update the tag configuration
             current_frame = self.frames[MainUserPage]
-            current_frame.parts_treeview.tag_configure('oddrow', background=primary_color)
+            current_frame.parts_treeview.tag_configure('OddRow.TTreeview', background=primary_color)
 
-    def secondary_color(self):
+    def secondary_color(self) -> None:
         secondary_color = colorchooser.askcolor()[1]
-
         if secondary_color:
-            # Access the current frame and update the tag configuration
             current_frame = self.frames[MainUserPage]
-            current_frame.parts_treeview.tag_configure('evenrow', background=secondary_color)
+            current_frame.parts_treeview.tag_configure('EvenRow.TTreeview', background=secondary_color)
 
-    def low_weight_color(self):
+    def low_weight_color(self) -> None:
         low_weight_color = colorchooser.askcolor()[1]
-
         if low_weight_color:
-            # Access the current frame and update the tag configuration
             current_frame = self.frames[MainUserPage]
-            current_frame.parts_treeview.tag_configure('lowweight', background=low_weight_color)
+            current_frame.parts_treeview.tag_configure('LowWeight.TTreeview', background=low_weight_color)
 
-    def highlight_color(self):
+    def highlight_color(self) -> None:
         highlight_color = colorchooser.askcolor()[1]
-
         if highlight_color:
-            # Access the current frame and update the tag configuration
             current_frame = self.frames[MainUserPage]
-
-            # Access the style of the current frame's parts_treeview
             style = ttk.Style()
-
-            # Update the map for the 'Treeview' style
-            style.map("Treeview", background=[('selected', highlight_color)])
-
-
+            style.map("OddRow.TTreeview", background=[('selected', highlight_color)])
+            style.map("EvenRow.TTreeview", background=[('selected', highlight_color)])
 
 class PageBase(tk.Frame):
-    """Base class for pages in the application.
+    def __init__(self, parent: tk.Widget, controller: RobotCart, title: str):
+        super().__init__(parent)
 
-    Args:
-        tk (type): Tkinter module.
-    """
-    def __init__(self, parent, controller, title):
-        """Initialize the PageBase.
-
-        Args:
-            parent (type): The parent widget.
-            controller (type): The main application controller.
-            title (type): The title of the page.
-        """
-        tk.Frame.__init__(self, parent)
-        
         # Title label
         label = tk.Label(self, text=title, font=LARGE_FONT)
         label.grid(row=0, column=0, pady=10, padx=10)
@@ -152,12 +147,7 @@ class PageBase(tk.Frame):
         self.grid_columnconfigure(0, weight=1)
 
 class MainUserPage(PageBase):
-    """Page class representing the main user interface for part selection.
-
-    Args:
-        PageBase (type): Base class for pages.
-    """
-    def __init__(self, parent, controller):
+    def __init__(self, parent: tk.Widget, controller: RobotCart):
         """Initialize the MainUserPage.
 
         Args:
@@ -171,11 +161,15 @@ class MainUserPage(PageBase):
         self.parts_db = PartsDatabase()
 
         # List to store selected parts in the cart
-        self.cart = []
+        self.cart: list[str] = []
 
         # Create a frame to hold the main treeview for available parts
         self.parts_treeview_frame = tk.Frame(self.content_frame)
         self.parts_treeview_frame.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
+
+        # Create a frame to hold the cart treeview
+        self.cart_tree_frame = tk.Frame(self.content_frame)
+        self.cart_tree_frame.grid(row=0, column=1, padx=10, pady=10, sticky="nsew")
 
         # Configure the main treeview for available parts
         self.configure_parts_db_treeview()
@@ -183,14 +177,10 @@ class MainUserPage(PageBase):
         # Create buttons for interaction with available parts
         self.create_buttons(controller)
 
-        # Create a frame to hold the cart treeview
-        self.cart_tree_frame = tk.Frame(self.content_frame)
-        self.cart_tree_frame.grid(row=0, column=1, padx=10, pady=10, sticky="nsew")
-
         # Create a second treeview for the selected parts (cart)
         self.configure_cart_treeview()
 
-    def configure_parts_db_treeview(self):
+    def configure_parts_db_treeview(self) -> None:
         """Configure the Treeview widget for displaying available parts.
 
         This method sets up the style, structure, and data loading for the Treeview.
@@ -211,7 +201,7 @@ class MainUserPage(PageBase):
         tree_scroll.pack(side='right', fill='y')
 
         # Create the Treeview widget with vertical scrollbar
-        self.parts_treeview = ttk.Treeview(tree_frame, yscrollcommand=tree_scroll.set, selectmode="extended")
+        self.parts_treeview = ttk.Treeview(tree_frame, yscrollcommand=tree_scroll.set, selectmode="extended", height=20)
         self.parts_treeview.pack()
 
         # Configure the scrollbar to control the Treeview's vertical movement
@@ -240,7 +230,7 @@ class MainUserPage(PageBase):
         # Load data into the Treeview
         self.load_data()
 
-    def load_data(self):
+    def load_data(self) -> None:
         """Load data into the Treeview widget.
 
         This method retrieves data from the Parts database, configures tags for styling,
@@ -284,7 +274,7 @@ class MainUserPage(PageBase):
         finally:
             self.parts_db.disconnect()
 
-    def create_buttons(self, controller):
+    def create_buttons(self, controller: RobotCart) -> None:
         """Create buttons for user interaction.
 
         This method creates buttons for refreshing data, adding parts to the cart, placing an order, and searching data.
@@ -310,7 +300,7 @@ class MainUserPage(PageBase):
         place_order_button = tk.Button(button_frame, text="Place Order", command=lambda: self.place_order(controller), bg='#FF5722')  # Different color for Place Order
         place_order_button.grid(row=0, column=3, padx=10, pady=10)
 
-    def select_part(self):
+    def select_part(self) -> None:
         print("Selecting part...")  # Add this line for debugging
 
         # Method to add selected part to the cart
@@ -321,7 +311,7 @@ class MainUserPage(PageBase):
         # Update the cart treeview
         self.update_cart_tree()
 
-    def update_cart_tree(self):
+    def update_cart_tree(self)-> None:
         """Update the cart treeview with the current content of the cart.
 
         This method clears the existing content in the cart treeview and inserts the current
@@ -341,17 +331,16 @@ class MainUserPage(PageBase):
             # Insert the part into the cart treeview with specified tag
             self.cart_tree.insert(parent='', index='end', iid=idx, text='', values=(part,), tags=(tag,))
 
-    def place_order(self, controller):
-        # Method to handle placing an order
+    def place_order(self, controller: RobotCart) -> None:
         # Implement the logic to process the order using the selected parts in self.cart
         print("Placing order with selected parts:", self.cart)
+        controller.show_frame(MoshionPlanningPage, cart_data=self.cart)
         # Clear the cart after placing the order
         self.cart = []
         # Update the cart treeview
         self.update_cart_tree()
-        controller.show_frame(MotorSetUpPage)
 
-    def configure_cart_treeview(self):
+    def configure_cart_treeview(self) -> None:
         """Configure the Treeview widget for displaying selected parts in the cart.
 
         This method sets up the style, structure, and appearance of the cart Treeview.
@@ -383,7 +372,7 @@ class MainUserPage(PageBase):
         # Set column headings and anchor points (optional if you decide to keep it)
         self.cart_tree.heading("#0", text="Selected Part", anchor="center")  # Change "#0" to the actual column ID if necessary
 
-    def serch_data(self):
+    def serch_data(self) -> None:
         serch = tk.Toplevel(self)
         serch.title("Lookup parts")
         serch.geometry("400x200")
@@ -405,7 +394,7 @@ class MainUserPage(PageBase):
         # Bind the closing event of the search window to the restore_treeview method
         serch.protocol("WM_DELETE_WINDOW", self.restore_treeview)
 
-    def auto_fill_suggestions(self, entry):
+    def auto_fill_suggestions(self, entry: tk.Widget) -> None:
         """Auto-fill suggestions based on the current content of the entry."""
         # Get the current content of the entry
         current_text = entry.get()
@@ -416,7 +405,7 @@ class MainUserPage(PageBase):
         # Load suggestions based on the current_text
         self.load_suggestions(current_text)
 
-    def load_suggestions(self, prefix):
+    def load_suggestions(self, prefix: str) -> None:
         """Load suggestions into the parts_treeview based on the given prefix."""
         try:
             # Establish a connection to the Parts database
@@ -456,11 +445,11 @@ class MainUserPage(PageBase):
         finally:
             self.parts_db.disconnect()
 
-    def search_and_update_treeview(self, part_name):
+    def search_and_update_treeview(self, part_name: str) -> None:
         """Search for parts and update the parts_treeview based on the search."""
         self.serch_db_parts(part_name)
 
-    def restore_treeview(self):
+    def restore_treeview(self) -> None:
         """Restore the parts_treeview to show all parts."""
         # Clear existing content in the parts_treeview
         self.parts_treeview.delete(*self.parts_treeview.get_children())
@@ -471,7 +460,7 @@ class MainUserPage(PageBase):
         # Destroy the search window
         self.search_window.destroy()
 
-    def serch_db_parts(self, partName):
+    def serch_db_parts(self, partName: str) -> None:
         """Search for parts in the database with the given name and update the parts_treeview.
 
         Args:
@@ -518,27 +507,57 @@ class MainUserPage(PageBase):
         finally:
             self.parts_db.disconnect()
 
-# Set up page class
+class SecurityPage(PageBase):
+    def __init__(self, parent: tk.Widget, controller: RobotCart):
+        super().__init__(parent, controller, "Security")
+
+        self.username_label = tk.Label(self.content_frame, text="Username")
+        self.username_label.grid(row=0, column=0, padx=10, pady=10)
+        self.username_entry = tk.Entry(self.content_frame)
+        self.username_entry.grid(row=0, column=1, padx=10, pady=10)
+
+        self.password_label = tk.Label(self.content_frame, text="Password")
+        self.password_label.grid(row=1, column=0, padx=10, pady=10)
+        self.password_entry = tk.Entry(self.content_frame, show="*")  # Use show="*" to hide the entered characters
+        self.password_entry.grid(row=1, column=1, padx=10, pady=10)
+        
+        self.login_button = tk.Button(self.content_frame, text="Login", command=lambda: self.check_credentials(controller))
+        self.login_button.grid(row=2, column=0, columnspan=2, pady=10)
+
+    def check_credentials(self, controller):
+        # For simplicity, using hardcoded username and password
+        correct_username = "admin"
+        correct_password = "admin123"
+
+        entered_username = self.username_entry.get()
+        entered_password = self.password_entry.get()
+
+        if entered_username == correct_username and entered_password == correct_password:
+            # If the credentials are correct, set the login status to True
+            controller.logged_in = True
+            
+            # If the credentials are correct, navigate to the MotorSetUpPage
+            controller.show_frame(MotorSetUpPage)
+        else:
+            # If the credentials are incorrect, show a message
+            messagebox.showerror("Login Failed", "Incorrect username or password")
+
 class MotorSetUpPage(PageBase):
-    def __init__(self, parent, controller):
-
-        """
-        Initialize Page One.
-
-        Args:
-            parent (tk.Frame): The parent frame.
-            controller (tk.Tk): The main application controller.
-        """
+    def __init__(self, parent: tk.Widget, controller: RobotCart):
         super().__init__(parent, controller, "Motor Set Up Page ")
 
         self.manager = motorManager({})
 
-        # Configure the main treeview for available parts
         self.configure_Motor_treeview()
+        self.motor_treeview.bind("<ButtonRelease-1>", lambda event: self.secect_motor())
+
+
+        # Create Entry boxes after configuring the treeview
+        self.motor_entry_boxes()
 
         self.create_buttons(controller)
 
-    def configure_Motor_treeview(self):
+    def configure_Motor_treeview(self) -> None:
         """Configure the Treeview widget for displaying Motor Data.
 
         This method sets up the style, structure, and data loading for the Treeview.
@@ -552,14 +571,14 @@ class MotorSetUpPage(PageBase):
 
         # Create a frame to hold the Treeview
         tree_frame = tk.Frame(self.content_frame)
-        tree_frame.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
+        tree_frame.grid(row=1, column=0, padx=10, pady=10, sticky="nsew")
 
         # Create a vertical scrollbar for the Treeview
         tree_scroll = tk.Scrollbar(tree_frame)
         tree_scroll.pack(side='right', fill='y')
 
         # Create the Treeview widget with vertical scrollbar
-        self.motor_treeview = ttk.Treeview(tree_frame, yscrollcommand=tree_scroll.set, selectmode="extended")
+        self.motor_treeview = ttk.Treeview(tree_frame, yscrollcommand=tree_scroll.set, selectmode="extended", height=6)
         self.motor_treeview.pack()
 
         # Configure the scrollbar to control the Treeview's vertical movement
@@ -588,7 +607,10 @@ class MotorSetUpPage(PageBase):
         # Load data into the Treeview
         self.load_data()
 
-    def load_data(self):
+    def load_data(self) -> None:
+        """_summary_
+        """
+
         # Read motor configurations from the JSON file
         self.manager.read_motor_config("motors_config.json")
 
@@ -610,27 +632,204 @@ class MotorSetUpPage(PageBase):
             )
             self.motor_treeview.insert("", "end", text="", values=values)
 
-    def create_buttons(self, controller):
-        """Create buttons for user interaction.
+    def motor_entry_boxes(self) -> None:
+        """Create entry boxes for motor data."""
+        # Create a frame to hold the entry boxes
+        self.entry_frame = tk.LabelFrame(self.content_frame, text="Motor Data")
+        self.entry_frame.grid(row=2, column=0, columnspan=2, pady=10, sticky="nsew")
 
-        This method creates buttons for refreshing data, adding parts to the cart, placing an order, and searching data.
+        # Define the labels and corresponding entry variables
+        labels = ["Name", "Speed", "Acceleration", "Torque", "Is Activate", "Steps per Revolution"]
+        entry_vars = [tk.StringVar() for _ in range(len(labels))]
 
+        # Loop to create labels and entry boxes
+        for i, label in enumerate(labels):
+            tk.Label(self.entry_frame, text=label).grid(row=0, column=i, padx=10, pady=10)
+            tk.Entry(self.entry_frame, textvariable=entry_vars[i]).grid(row=1, column=i, padx=10, pady=10)
+
+        # Assign entry variables to class attributes for later access
+        self.mn_entry, self.ms_entry, self.ma_entry, self.mt_entry, self.mact_entry, self.mspr_entry = entry_vars
+
+    def create_buttons(self, controller: RobotCart) -> None:
+        """Create buttons for MotorSetUpPage.
+
+        Args:
+            controller (RobotCart): The main controller for the application.
         """
+        # Button to save and edit motor data
+        edit_motor_button = tk.Button(self.entry_frame, text="Save Edit", command=self.update_motor_data)
+        edit_motor_button.grid(row=1, column=6, padx=10, pady=10)
+
+        # Button to return to Part Selection
+        return_button = tk.Button(self.content_frame, text="Part Selection", command=lambda: controller.show_frame(MainUserPage))
+        return_button.grid(row=0, column=0, padx=10, pady=10, sticky="nw")
+
+    def secect_motor(self) -> None:
+
+        # Method to add selected part to the cart
+        selected = self.motor_treeview.focus()
+        motor_data = self.motor_treeview.item(selected, "values")
+
+        self.mn_entry.delete(0, tk.END)
+        self.ms_entry.delete(0, tk.END)
+        self.ma_entry.delete(0, tk.END)
+        self.mt_entry.delete(0, tk.END)
+        self.mact_entry.delete(0, tk.END)
+        self.mspr_entry.delete(0, tk.END)
+
+        self.mn_entry.insert(0, motor_data[0])
+        self.ms_entry.insert(0, motor_data[2])
+        self.ma_entry.insert(0, motor_data[3])
+        self.mt_entry.insert(0, motor_data[4])
+        self.mact_entry.insert(0, motor_data[5])
+        self.mspr_entry.insert(0, motor_data[7])
+    
+    def update_motor_data(self) -> None:
+        confirmation = messagebox.askokcancel("Confirmation", "Are you sure you want to update the motor data?")
+
+        if confirmation:
+            try:
+                # Get the values from the entry boxes
+                motor_name = self.mn_entry.get()
+                max_speed = float(self.ms_entry.get())
+                max_acceleration = float(self.ma_entry.get())
+                max_torqu = float(self.mt_entry.get())
+                is_activate = bool(self.mact_entry.get())  # Assuming 'is_activate' is a boolean
+                steps_per_revolution = int(self.mspr_entry.get())
+
+                # Update the selected motor with the new values
+                self.manager.edit_motor(
+                    motor_name=motor_name,
+                    max_speed=max_speed,
+                    max_acceleration=max_acceleration,
+                    max_torqu=max_torqu,
+                    is_activate=is_activate,
+                    steps_per_revolution=steps_per_revolution
+                )
+
+                # Provide feedback to the user
+                messagebox.showinfo("Success", "Motor data updated successfully.")
+
+                # Reload data into the Treeview to reflect the changes
+                self.load_data()
+
+            except ValueError:
+                # Handle invalid input (e.g., non-numeric values in numeric fields)
+                messagebox.showerror("Error", "Invalid input. Please enter valid numeric values.")
+
+class MoshionPlanningPage(PageBase):
+    def __init__(self, parent: tk.Widget, controller: RobotCart):
+        """Initialize the MoshionPlanningPage.
+
+        Args:
+            parent (type): The parent widget.
+            controller (type): The main application controller.
+        """
+        # Call the constructor of the base class (PageBase)
+        super().__init__(parent, controller, "Motshion verification")
+
+        self.DROP_OFF_ZONE = (-0.50, -0.100, 0.0)
+        self.PICK_UP_ZONE = (0.50, -0.100, 0.50)
+
+        # Additional attribute to store cart data
+        self.cart_data = {}
+
+        # Dictionary to store part information
+        self.part_info_dict = {}  
+
+        # Dictionary to store locations of each part
+        self.locations = {}  
+
+        self.part_names_to_fetch = []
+
+        # Create a PartsDatabase instance for handling parts data
+        self.parts_db = PartsDatabase()
+
+        # Create buttons for interaction with available parts
+        self.create_buttons(controller)
+
+    def create_buttons(self, controller: RobotCart) -> None:
+
         # Create a frame to hold the buttons
-        button_frame = tk.LabelFrame(self.content_frame, text="Commands")  # Change 'self' to 'self.content_frame'
-        button_frame.grid(row=1, column=0, columnspan=2, pady=10, sticky="nsew")  # Use 'grid' instead of 'pack'
+        button_frame = tk.Frame(self.content_frame)  # Change 'self' to 'self.content_frame'
+        button_frame.grid(row=0, column=0, columnspan=2, pady=10, sticky="nsew")  # Use 'grid' instead of 'pack'
 
-        select_motor_button = tk.Button(button_frame, text="Select motor")  
-        select_motor_button.grid(row=0, column=1, padx=10, pady=10)
+        # Create a button to refresh the data
+        start_sim_button = tk.Button(button_frame, text="start Sim", command=self.get_select_part)
+        start_sim_button.grid(row=0, column=0, padx=10, pady=10)
 
-        edit_motor_button = tk.Button(button_frame, text="Select motor")  
-        edit_motor_button.grid(row=0, column=1, padx=10, pady=10)
+        # Button to return to Part Selection
+        return_button = tk.Button(button_frame, text="Part Selection", command=lambda: controller.show_frame(MainUserPage))
+        return_button.grid(row=1, column=0, padx=10, pady=10, sticky="nw")
 
-        activate_button = tk.Button(button_frame, text="activate Motor")
-        activate_button.grid(row=0, column=2, padx=10, pady=10)
+    def set_cart_data(self, cart_data):
+        # Setter method to update cart data
+        self.part_names_to_fetch = cart_data
+        print(self.part_names_to_fetch)
 
-        deactivate_button = tk.Button(button_frame, text="deactivate Motor")
-        deactivate_button.grid(row=0, column=3, padx=10, pady=10)
+    def get_select_part(self):
+        # Retrieve and store information for specified parts
+        for part_name_to_find in self.part_names_to_fetch:
+            part = self.parts_db.get_part_by_name(part_name_to_find)
+            if part:
+                self.part_info_dict[part_name_to_find] = {
+                    'PartName': part[1],
+                    'NumberOfParts': part[2],
+                    'LocationX': part[3],
+                    'LocationY': part[4],
+                    'LocationZ': part[5],
+                    'Orientation': [part[6], part[7], part[8]],
+                    'FullWeight': part[9],
+                    'HalfWeight': part[10],
+                    'EmptyWeight': part[11],
+                    'InService': part[12]
+                }
+        self.get_part_locations()
+
+    def get_part_locations(self):
+
+        for part_name, part_info in self.part_info_dict.items():
+            location = (part_info['LocationX'], part_info['LocationY'], part_info['LocationZ'])
+            self.locations[part_name] = location
+
+        self.generate_robot_path()
+
+    def generate_robot_path(self):
+        """Generate paths and velocity profiles for each part."""
+
+        planner = PathPlanner(20, 2)
+        planner.setVelocityPFP(1)
+
+        self.direction_vector = []
+        self.paths = []
+        for part_name, location in self.locations.items():
+            self.direction_vector.append((np.array(location) / np.linalg.norm(location), 0, 0))  # Calculate direction vector from the origin to the current location
+            self.paths.append(planner.generate_path(location, self.DROP_OFF_ZONE, linear=False))
+
+        # Plot the 3D paths
+        planner.plot_3d_path()
+
+        self.show_robot_path()
+
+    def show_robot_path(self):
+        """Perform inverse kinematics for the generated paths and visualize the motion using RobotArm."""
+
+        # Initialize the RobotArm with the URDF file path
+        urdf_file_path = "app\\backend\\python code\\urdf_tes1.urdf"  # Replace with the actual file path
+        robot = RobotArm(urdf_file_path)
+
+        target_positions = []
+        target_orientations = []
+
+        for vector, path  in enumerate(self.paths):
+            for point in path:
+                target_positions.append(point)
+                # Define a default orientation (you may need to adjust this based on your specific setup)
+                target_orientations.append([0, 0, np.pi/4])
+
+        print("animateing")
+        # Animate the robotic arm along the generated path
+        robot.animate_robot(target_positions, target_orientations, interval=1,save_as_gif=False)  # Adjust arguments as needed
 
 if __name__ == "__main__":
     """Entry point of the script."""

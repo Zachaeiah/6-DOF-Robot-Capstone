@@ -5,34 +5,20 @@ import random
 
 class PartsDatabase:
     def __init__(self, db_name="parts.db"):
-        """
-        Initialize the PartsDatabase.
-
-        Args:
-            db_name (str): The name of the database file.
-        """
         self.db_name = db_name
         self.conn = None
         self.cursor = None
+        self.fake = Faker()
 
     def connect(self):
-        """
-        Connect to the SQLite database.
-        """
         self.conn = sqlite3.connect(self.db_name)
         self.cursor = self.conn.cursor()
 
     def disconnect(self):
-        """
-        Disconnect from the SQLite database.
-        """
         if self.conn:
             self.conn.close()
 
     def create_parts_table(self):
-        """
-        Create the Parts table if it doesn't exist.
-        """
         self.connect()
         self.cursor.execute("""
             CREATE TABLE IF NOT EXISTS Parts (
@@ -56,12 +42,6 @@ class PartsDatabase:
         self.disconnect()
 
     def add_part(self, part_data):
-        """
-        Add a new part to the database.
-
-        Args:
-            part_data (dict): A dictionary containing part information.
-        """
         self.connect()
         orientation = part_data['Orientation']
         self.cursor.execute("""
@@ -81,23 +61,14 @@ class PartsDatabase:
             part_data['FullWeight'],
             part_data['HalfWeight'],
             part_data['EmptyWeight'],
-            part_data.get('CurrentWeight', 0),  # default to 0 if not provided
-            part_data.get('InService', 1),  # default to 1 (True) if not provided
+            part_data.get('CurrentWeight', 0),
+            part_data.get('InService', 1),
         ))
         self.conn.commit()
         self.disconnect()
         print("Part added successfully.")
 
     def get_part_by_name(self, part_name):
-        """
-        Retrieve a part by its name.
-
-        Args:
-            part_name (str): The name of the part to retrieve.
-
-        Returns:
-            tuple: A tuple containing the part's information.
-        """
         self.connect()
         self.cursor.execute("SELECT * FROM Parts WHERE PartName = ?", (part_name,))
         part = self.cursor.fetchone()
@@ -105,29 +76,37 @@ class PartsDatabase:
         return part
 
     def print_part_info(self, part):
-        """
-        Print information about a part.
-
-        Args:
-            part (tuple): A tuple containing the part's information.
-        """
         if part:
             print("Part found:")
-            print("PartID:", part[0])
-            print("PartName:", part[1])
-            print("NumberOfParts:", part[2])
-            print("LocationX:", part[3])
-            print("LocationY:", part[4])
-            print("LocationZ:", part[5])
-            orientation = np.array([part[6], part[7], part[8]])
-            print("Orientation:", orientation)
-            print("FullWeight:", part[9])
-            print("HalfWeight:", part[10])
-            print("EmptyWeight:", part[11])
-            print("CurrentWeight:", part[12])  # Adding CurrentWeight
-            print("InService:", "Yes" if part[13] else "No")  # Adding InService
+            for i, column_name in enumerate(['PartID', 'PartName', 'NumberOfParts', 'LocationX', 'LocationY', 'LocationZ', 'OrientationX', 'OrientationY', 'OrientationZ', 'FullWeight', 'HalfWeight', 'EmptyWeight', 'CurrentWeight', 'InService']):
+                print(f"{column_name}: {part[i]}")
         else:
             print("Part not found")
+
+    def generate_random_names(self, num_names):
+        return [self.fake.word() for _ in range(num_names)]
+
+    def edit_part(self, part_name, updated_data):
+        self.connect()
+
+        existing_part = self.get_part_by_name(part_name)
+
+        if existing_part:
+            updated_part_data = {key: updated_data.get(key, existing_part[i]) for i, key in enumerate(['PartName', 'NumberOfParts', 'LocationX', 'LocationY', 'LocationZ', 'OrientationX', 'OrientationY', 'OrientationZ', 'FullWeight', 'HalfWeight', 'EmptyWeight', 'CurrentWeight', 'InService'])}
+
+            self.cursor.execute("""
+                UPDATE Parts SET
+                PartName=?, NumberOfParts=?, LocationX=?, LocationY=?, LocationZ=?,
+                OrientationX=?, OrientationY=?, OrientationZ=?,
+                FullWeight=?, HalfWeight=?, EmptyWeight=?, CurrentWeight=?, InService=?
+                WHERE PartName=?
+            """, (updated_part_data['PartName'], updated_part_data['NumberOfParts'], updated_part_data['LocationX'], updated_part_data['LocationY'], updated_part_data['LocationZ'], updated_part_data['OrientationX'], updated_part_data['OrientationY'], updated_part_data['OrientationZ'], updated_part_data['FullWeight'], updated_part_data['HalfWeight'], updated_part_data['EmptyWeight'], updated_part_data['CurrentWeight'], updated_part_data['InService'], part_name))
+
+            self.conn.commit()
+            self.disconnect()
+            print(f"Part '{part_name}' updated successfully.")
+        else:
+            print("Part not found. Cannot update.")
 
     def generate_random_names(self, num_names):
         """
@@ -263,9 +242,7 @@ def main():
     # Create the Parts table
     parts_db.create_parts_table()
 
-    # Input: Number of random parts to generate
-    num_random_parts = 100
-    demo_add_random_parts(parts_db, num_random_parts)
+    demo_add_parts(parts_db)
 
 
 if __name__ == "__main__":

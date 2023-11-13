@@ -13,6 +13,7 @@ class PathPlanner:
 
         This class is used to generate and visualize 3D paths, both linear and circular.
         """
+        self.linear = True
         self.saved_paths = []
         self.VelocityType = VelocityTypes(maxTCPVel, maxDerivativeTCP)  # Example values
     
@@ -130,13 +131,12 @@ class PathPlanner:
 
         Returns:
             np.ndarray: An array of interpolated points along the path.
-            str: A color used for plotting the path.
         """
         self.start_point = start_point
         self.end_point = end_point
         self.linear = linear
 
-        if linear:
+        if self.linear:
             self.points = self.points_on_linear_path_3d(self.start_point, self.end_point)
         else:
             self.points = self.points_on_circular_path_3d(self.start_point, self.end_point)

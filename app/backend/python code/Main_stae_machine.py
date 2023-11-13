@@ -70,7 +70,8 @@ def main1():
                                 'Orientation': [part[6], part[7], part[8]],
                                 'FullWeight': part[9],
                                 'HalfWeight': part[10],
-                                'EmptyWeight': part[11]
+                                'EmptyWeight': part[11],
+                                'InService': part[12]
                             }
                     state = 2  # Transition to the next state
 
@@ -98,7 +99,7 @@ def main1():
                         paths.append(planner.generate_path(location, DROP_OFF_ZONE, linear=False))
 
                     # Plot the 3D paths
-                    planner.plot_3d_path(label_start=True, label_end=True)
+                    planner.plot_3d_path()
 
                     state = 4
 
