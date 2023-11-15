@@ -171,18 +171,34 @@ class motorManager:
             if motor_name in self.motors:
                 motor = self.motors[motor_name]
 
-                # Update motor attributes with provided values
                 for key, value in kwargs.items():
-                    setattr(motor, key, value)
+                    print(f"Updating {key} to {value}")
+                    if hasattr(motor, key):
+                        setattr(motor, key, value)
+                    else:
+                        print(f"Error: Attribute '{key}' not found for motor '{motor_name}'.")
+                        return False
+
+                print(f"Motor '{motor_name}' edited successfully.")
+
+                # Write the updated motor configurations to the JSON file
+                if not self.write_motor_config("motors_config.json"):
+                    print("Error writing updated motor configurations to the file.")
 
                 return True
             else:
                 print(f"Error: Motor with name '{motor_name}' not found.")
                 return False
+        except ValueError as ve:
+            print(f"ValueError: {ve}")
+            return False
+        except TypeError as te:
+            print(f"TypeError: {te}")
+            return False
         except Exception as e:
             print(f"An unexpected error occurred: {e}")
             return False
-            
+
     def __str__(self):
         """
         Returns a string containing information about all motors in the manager.
@@ -210,9 +226,10 @@ def main():
     print("Test Motors after reading from JSON:")
     print(test_motors)
 
-    if manager.edit_motor('Elbow revolut Motor', max_speed=150, is_activate=True):
-        # Print the motors' information
-        print(manager)
+    manager.edit_motor('Bace Motor', max_speed=150, is_activate=False)
+
+    # Print the motors' information
+    print(manager)
 
 if __name__ == '__main__':
     main()

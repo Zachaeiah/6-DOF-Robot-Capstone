@@ -14,7 +14,7 @@ class PartsDatabase:
         try:
             self.conn = sqlite3.connect(self.db_name)  # Replace with your actual database name
             self.cursor = self.conn.cursor()
-            print("Database connection opend.")
+            
         except sqlite3.Error as e:
             print(f"SQLite error during connection: {e}")
 
@@ -22,7 +22,7 @@ class PartsDatabase:
         try:
             if self.conn:
                 self.conn.close()
-                print("Database connection closed.")
+                
         except sqlite3.Error as e:
             print(f"SQLite error during disconnection: {e}")
 

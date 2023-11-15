@@ -193,7 +193,6 @@ class SecurityPage(PageBase):
             # If the credentials are incorrect, show a message
             messagebox.showerror("Login Failed", "Incorrect username or password")
 
-
 class MainUserPage(PageBase):
     def __init__(self, parent: tk.Widget, controller: RobotCart):
         """Initialize the MainUserPage.
@@ -701,26 +700,34 @@ class MotorSetUpPage(PageBase):
                 max_torqu = float(self.mt_var.get())
                 is_activate = bool(self.mact_var.get())  # Assuming 'is_activate' is a boolean
                 steps_per_revolution = int(self.mspr_var.get())
+                print("got motor data, now editing")
+
+                # Validate input values
+                if max_speed < 0 or max_acceleration < 0 or max_torqu < 0 or steps_per_revolution <= 0:
+                    raise ValueError("Numeric values must be non-negative, and steps per revolution must be positive.")
 
                 # Update the selected motor with the new values
-                self.manager.edit_motor(
+                if self.manager.edit_motor(
                     motor_name=motor_name,
                     max_speed=max_speed,
                     max_acceleration=max_acceleration,
                     max_torqu=max_torqu,
                     is_activate=is_activate,
-                    steps_per_revolution=steps_per_revolution
-                )
+                    steps_per_revolution=steps_per_revolution):
 
-                # Provide feedback to the user
-                messagebox.showinfo("Success", "Motor data updated successfully.")
+                    # Provide feedback to the user
+                    messagebox.showinfo("Success", "Motor data updated successfully.")
 
-                # Reload data into the Treeview to reflect the changes
-                self.load_data()
+                    print("loading new data")
+                    # Reload data into the Treeview to reflect the changes
+                    self.load_data()
 
-            except ValueError:
+            except ValueError as e:
                 # Handle invalid input (e.g., non-numeric values in numeric fields)
-                messagebox.showerror("Error", "Invalid input. Please enter valid numeric values.")
+                messagebox.showerror("Error", f"Invalid input: {str(e)}. Please enter valid numeric values.")
+            except Exception as e:
+                # Handle other unexpected errors
+                messagebox.showerror("Error", f"An unexpected error occurred: {str(e)}")
 
 class DataBacePannle(PageBase):
     def __init__(self, parent: tk.Widget, controller: RobotCart):
