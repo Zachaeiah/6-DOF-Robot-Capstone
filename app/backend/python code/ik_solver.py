@@ -9,39 +9,30 @@ import time
 
 class RobotArm:
     def __init__(self, urdf_file_path):
-        """Initialize the RobotArm class.
-
-        Args:
-            urdf_file_path (str): The file path to the URDF file.
-        """
-        self.my_chain = ikpy.chain.Chain.from_urdf_file(urdf_file_path, active_links_mask=[False, True, True, False, True, True, False, True, True])
-        self.last_angles = None  # Store the last calculated angles
+        try:
+            self.my_chain = ikpy.chain.Chain.from_urdf_file(urdf_file_path, active_links_mask=[False, True, True, False, True, True, False, True, True])
+            self.last_angles = None
+        except Exception as e:
+            raise ValueError(f"Error initializing the robot arm: {e}")
 
     def calculate_ik(self, target_positions, target_orientations, precision=3, batch_size=1):
-        """Perform inverse kinematics calculation.
-
-        Args:
-            target_positions (list): List of target positions.
-            target_orientations (list): List of target orientations.
-            precision (int, optional): Precision for rounding. Defaults to 3.
-            batch_size (int, optional): Size of the batch for processing. Defaults to 1.
-
-        Yields:
-            list: Yields a list of rounded IK values.
-        """
         for i in range(0, len(target_positions), batch_size):
             positions_batch = target_positions[i:i + batch_size]
             orientations_batch = target_orientations[i:i + batch_size]
             for target_position, target_orientation in zip(positions_batch, orientations_batch):
                 target_orientation = np.array(target_orientation, dtype=np.float32).reshape(3,)
-                # Use last angles if available
-                if self.last_angles is not None:
-                    ik = self.my_chain.inverse_kinematics(np.array(target_position, dtype=np.float32), target_orientation, orientation_mode="Y", initial_position=self.last_angles)
-                else:
-                    ik = self.my_chain.inverse_kinematics(np.array(target_position, dtype=np.float32), target_orientation, orientation_mode="Y")
-                rounded_ik = (round(angle, precision) for angle in np.degrees(ik))
-                self.last_angles = ik  # Store the current angles as last angles
-                yield list(rounded_ik)
+                try:
+                    # Use last angles if available
+                    if self.last_angles is not None:
+                        ik = self.my_chain.inverse_kinematics(np.array(target_position, dtype=np.float32), target_orientation, orientation_mode="Y", initial_position=self.last_angles)
+                    else:
+                        ik = self.my_chain.inverse_kinematics(np.array(target_position, dtype=np.float32), target_orientation, orientation_mode="Y")
+                    rounded_ik = (round(angle, precision) for angle in np.degrees(ik))
+                    self.last_angles = ik
+                    yield list(rounded_ik)
+                except Exception as e:
+                    print(f"An unexpected error occurred during inverse kinematics calculation: {e}")
+                    yield None  # Signal an error in the yield
 
     def plot_robot(self, target_positions, target_orientations):
         """Plot the robotic arm.

@@ -19,7 +19,7 @@ class RobotCart(tk.Tk):
     def __init__(self, *args, **kwargs):
         tk.Tk.__init__(self, *args, **kwargs)
 
-        self.logged_in = True
+        self.logged_in = False
         self.admin_page = 0
 
         # Create a container frame to hold the pages
@@ -43,13 +43,17 @@ class RobotCart(tk.Tk):
         self.show_frame(MainUserPage)
 
         # Create a PartsDatabase instance and create the Parts table
-        parts_db = PartsDatabase()
-        parts_db.create_parts_table()
+        try:
+            parts_db = PartsDatabase()
+            parts_db.create_parts_table()
+        except Exception as e:
+            error_msg = f"Error connecting to the database: {str(e)}"
+            self.popupmsg(error_msg)
 
         menuBar = tk.Menu(container)
         settingMenu = tk.Menu(menuBar, tearoff=0)
-        settingMenu.add_command(label='Motor Set Up', command = lambda: self.admin_controll(0))
-        settingMenu.add_command(label='Data Bace Config', command = lambda: self.admin_controll(1))
+        settingMenu.add_command(label='Motor Set Up', command=lambda: self.admin_controll(0))
+        settingMenu.add_command(label='Data Bace Config', command=lambda: self.admin_controll(1))
         settingMenu.add_separator()
         settingMenu.add_command(label='Primary Color', command=self.primary_color)
         settingMenu.add_command(label='Secondary Color', command=self.secondary_color)
@@ -57,7 +61,10 @@ class RobotCart(tk.Tk):
         settingMenu.add_command(label='Low Weight', command=self.low_weight_color)
         menuBar.add_cascade(label="Menu", menu=settingMenu)
 
-        tk.Tk.config(self, menu=menuBar)
+        try:
+            tk.Tk.config(self, menu=menuBar)
+        except Exception as e:
+            self.popupmsg(f"Error configuring menu: {str(e)}")
 
         # Configure the style for Treeview widgets
         style = ttk.Style()
@@ -69,91 +76,165 @@ class RobotCart(tk.Tk):
         style.configure("LowWeight.TTreeview", background='lightcoral')
         # Add more tag configurations as needed
 
-        tk.Tk.config(self, menu = menuBar)
+        try:
+            tk.Tk.config(self, menu=menuBar)
+        except Exception as e:
+            self.popupmsg(f"Error configuring menu: {str(e)}")
 
     def show_frame(self, cont: tk.Frame, cart_data=None) -> None:
-        """
-        Show the specified frame.
+        frame = self.frames.get(cont)
 
-        Args:
-            cont: The frame to be displayed.
-            cart_data: Additional data to pass to the frame.
-        """
-        frame = self.frames[cont]
+        if frame:
+            if hasattr(frame, 'set_cart_data'):
+                frame.set_cart_data(cart_data)
 
-        # Pass the cart_data to the frame
-        if hasattr(frame, 'set_cart_data'):
-            frame.set_cart_data(cart_data)
+            frame.tkraise()
+        else:
+            self.popupmsg(f"Error: Frame {cont} not found.")
 
-        frame.tkraise()
-    
     def admin_controll(self, pageNum) -> None:
         self.admin_page = pageNum
 
-        # Check if the user is logged in
         if not self.logged_in:
-            # If not logged in, show the SecurityPage
             self.show_frame(SecurityPage)
         else:
             if self.admin_page == 0:
                 self.show_frame(MotorSetUpPage)
-
             elif self.admin_page == 1:
                 self.show_frame(DataBacePannle)
 
-    def popupmsg(self, msg: str) -> None:
-        popup = tk.Tk()
+    def popup_error(self, msg: str) -> None:
+        error_popup = tk.Toplevel(self)
+        error_popup.title("Error")
 
-        def leavemini():
-            popup.destroy()
+        # Create a frame to hold the error message and button
+        frame = ttk.Frame(error_popup)
+        frame.pack(padx=20, pady=20)
 
-        popup.wm_title("!")
-        lable = ttk.Label(popup, text = msg)
-        lable.pack(side = "top", fill="x", pady=10)
-        B1 = ttk.Button(popup, text = "Okay", command = leavemini)
-        B1.pack(side = "bottom", fill="x", pady=10)
+        # Error message label
+        label = ttk.Label(frame, text=msg, font=("Helvetica", 12), wraplength=300)
+        label.grid(row=0, column=0, padx=10, pady=10)
+
+        # Okay button
+        okay_button = ttk.Button(frame, text="Okay", command=error_popup.destroy)
+        okay_button.grid(row=1, column=0, pady=10)
+
+        # Center the error popup on the screen
+        error_popup.geometry(f"+{self.winfo_screenwidth() // 2 - 150}+{self.winfo_screenheight() // 2 - 100}")
+
+        # Make the error popup a transient window, preventing interaction with the main window until closed
+        error_popup.transient(self)
+        error_popup.grab_set()
+
+        # Wait for the error popup to be closed before returning
+        self.wait_window(error_popup)
+
 
     def primary_color(self) -> None:
-        primary_color = colorchooser.askcolor()[1]
-        if primary_color:
-            current_frame = self.frames[MainUserPage]
-            current_frame.parts_treeview.tag_configure('OddRow.TTreeview', background=primary_color)
+        try:
+            primary_color = colorchooser.askcolor()[1]
+            if primary_color:
+                current_frame = self.frames.get(MainUserPage)
+                if current_frame:
+                    current_frame.parts_treeview.tag_configure('OddRow.TTreeview', background=primary_color)
+                else:
+                    self.popupmsg("Error: MainUserPage frame not found.")
+        except Exception as e:
+            self.popupmsg(f"Error selecting primary color: {str(e)}")
 
     def secondary_color(self) -> None:
-        secondary_color = colorchooser.askcolor()[1]
-        if secondary_color:
-            current_frame = self.frames[MainUserPage]
-            current_frame.parts_treeview.tag_configure('EvenRow.TTreeview', background=secondary_color)
+        try:
+            secondary_color = colorchooser.askcolor()[1]
+            if secondary_color:
+                current_frame = self.frames.get(MainUserPage)
+                if current_frame:
+                    current_frame.parts_treeview.tag_configure('EvenRow.TTreeview', background=secondary_color)
+                else:
+                    self.popupmsg("Error: MainUserPage frame not found.")
+        except Exception as e:
+            self.popupmsg(f"Error selecting secondary color: {str(e)}")
 
     def low_weight_color(self) -> None:
-        low_weight_color = colorchooser.askcolor()[1]
-        if low_weight_color:
-            current_frame = self.frames[MainUserPage]
-            current_frame.parts_treeview.tag_configure('LowWeight.TTreeview', background=low_weight_color)
+        try:
+            low_weight_color = colorchooser.askcolor()[1]
+            if low_weight_color:
+                current_frame = self.frames.get(MainUserPage)
+                if current_frame:
+                    current_frame.parts_treeview.tag_configure('LowWeight.TTreeview', background=low_weight_color)
+                else:
+                    self.popupmsg("Error: MainUserPage frame not found.")
+        except Exception as e:
+            self.popupmsg(f"Error selecting low weight color: {str(e)}")
 
     def highlight_color(self) -> None:
-        highlight_color = colorchooser.askcolor()[1]
-        if highlight_color:
-            current_frame = self.frames[MainUserPage]
-            style = ttk.Style()
-            style.map("OddRow.TTreeview", background=[('selected', highlight_color)])
-            style.map("EvenRow.TTreeview", background=[('selected', highlight_color)])
+        try:
+            highlight_color = colorchooser.askcolor()[1]
+            if highlight_color:
+                current_frame = self.frames.get(MainUserPage)
+                if current_frame:
+                    style = ttk.Style()
+                    style.map("OddRow.TTreeview", background=[('selected', highlight_color)])
+                    style.map("EvenRow.TTreeview", background=[('selected', highlight_color)])
+                else:
+                    self.popupmsg("Error: MainUserPage frame not found.")
+        except Exception as e:
+            self.popupmsg(f"Error selecting highlight color: {str(e)}")
 
 class PageBase(tk.Frame):
     def __init__(self, parent: tk.Widget, controller: RobotCart, title: str):
-        super().__init__(parent)
+        try:
+            super().__init__(parent)
 
-        # Title label
-        label = tk.Label(self, text=title, font=LARGE_FONT)
-        label.grid(row=0, column=0, pady=10, padx=10)
+            # Title label
+            label = tk.Label(self, text=title, font=LARGE_FONT)
+            label.grid(row=0, column=0, pady=10, padx=10)
 
-        # Content frame
-        self.content_frame = tk.Frame(self)
-        self.content_frame.grid(row=1, column=0, sticky="nsew")
+            # Content frame
+            self.content_frame = tk.Frame(self)
+            self.content_frame.grid(row=1, column=0, sticky="nsew")
 
-        # Configure row and column weights to allow expansion
-        self.grid_rowconfigure(1, weight=1)
-        self.grid_columnconfigure(0, weight=1)
+            # Configure row and column weights to allow expansion
+            self.grid_rowconfigure(1, weight=1)
+            self.grid_columnconfigure(0, weight=1)
+
+        except Exception as e:
+            # Handle the exception here
+            error_msg = f"Error initializing PageBase: {str(e)}"
+            self.popup_error(error_msg)
+
+    def popup_error(self, msg: str) -> None:
+        error_popup = tk.Toplevel(self)
+        error_popup.title("Error")
+
+        # Create a frame to hold the error message and button
+        frame = ttk.Frame(error_popup)
+        frame.pack(padx=20, pady=20)
+
+        # Error message label
+        label = ttk.Label(frame, text=msg, font=("Helvetica", 12), wraplength=300)
+        label.grid(row=0, column=0, padx=10, pady=10)
+
+        # Okay button
+        okay_button = ttk.Button(frame, text="Okay", command=error_popup.destroy)
+        okay_button.grid(row=1, column=0, pady=10)
+
+        # Center the error popup on the screen
+        error_popup.geometry(f"+{self.winfo_screenwidth() // 2 - 150}+{self.winfo_screenheight() // 2 - 100}")
+
+        # Make the error popup a transient window, preventing interaction with the main window until closed
+        error_popup.transient(self)
+        error_popup.grab_set()
+
+        # Wait for the error popup to be closed before returning
+        self.wait_window(error_popup)
+
+    def safe_call(self, method, *args, **kwargs):
+        try:
+            method(*args, **kwargs)
+        except Exception as e:
+            error_msg = f"Error in {method.__name__}: {str(e)}"
+            self.popup_error(error_msg)
+
 
 class SecurityPage(PageBase):
     def __init__(self, parent: tk.Widget, controller: RobotCart):
@@ -161,37 +242,63 @@ class SecurityPage(PageBase):
 
         self.username_label = tk.Label(self.content_frame, text="Username")
         self.username_label.grid(row=0, column=0, padx=10, pady=10)
-        self.username_entry = tk.Entry(self.content_frame)
+        self.username_var = tk.StringVar()
+        self.username_entry = tk.Entry(self.content_frame, textvariable=self.username_var)
         self.username_entry.grid(row=0, column=1, padx=10, pady=10)
 
         self.password_label = tk.Label(self.content_frame, text="Password")
         self.password_label.grid(row=1, column=0, padx=10, pady=10)
-        self.password_entry = tk.Entry(self.content_frame, show="*")  # Use show="*" to hide the entered characters
+        self.password_var = tk.StringVar()
+        self.password_entry = tk.Entry(self.content_frame, textvariable=self.password_var, show="*")
         self.password_entry.grid(row=1, column=1, padx=10, pady=10)
-        
-        self.login_button = tk.Button(self.content_frame, text="Login", command=lambda: self.check_credentials(controller))
+
+        self.login_button = tk.Button(self.content_frame, text="Login", command= self.safe_call(lambda: self.check_credentials(controller)))
         self.login_button.grid(row=2, column=0, columnspan=2, pady=10)
 
     def check_credentials(self, controller):
-        # For simplicity, using hardcoded username and password
-        correct_username = "admin"
-        correct_password = "admin123"
+        try:
+            # Input validation: Check if username and password are not empty
+            entered_username = self.username_var.get().strip()
+            entered_password = self.password_var.get().strip()
 
-        entered_username = self.username_entry.get()
-        entered_password = self.password_entry.get()
+            if not entered_username or not entered_password:
+                raise ValueError("Username and password cannot be empty")
 
-        if entered_username == correct_username and entered_password == correct_password:
-            # If the credentials are correct, set the login status to True
-            controller.logged_in = True
+            # For simplicity, using hardcoded username and password
+            correct_username = "admin"
+            correct_password = "admin123"
 
-            if controller.admin_page == 0:
-                controller.show_frame(MotorSetUpPage)
+            if entered_username == correct_username and entered_password == correct_password:
+                # If the credentials are correct, set the login status to True
+                controller.logged_in = True
 
-            elif controller.admin_page == 1:
-                controller.show_frame(DataBacePannle)
-        else:
-            # If the credentials are incorrect, show a message
-            messagebox.showerror("Login Failed", "Incorrect username or password")
+                if controller.admin_page == 0:
+                    controller.show_frame(MotorSetUpPage)
+
+                elif controller.admin_page == 1:
+                    controller.show_frame(DataBacePannle)
+            else:
+                # If the credentials are incorrect, show a message
+                messagebox.showerror("Login Failed", "Incorrect username or password")
+        except ValueError as ve:
+            # Handle input validation errors
+            messagebox.showerror("Input Error", str(ve))
+        except Exception as e:
+            # Handle other unexpected errors
+            error_msg = f"Error checking credentials: {str(e)}"
+            self.popup_error(error_msg)
+
+    def popup_error(self, msg: str) -> None:
+        popup = tk.Tk()
+
+        def leavemini():
+            popup.destroy()
+
+        popup.wm_title("Error")
+        label = ttk.Label(popup, text=msg)
+        label.pack(side="top", fill="x", pady=10)
+        B1 = ttk.Button(popup, text="Okay", command=leavemini)
+        B1.pack(side="bottom", fill="x", pady=10)
 
 class MainUserPage(PageBase):
     def __init__(self, parent: tk.Widget, controller: RobotCart):
@@ -201,31 +308,36 @@ class MainUserPage(PageBase):
             parent (type): The parent widget.
             controller (type): The main application controller.
         """
-        # Call the constructor of the base class (PageBase)
-        super().__init__(parent, controller, "Part Selection Page")
+        try:
+            # Call the constructor of the base class (PageBase)
+            super().__init__(parent, controller, "Part Selection Page")
 
-        # Create a PartsDatabase instance for handling parts data
-        self.parts_db = PartsDatabase()
+            # Create a PartsDatabase instance for handling parts data
+            self.parts_db = PartsDatabase()
 
-        # List to store selected parts in the cart
-        self.cart: list[str] = []
+            # List to store selected parts in the cart
+            self.cart: list[str] = []
 
-        # Create a frame to hold the main treeview for available parts
-        self.parts_treeview_frame = tk.Frame(self.content_frame)
-        self.parts_treeview_frame.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
+            # Create a frame to hold the main treeview for available parts
+            self.parts_treeview_frame = tk.Frame(self.content_frame)
+            self.parts_treeview_frame.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
 
-        # Create a frame to hold the cart treeview
-        self.cart_tree_frame = tk.Frame(self.content_frame)
-        self.cart_tree_frame.grid(row=0, column=1, padx=10, pady=10, sticky="nsew")
+            # Create a frame to hold the cart treeview
+            self.cart_tree_frame = tk.Frame(self.content_frame)
+            self.cart_tree_frame.grid(row=0, column=1, padx=10, pady=10, sticky="nsew")
 
-        # Configure the main treeview for available parts
-        self.configure_parts_db_treeview()
+            # Configure the main treeview for available parts
+            self.configure_parts_db_treeview()
 
-        # Create buttons for interaction with available parts
-        self.create_buttons(controller)
+            # Create buttons for interaction with available parts
+            self.create_buttons(controller)
 
-        # Create a second treeview for the selected parts (cart)
-        self.configure_cart_treeview()
+            # Create a second treeview for the selected parts (cart)
+            self.configure_cart_treeview()
+
+        except Exception as e:
+            error_msg = f"Error initializing MainUserPage: {str(e)}"
+            self.popup_error(error_msg)
 
     def configure_parts_db_treeview(self) -> None:
         """Configure the Treeview widget for displaying available parts.
@@ -233,49 +345,60 @@ class MainUserPage(PageBase):
         This method sets up the style, structure, and data loading for the Treeview.
 
         """
-        # Set up the style for the Treeview
-        style = ttk.Style()
-        style.theme_use('default')
-        style.configure("treeview", background="#D3D3D3", foreground="black", rowheight=25, fieldbackground="#D3D3D3")
-        style.map("treeview", background=[('selected', "#347083")])
+        try:
+            # Set up the style for the Treeview
+            style = ttk.Style()
+            style.theme_use('default')
+            style.configure("treeview", background="#D3D3D3", foreground="black", rowheight=25, fieldbackground="#D3D3D3")
+            style.map("treeview", background=[('selected', "#347083")])
 
-        # Create a frame to hold the Treeview
-        tree_frame = tk.Frame(self.content_frame)
-        tree_frame.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
+            # Create a frame to hold the Treeview
+            tree_frame = tk.Frame(self.content_frame)
+            tree_frame.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
 
-        # Create a vertical scrollbar for the Treeview
-        tree_scroll = tk.Scrollbar(tree_frame)
-        tree_scroll.pack(side='right', fill='y')
+            # Create a vertical scrollbar for the Treeview
+            tree_scroll = tk.Scrollbar(tree_frame)
+            tree_scroll.pack(side='right', fill='y')
 
-        # Create the Treeview widget with vertical scrollbar
-        self.parts_treeview = ttk.Treeview(tree_frame, yscrollcommand=tree_scroll.set, selectmode="extended", height=20)
-        self.parts_treeview.pack()
+            # Create the Treeview widget with vertical scrollbar
+            self.parts_treeview = ttk.Treeview(tree_frame, yscrollcommand=tree_scroll.set, selectmode="extended", height=20)
+            self.parts_treeview.pack()
 
-        # Configure the scrollbar to control the Treeview's vertical movement
-        tree_scroll.config(command=self.parts_treeview.yview)
+            # Configure the scrollbar to control the Treeview's vertical movement
+            tree_scroll.config(command=self.parts_treeview.yview)
 
-        # Define columns and headings for the Treeview
-        columns = ["Part Name", "Part ID", "In Service", "Current Weight"]
-        headings = ["PartName", "Part ID", "In Service", "Current Weight"]
+            # Define columns and headings for the Treeview
+            columns = ["Part Name", "Part ID", "In Service", "Current Weight"]
+            headings = ["PartName", "Part ID", "In Service", "Current Weight"]
 
-        # Set the columns for the Treeview
-        self.parts_treeview['columns'] = columns
-        self.parts_treeview.column("#0", width=0, stretch=0)
+            # Set the columns for the Treeview
+            self.parts_treeview['columns'] = columns
+            self.parts_treeview.column("#0", width=0, stretch=0)
 
-        # Configure column widths and anchor points
-        for col in columns:
-            if col in ("Part Name", "Part ID"):
-                self.parts_treeview.column(col, anchor="w", width=140)
-            else:
-                self.parts_treeview.column(col, anchor="center", width=140)
+            # Configure column widths and anchor points
+            for col in columns:
+                if col in ("Part Name", "Part ID"):
+                    self.parts_treeview.column(col, anchor="w", width=140)
+                else:
+                    self.parts_treeview.column(col, anchor="center", width=140)
 
-        # Set column headings and anchor points
-        self.parts_treeview.heading("#0", text='', anchor="w")
-        for col, heading in zip(columns, headings):
-            self.parts_treeview.heading(col, text=heading, anchor="center")
+            # Set column headings and anchor points
+            self.parts_treeview.heading("#0", text='', anchor="w")
+            for col, heading in zip(columns, headings):
+                self.parts_treeview.heading(col, text=heading, anchor="center")
 
-        # Load data into the Treeview
-        self.load_data()
+            # Load data into the Treeview
+            self.load_data()
+
+        except tk.TclError as tcl_error:
+            # Handle TclError, which might occur due to issues in Tkinter
+            error_msg = f"TclError while configuring parts database treeview: {str(tcl_error)}"
+            self.popup_error(error_msg)
+
+        except Exception as e:
+            # Handle other unexpected errors
+            error_msg = f"Error configuring parts database treeview: {str(e)}"
+            self.popup_error(error_msg)
 
     def load_data(self) -> None:
         """Load data into the Treeview widget.
@@ -287,7 +410,7 @@ class MainUserPage(PageBase):
         try:
             # Establish a connection to the Parts database
             self.parts_db.connect()
-    
+
             # Execute a SQL query to select all records from the Parts table and order by the second column (index 1)
             self.parts_db.cursor.execute("SELECT * FROM Parts ORDER BY PartName")  # Replace 'column_name' with the actual column name you want to sort by
 
@@ -312,51 +435,97 @@ class MainUserPage(PageBase):
 
                 # Insert the data into the Treeview with specified tags
                 self.parts_treeview.insert(parent='', index='end', iid=idx, text='', values=(record[1], record[0], service, record[12]), tags=(tag,))
-        
-        # Handle exceptions, print the error, and ensure database disconnection
+
+        except tk.TclError as tcl_error:
+            # Handle TclError, which might occur for Tkinter-related issues
+            error_msg = f"TclError while loading data into Treeview: {str(tcl_error)}"
+            self.popup_error(error_msg)
+
         except Exception as e:
-            print(e)
-        
-        # Ensure the database is disconnected in the 'finally' block
+            # Handle other unexpected errors during data loading
+            error_msg = f"Error loading data into Treeview: {str(e)}"
+            self.popup_error(error_msg)
+
         finally:
-            self.parts_db.disconnect()
+            try:
+                # Ensure the database is disconnected in the 'finally' block
+                self.parts_db.disconnect()
+            except Exception as disconnect_error:
+                # Handle any potential error during disconnection
+                error_msg = f"Error disconnecting from the database: {str(disconnect_error)}"
+                self.popup_error(error_msg)
 
     def create_buttons(self, controller: RobotCart) -> None:
         """Create buttons for user interaction.
 
-        This method creates buttons for refreshing data, adding parts to the cart, placing an order, and searching data.
+        This method creates buttons for refreshing data, adding parts to the cart,
+        placing an order, and searching data.
 
         """
-        # Create a frame to hold the buttons
-        button_frame = tk.Frame(self.content_frame)  # Change 'self' to 'self.content_frame'
-        button_frame.grid(row=2, column=0, columnspan=2, pady=10, sticky="nsew")  # Use 'grid' instead of 'pack'
+        try:
+            # Create a frame to hold the buttons
+            button_frame = tk.Frame(self.content_frame)
+            button_frame.grid(row=2, column=0, columnspan=2, pady=10, sticky="nsew")
 
-        # Create a button to refresh the data
-        refresh_button = tk.Button(button_frame, text="Refresh Data", command=self.load_data, bg='#4CAF50')
-        refresh_button.grid(row=0, column=0, padx=10, pady=10)
+            # Create a button to refresh the data
+            refresh_button = tk.Button(button_frame, text="Refresh Data", command=self.load_data, bg='#4CAF50')
+            refresh_button.grid(row=0, column=0, padx=10, pady=10)
 
-        # Create a button to search the data
-        search_button = tk.Button(button_frame, text="Search Data", command=self.serch_data, bg='#2196F3')
-        search_button.grid(row=0, column=1, padx=10, pady=10)
+            # Create a button to search the data
+            search_button = tk.Button(button_frame, text="Search Data", command=self.serch_data, bg='#2196F3')
+            search_button.grid(row=0, column=1, padx=10, pady=10)
 
-        # Create a button to add selected parts to the cart
-        add_to_cart_button = tk.Button(button_frame, text="Add to Cart", command=self.select_part, bg='#FFEB3B')
-        add_to_cart_button.grid(row=0, column=2, padx=10, pady=10)
+            # Create a button to add selected parts to the cart
+            add_to_cart_button = tk.Button(button_frame, text="Add to Cart", command=self.select_part, bg='#FFEB3B')
+            add_to_cart_button.grid(row=0, column=2, padx=10, pady=10)
 
-        # Create a button to place an order with selected parts
-        place_order_button = tk.Button(button_frame, text="Place Order", command=lambda: self.place_order(controller), bg='#FF5722')  # Different color for Place Order
-        place_order_button.grid(row=0, column=3, padx=10, pady=10)
+            # Create a button to place an order with selected parts
+            place_order_button = tk.Button(button_frame, text="Place Order", command=lambda: self.place_order(controller), bg='#FF5722')
+            place_order_button.grid(row=0, column=3, padx=10, pady=10)
+
+        except tk.TclError as tcl_error:
+            # Handle TclError, which might occur for Tkinter-related issues
+            error_msg = f"TclError while creating buttons: {str(tcl_error)}"
+            self.popup_error(error_msg)
+
+        except Exception as e:
+            # Handle other unexpected errors during button creation
+            error_msg = f"Error creating buttons: {str(e)}"
+            self.popup_error(error_msg)
 
     def select_part(self) -> None:
-        print("Selecting part...")  # Add this line for debugging
+        try:
+            # Method to add selected part to the cart
+            selected = self.parts_treeview.focus()
 
-        # Method to add selected part to the cart
-        selected = self.parts_treeview.focus()
-        part_name = self.parts_treeview.item(selected, "values")[0]
-        self.cart.append(part_name)
+            # Check if a part is selected before attempting to retrieve its values
+            if selected:
+                part_name, in_service = self.parts_treeview.item(selected, "values")[0], self.parts_treeview.item(selected, "values")[2]
 
-        # Update the cart treeview
-        self.update_cart_tree()
+                if in_service == "In Service":
+                    # If the part is "In Service," display a message to the user
+                    error_msg = "This part is currently in service and cannot be added to the cart."
+                    self.popup_error(error_msg)
+                else:
+                    # If the part is not "In Service," add it to the cart
+                    self.cart.append(part_name)
+                    # Update the cart treeview
+                    self.update_cart_tree()
+
+            else:
+                # If no part is selected, show an error message or handle it as needed
+                error_msg = "No part selected. Please select a part before adding to the cart."
+                self.popup_error(error_msg)
+
+        except tk.TclError as tcl_error:
+            # Handle TclError, which might occur for Tkinter-related issues
+            error_msg = f"TclError while selecting part: {str(tcl_error)}"
+            self.popup_error(error_msg)
+
+        except Exception as e:
+            # Handle other unexpected errors during part selection
+            error_msg = f"Error selecting part: {str(e)}"
+            self.popup_error(error_msg)
 
     def update_cart_tree(self)-> None:
         """Update the cart treeview with the current content of the cart.
@@ -365,27 +534,58 @@ class MainUserPage(PageBase):
         parts in the cart for display.
 
         """
-        print("Updating cart tree...")
-        
-        # Clear existing content in the cart treeview
-        self.cart_tree.delete(*self.cart_tree.get_children())
+        try:
+            print("Updating cart tree...")
 
-        # Iterate through the parts in the cart and insert them into the cart treeview
-        for idx, part in enumerate(self.cart):
-            print(f"Inserting part {part} into cart tree...")
-            # Determine the tag for alternate row coloring
-            tag = 'evenrow' if idx % 2 == 0 else 'oddrow'
-            # Insert the part into the cart treeview with specified tag
-            self.cart_tree.insert(parent='', index='end', iid=idx, text='', values=(part,), tags=(tag,))
+            # Clear existing content in the cart treeview
+            self.cart_tree.delete(*self.cart_tree.get_children())
+
+            # Iterate through the parts in the cart and insert them into the cart treeview
+            for idx, part in enumerate(self.cart):
+                print(f"Inserting part {part} into cart tree...")
+                # Determine the tag for alternate row coloring
+                tag = 'evenrow' if idx % 2 == 0 else 'oddrow'
+                # Insert the part into the cart treeview with specified tag
+                self.cart_tree.insert(parent='', index='end', iid=idx, text='', values=(part,), tags=(tag,))
+
+        except tk.TclError as tcl_error:
+            # Handle TclError, which might occur for Tkinter-related issues
+            error_msg = f"TclError while updating cart tree: {str(tcl_error)}"
+            self.popup_error(error_msg)
+
+        except Exception as e:
+            # Handle other unexpected errors during cart treeview update
+            error_msg = f"Error updating cart treeview: {str(e)}"
+            self.popup_error(error_msg)
 
     def place_order(self, controller: RobotCart) -> None:
-        # Implement the logic to process the order using the selected parts in self.cart
-        print("Placing order with selected parts:", self.cart)
-        controller.show_frame(MoshionPlanningPage, cart_data=self.cart)
-        # Clear the cart after placing the order
-        self.cart = []
-        # Update the cart treeview
-        self.update_cart_tree()
+        try:
+            # Check if the cart is empty before proceeding with the order
+            if not self.cart:
+                error_msg = "Cannot place an order with an empty cart. Please add parts to the cart first."
+                self.popup_error(error_msg)
+                return
+
+            # Assuming you have logic here to process the order using the selected parts in self.cart
+
+            # Show the Motion Planning Page with cart data
+            controller.show_frame(MoshionPlanningPage, cart_data=self.cart)
+
+            # Clear the cart after placing the order
+            self.cart = []
+
+            # Update the cart treeview
+            self.update_cart_tree()
+
+        except tk.TclError as tcl_error:
+            # Handle TclError, which might occur for Tkinter-related issues
+            error_msg = f"TclError while placing order: {str(tcl_error)}"
+            self.popup_error(error_msg)
+
+        except Exception as e:
+            # Handle other unexpected errors during order placement
+            error_msg = f"Error placing order: {str(e)}"
+            self.popup_error(error_msg)
 
     def configure_cart_treeview(self) -> None:
         """Configure the Treeview widget for displaying selected parts in the cart.
@@ -393,68 +593,97 @@ class MainUserPage(PageBase):
         This method sets up the style, structure, and appearance of the cart Treeview.
 
         """
-        # Configure treeview style for the cart
-        style = ttk.Style()
-        style.theme_use('default')
-        style.configure("cart.Treeview", background="#D3D3D3", foreground="black", rowheight=25, fieldbackground="#D3D3D3")
-        style.map("cart.Treeview", background=[('selected', "#347083")])
+        try:
+            # Configure treeview style for the cart
+            style = ttk.Style()
+            style.theme_use('default')
+            style.configure("cart.Treeview", background="#D3D3D3", foreground="black", rowheight=25, fieldbackground="#D3D3D3")
+            style.map("cart.Treeview", background=[('selected', "#347083")])
 
-        # Configure cart tree scroll
-        cart_tree_scroll = tk.Scrollbar(self.cart_tree_frame)
-        cart_tree_scroll.pack(side='right', fill='y')
+            # Configure cart tree scroll
+            cart_tree_scroll = tk.Scrollbar(self.cart_tree_frame)
+            cart_tree_scroll.pack(side='right', fill='y')
 
-        # Create cart treeview widget
-        self.cart_tree = ttk.Treeview(self.cart_tree_frame, yscrollcommand=cart_tree_scroll.set, selectmode="extended", style="cart.Treeview")
-        self.cart_tree.pack(fill='both', expand=True)
+            # Create cart treeview widget
+            self.cart_tree = ttk.Treeview(self.cart_tree_frame, yscrollcommand=cart_tree_scroll.set, selectmode="extended", style="cart.Treeview")
+            self.cart_tree.pack(fill='both', expand=True)
 
-        # Configure scrollbar to control cart treeview's vertical movement
-        cart_tree_scroll.config(command=self.cart_tree.yview)
+            # Configure scrollbar to control cart treeview's vertical movement
+            cart_tree_scroll.config(command=self.cart_tree.yview)
 
-        # Set columns for the cart treeview
-        self.cart_tree['columns'] = ("#0",)
+            # Set columns for the cart treeview
+            self.cart_tree['columns'] = ("#0",)
 
-        # Configure column widths and anchor points (optional if you decide to keep it)
-        self.cart_tree.column("#0", anchor="w", width=140)
+            # Configure column widths and anchor points (optional if you decide to keep it)
+            self.cart_tree.column("#0", anchor="w", width=140)
 
-        # Set column headings and anchor points (optional if you decide to keep it)
-        self.cart_tree.heading("#0", text="Selected Part", anchor="center")  # Change "#0" to the actual column ID if necessary
+            # Set column headings and anchor points (optional if you decide to keep it)
+            self.cart_tree.heading("#0", text="Selected Part", anchor="center")  # Change "#0" to the actual column ID if necessary
 
+        except tk.TclError as tcl_error:
+            # Handle TclError, which might occur for Tkinter-related issues
+            error_msg = f"TclError while configuring cart treeview: {str(tcl_error)}"
+            self.popup_error(error_msg)
+
+        except Exception as e:
+            # Handle other unexpected errors during cart treeview configuration
+            error_msg = f"Error configuring cart treeview: {str(e)}"
+            self.popup_error(error_msg)
+            
     def serch_data(self) -> None:
-        serch = tk.Toplevel(self)
-        serch.title("Lookup parts")
-        serch.geometry("400x200")
+        try:
+            serch = tk.Toplevel(self)
+            serch.title("Lookup parts")
+            serch.geometry("400x200")
 
-        # Create a reference to the search window to use in the closing event
-        self.search_window = serch
+            # Create a reference to the search window to use in the closing event
+            self.search_window = serch
 
-        serch_frame = tk.LabelFrame(serch, text="Part Name")
-        serch_frame.pack(padx=10, pady=10)
+            serch_frame = tk.LabelFrame(serch, text="Part Name")
+            serch_frame.pack(padx=10, pady=10)
 
-        Serch_entry = tk.Entry(serch_frame)
-        Serch_entry.pack(padx=20, pady=20)
-        Serch_entry.bind('<KeyRelease>', lambda event, entry=Serch_entry: self.auto_fill_suggestions(entry))
+            Serch_entry = tk.Entry(serch_frame)
+            Serch_entry.pack(padx=20, pady=20)
+            Serch_entry.bind('<KeyRelease>', lambda event, entry=Serch_entry: self.auto_fill_suggestions(entry))
 
-        # # Pass a lambda function to the command parameter
-        # Serch_button = tk.Button(serch, text="Search Part", command=lambda: self.search_and_update_treeview(Serch_entry.get()))
-        # Serch_button.pack(padx=20, pady=20)
+            # Bind the closing event of the search window to the restore_treeview method
+            serch.protocol("WM_DELETE_WINDOW", self.restore_treeview)
 
-        # Bind the closing event of the search window to the restore_treeview method
-        serch.protocol("WM_DELETE_WINDOW", self.restore_treeview)
+        except tk.TclError as tcl_error:
+            # Handle TclError, which might occur for Tkinter-related issues
+            error_msg = f"TclError while creating search window: {str(tcl_error)}"
+            self.popup_error(error_msg)
+
+        except Exception as e:
+            # Handle other unexpected errors during search window creation
+            error_msg = f"Error creating search window: {str(e)}"
+            self.popup_error(error_msg)
 
     def auto_fill_suggestions(self, entry: tk.Widget) -> None:
-        """Auto-fill suggestions based on the current content of the entry."""
-        # Get the current content of the entry
-        current_text = entry.get()
+        try:
+            """Auto-fill suggestions based on the current content of the entry."""
+            # Get the current content of the entry
+            current_text = entry.get()
 
-        # Clear existing content in the parts_treeview
-        self.parts_treeview.delete(*self.parts_treeview.get_children())
+            # Clear existing content in the parts_treeview
+            self.parts_treeview.delete(*self.parts_treeview.get_children())
 
-        # Load suggestions based on the current_text
-        self.load_suggestions(current_text)
+            # Load suggestions based on the current_text
+            self.load_suggestions(current_text)
+
+        except tk.TclError as tcl_error:
+            # Handle TclError, which might occur for Tkinter-related issues
+            error_msg = f"TclError while auto-filling suggestions: {str(tcl_error)}"
+            self.popup_error(error_msg)
+
+        except Exception as e:
+            # Handle other unexpected errors during auto-fill suggestions
+            error_msg = f"Error auto-filling suggestions: {str(e)}"
+            self.popup_error(error_msg)
 
     def load_suggestions(self, prefix: str) -> None:
-        """Load suggestions into the parts_treeview based on the given prefix."""
         try:
+            """Load suggestions into the parts_treeview based on the given prefix."""
             # Establish a connection to the Parts database
             self.parts_db.connect()
 
@@ -470,6 +699,9 @@ class MainUserPage(PageBase):
             self.parts_treeview.tag_configure('evenrow', background='lightblue')
             self.parts_treeview.tag_configure('lowweight', background='lightcoral')  # Add a tag for low weight
 
+            # Clear existing content in the parts_treeview
+            self.parts_treeview.delete(*self.parts_treeview.get_children())
+
             # Iterate through the retrieved data and insert it into the parts_treeview
             for idx, record in enumerate(data):
                 # Determine the tag for alternate row coloring
@@ -484,36 +716,65 @@ class MainUserPage(PageBase):
                 # Insert the data into the parts_treeview with specified tags
                 self.parts_treeview.insert(parent='', index='end', iid=idx, text='', values=(record[1], record[2], service, record[12]), tags=(tag,))
 
-        # Handle exceptions, print the error, and ensure database disconnection
-        except Exception as e:
-            print(e)
+        except tk.TclError as tcl_error:
+            # Handle TclError, which might occur for Tkinter-related issues
+            error_msg = f"TclError while loading suggestions: {str(tcl_error)}"
+            self.popup_error(error_msg)
 
-        # Ensure the database is disconnected in the 'finally' block
+        except Exception as e:
+            # Handle other unexpected errors during suggestion loading
+            error_msg = f"Error loading suggestions: {str(e)}"
+            self.popup_error(error_msg)
+
         finally:
+            # Ensure the database is disconnected in the 'finally' block
             self.parts_db.disconnect()
 
     def search_and_update_treeview(self, part_name: str) -> None:
-        """Search for parts and update the parts_treeview based on the search."""
-        self.serch_db_parts(part_name)
+        try:
+            """Search for parts and update the parts_treeview based on the search."""
+            self.serch_db_parts(part_name)
+
+        except tk.TclError as tcl_error:
+            # Handle TclError, which might occur for Tkinter-related issues
+            error_msg = f"TclError during search and update treeview: {str(tcl_error)}"
+            self.popup_error(error_msg)
+
+        except Exception as e:
+            # Handle other unexpected errors during search and update treeview
+            error_msg = f"Error during search and update treeview: {str(e)}"
+            self.popup_error(error_msg)
 
     def restore_treeview(self) -> None:
-        """Restore the parts_treeview to show all parts."""
-        # Clear existing content in the parts_treeview
-        self.parts_treeview.delete(*self.parts_treeview.get_children())
-        
-        # Load all parts into the parts_treeview
-        self.load_data()
+        try:
+            """Restore the parts_treeview to show all parts."""
+            # Clear existing content in the parts_treeview
+            self.parts_treeview.delete(*self.parts_treeview.get_children())
+            
+            # Load all parts into the parts_treeview
+            self.load_data()
 
-        # Destroy the search window
-        self.search_window.destroy()
+            # Destroy the search window
+            if hasattr(self, 'search_window') and self.search_window:
+                self.search_window.destroy()
+
+        except tk.TclError as tcl_error:
+            # Handle TclError, which might occur for Tkinter-related issues
+            error_msg = f"TclError during treeview restoration: {str(tcl_error)}"
+            self.popup_error(error_msg)
+
+        except Exception as e:
+            # Handle other unexpected errors during treeview restoration
+            error_msg = f"Error during treeview restoration: {str(e)}"
+            self.popup_error(error_msg)
 
     def serch_db_parts(self, partName: str) -> None:
-        """Search for parts in the database with the given name and update the parts_treeview.
-
-        Args:
-            partName (str): The name of the part to search for.
-        """
         try:
+            """Search for parts in the database with the given name and update the parts_treeview.
+
+            Args:
+                partName (str): The name of the part to search for.
+            """
             # Establish a connection to the Parts database
             self.parts_db.connect()
 
@@ -546,27 +807,38 @@ class MainUserPage(PageBase):
                 # Insert the data into the parts_treeview with specified tags
                 self.parts_treeview.insert(parent='', index='end', iid=idx, text='', values=(record[1], record[2], service, record[12]), tags=(tag,))
 
-        # Handle exceptions, print the error, and ensure database disconnection
-        except Exception as e:
-            print(e)
+        except sqlite3.Error as sqlite_error:
+            # Handle SQLite database-related errors
+            error_msg = f"SQLite error during parts search: {str(sqlite_error)}"
+            self.popup_error(error_msg)
 
-        # Ensure the database is disconnected in the 'finally' block
+        except Exception as e:
+            # Handle other unexpected errors during parts search
+            error_msg = f"Error during parts search: {str(e)}"
+            self.popup_error(error_msg)
+
         finally:
+            # Ensure the database is disconnected in the 'finally' block
             self.parts_db.disconnect()
 
 class MotorSetUpPage(PageBase):
     def __init__(self, parent: tk.Widget, controller: RobotCart):
-        super().__init__(parent, controller, "Motor Set Up Page ")
+        try:
+            super().__init__(parent, controller, "Motor Set Up Page ")
 
-        self.manager = motorManager({})
+            self.manager = motorManager({})
 
-        self.configure_Motor_treeview()
-        self.motor_treeview.bind("<ButtonRelease-1>", lambda event: self.secect_motor())
+            self.configure_Motor_treeview()
+            self.motor_treeview.bind("<ButtonRelease-1>", lambda event: self.secect_motor())
 
-        # Create Entry boxes after configuring the treeview
-        self.motor_entry_boxes()
+            # Create Entry boxes after configuring the treeview
+            self.motor_entry_boxes()
 
-        self.create_buttons(controller)
+            self.create_buttons(controller)
+
+        except Exception as e:
+            error_msg = f"Error initializing MotorSetUpPage: {str(e)}"
+            self.popup_error(error_msg)
 
     def configure_Motor_treeview(self) -> None:
         """Configure the Treeview widget for displaying Motor Data.
@@ -700,7 +972,6 @@ class MotorSetUpPage(PageBase):
                 max_torqu = float(self.mt_var.get())
                 is_activate = bool(self.mact_var.get())  # Assuming 'is_activate' is a boolean
                 steps_per_revolution = int(self.mspr_var.get())
-                print("got motor data, now editing")
 
                 # Validate input values
                 if max_speed < 0 or max_acceleration < 0 or max_torqu < 0 or steps_per_revolution <= 0:
@@ -718,7 +989,6 @@ class MotorSetUpPage(PageBase):
                     # Provide feedback to the user
                     messagebox.showinfo("Success", "Motor data updated successfully.")
 
-                    print("loading new data")
                     # Reload data into the Treeview to reflect the changes
                     self.load_data()
 
