@@ -2,12 +2,12 @@
     "Bace Motor": {
         "name": "Bace Motor",
         "index": 0,
-        "max_speed": 50.0,
-        "max_acceleration": 10.0,
-        "max_torqu": 10.0,
+        "max_speed": 70.0,
+        "max_acceleration": 170.0,
+        "max_torqu": 170.0,
         "is_activate": true,
         "type": "Stepper Motor",
-        "steps_per_revolution": 50000
+        "steps_per_revolution": 75000
     },
     "Sholder Motor": {
         "name": "Sholder Motor",

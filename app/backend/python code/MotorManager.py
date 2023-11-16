@@ -172,14 +172,11 @@ class motorManager:
                 motor = self.motors[motor_name]
 
                 for key, value in kwargs.items():
-                    print(f"Updating {key} to {value}")
                     if hasattr(motor, key):
                         setattr(motor, key, value)
                     else:
                         print(f"Error: Attribute '{key}' not found for motor '{motor_name}'.")
                         return False
-
-                print(f"Motor '{motor_name}' edited successfully.")
 
                 # Write the updated motor configurations to the JSON file
                 if not self.write_motor_config("motors_config.json"):
