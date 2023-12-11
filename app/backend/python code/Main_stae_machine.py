@@ -1,6 +1,6 @@
 """A script to manage the robotic arm and control its movements."""
 import numpy as np
-import tkinter as tk
+import timeit
 from DP_parts import *
 from ik_solver import *
 from intrerpolation import *
@@ -44,7 +44,6 @@ def main1():
             """Run the state machine to perform various actions."""
 
             try:
-                print(f'state: {state}')
                 if state == 0:
                     """Retrieve the list of parts to fetch."""
 
@@ -76,6 +75,7 @@ def main1():
                     state = 2  # Transition to the next state
 
                 elif state == 2:
+                    start_time = timeit.default_timer()
                     """Retrieve and store locations of all parts."""
 
                     locations = {}  # Dictionary to store locations of each part
@@ -86,24 +86,32 @@ def main1():
 
                     state = 3  # Transition to the next state
 
+                    elapsed_time = timeit.default_timer() - start_time
+                    print(f"State {state} execution time: {elapsed_time} seconds")
+
                 elif state == 3:
+                    start_time = timeit.default_timer()
+
                     """Generate paths and velocity profiles for each part."""
 
-                    planner = PathPlanner(20, 2)
-                    planner.setVelocityPFP(1)
+                    max_acc = 100
+                    max_vel = 100
+                    planner = PathPlanner(max_acc, max_vel)
 
-                    direction_vector = []
-                    paths = []
-                    for part_name, location in locations.items():
-                        direction_vector.append((np.array(location) / np.linalg.norm(location), 0, 0))  # Calculate direction vector from the origin to the current location
-                        paths.append(planner.generate_path(location, DROP_OFF_ZONE, linear=False))
+                    direction_vectors = np.array([np.array(location) / np.linalg.norm(location) for location in locations.values()])
+                    drop_off_zone = np.array(DROP_OFF_ZONE)
+
+                    paths = [planner.generate_path(location, drop_off_zone, linear=False) for location in locations.values()]
 
                     # Plot the 3D paths
                     planner.plot_3d_path()
 
                     state = 4
+                    elapsed_time = timeit.default_timer() - start_time
+                    print(f"State {state} execution time: {elapsed_time} seconds")
 
                 elif state == 4:
+                    start_time = timeit.default_timer()
                     """Perform inverse kinematics for the generated paths and visualize the motion using RobotArm."""
 
                     # Initialize the RobotArm with the URDF file path
@@ -119,11 +127,13 @@ def main1():
                             # Define a default orientation (you may need to adjust this based on your specific setup)
                             target_orientations.append([0, 0, np.pi/4])
 
-                    print("animateing")
-                    # Animate the robotic arm along the generated path
-                    robot.animate_robot(target_positions, target_orientations, interval=1,save_as_gif=False)  # Adjust arguments as needed
+                    # print("animateing")
+                    # # Animate the robotic arm along the generated path
+                    # robot.animate_robot(target_positions, target_orientations, interval=1,save_as_gif=False)  # Adjust arguments as needed
 
                     state = 5
+                    elapsed_time = timeit.default_timer() - start_time
+                    print(f"State {state} execution time: {elapsed_time} seconds")
 
                 elif state == 5:
 
@@ -131,9 +141,11 @@ def main1():
 
             except Exception as e:
                 print(f"An error occurred at state {state}\n{ERRORmsg[state]}\t:", e)
+                run = False
 
     except Exception as e:
         print(f"Error: {e}")
+        run = False
 
 
 if __name__ == "__main__":

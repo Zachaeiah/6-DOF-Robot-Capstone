@@ -1560,14 +1560,17 @@ class MoshionPlanningPage(PageBase):
     @error_handling_wrapper
     def generate_robot_path(self):
         """Generate paths and velocity profiles for each part."""
+        max_acc = 100
+        max_vel = 100
+        planner = PathPlanner(max_acc, max_vel)
 
-        planner = PathPlanner(20, 2)
-        planner.setVelocityPFP(1)
-
-        self.direction_vector = []
+        # Pre-allocate space for direction vectors and paths
+        self.direction_vectors = np.zeros((len(self.locations), 3))
         self.paths = []
-        for part_name, location in self.locations.items():
-            self.direction_vector.append((np.array(location) / np.linalg.norm(location), 0, 0))  # Calculate direction vector from the origin to the current location
+
+        # Calculate direction vectors and generate paths
+        for idx, (part_name, location) in enumerate(self.locations.items()):
+            self.direction_vectors[idx, :] = np.array(location) / np.linalg.norm(location)
             self.paths.append(planner.generate_path(location, self.DROP_OFF_ZONE, linear=False))
 
         self.show_path()
