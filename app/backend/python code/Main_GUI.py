@@ -15,9 +15,6 @@ from VelocityPFP import *
 
 LARGE_FONT = ("Verdana", 12)
 
-import tkinter as tk
-import matplotlib
-
 def error_handling_wrapper(func):
     """A decorator that wraps a function with error handling.
 

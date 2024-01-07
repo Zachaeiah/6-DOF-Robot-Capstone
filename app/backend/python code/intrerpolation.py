@@ -36,12 +36,13 @@ class PathPlanner:
         end_point = np.array(end_point)
 
         self.linearVelocityProfile.Set_displacement(np.linalg.norm(end_point - start_point))
-        time = self.linearVelocityProfile.move_time
+        sys_time = self.linearVelocityProfile.move_time
 
         # Generate time values for motion profile
-        time_values = np.arange(0, time, 0.1)
+        time_values = np.arange(0, sys_time, 0.03)
         self.linearVelocityProfile.Generator_profile(time_values)
         t_values = self.linearVelocityProfile.displacement
+
         t_values = np.interp(t_values, (t_values.min(), t_values.max()), (0, 1))
 
         interpolated_points = start_point + np.outer(t_values, end_point - start_point)
@@ -235,12 +236,14 @@ def main():
 
     # # Generate and plot a linear path
     path_planner.generate_path(start, end, linear=True)
+    
 
     # Generate and plot a circular path
     path_planner.generate_path(start, end, linear=False)
+    
 
     # Plot all saved paths
-    # path_planner.plot_3d_path()
+    path_planner.plot_3d_path()
 
 if __name__ == "__main__":
     main()

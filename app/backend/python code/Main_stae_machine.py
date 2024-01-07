@@ -9,8 +9,15 @@ from Motors import *
 from VelocityPFP import *
 
 LARGE_FONT = ("Verdana", 12)
-DROP_OFF_ZONE = (-0.50, -0.100, 0.0)
-PICK_UP_ZONE = (0.50, -0.100, 0.50)
+DROP_OFF_ZONE = (-0.51, -0.50, 0.0)
+DROP_OFF_ORINT = [0, -1, 0]
+
+PICK_UP_ZONE = (0.51, -0.50, 0.00)
+GRAB_DISTANCE = 0.10
+NORTH_WALL = (0.0, 1.0, 0.0)
+EAST_WALL = (1.0, 0.0, 0.0)
+WEST_WALL = (-1.0, 0.0, 0.0)
+SOUNTH_WALL = (0.0, -1.0, 0.0)
 
 AllMotorNames = ["Bace Motor", "Sholder Motor", "Elbow Motor", "Elbow revolut Motor", "Wirist Motor", "Wirist revolut Motor"]
 
@@ -48,7 +55,7 @@ def main1():
                     """Retrieve the list of parts to fetch."""
 
                     # Array of part names to fetch
-                    part_names_to_fetch = ['Part1', 'Part2', 'Part3']
+                    part_names_to_fetch = ['Part0', 'Part1']
                     state = 1  # Transition to the next state
 
                 elif state == 1:
@@ -72,6 +79,7 @@ def main1():
                                 'EmptyWeight': part[11],
                                 'InService': part[12]
                             }
+                    
                     state = 2  # Transition to the next state
 
                 elif state == 2:
@@ -79,10 +87,14 @@ def main1():
                     """Retrieve and store locations of all parts."""
 
                     locations = {}  # Dictionary to store locations of each part
+                    orientations = {}
 
                     for part_name, part_info in part_info_dict.items():
                         location = (part_info['LocationX'], part_info['LocationY'], part_info['LocationZ'])
+                        orientation = (part_info['Orientation'][0], part_info['Orientation'][1], part_info['Orientation'][2])
                         locations[part_name] = location
+                        orientations[part_name] = orientation
+
 
                     state = 3  # Transition to the next state
 
@@ -94,15 +106,44 @@ def main1():
 
                     """Generate paths and velocity profiles for each part."""
 
-                    max_acc = 100
-                    max_vel = 100
+                    max_acc = 50
+                    max_vel = 50
+                    travle_paths = []
+                    gripper_orientation = []
+                    gripper_alinements = []
+
                     planner = PathPlanner(max_acc, max_vel)
 
-                    direction_vectors = np.array([np.array(location) / np.linalg.norm(location) for location in locations.values()])
                     drop_off_zone = np.array(DROP_OFF_ZONE)
 
-                    paths = [planner.generate_path(location, drop_off_zone, linear=False) for location in locations.values()]
+                    for location, orientation in zip(locations.values(), orientations.values()):
+                        location = np.array(location)
+                        orientation = np.array(orientation)
 
+                        T1 = planner.generate_path(drop_off_zone, location, linear=False)
+                        T2 = planner.generate_path(location, location + GRAB_DISTANCE*orientation, linear=True)
+                        T3 = planner.generate_path(location + GRAB_DISTANCE*orientation, location, linear=True)
+                        T4 = planner.generate_path(location, drop_off_zone, linear=False)
+                        travle_paths.extend(T1)
+                        travle_paths.extend(T2)
+                        travle_paths.extend(T3)
+                        travle_paths.extend(T4)
+
+                        
+
+                        for _ in range (len(travle_paths)):
+                            gripper_alinements.append([0, 0, 1])
+                            gripper_orientation.append("Y")
+
+                        # if (orientation == NORTH_WALL) or (orientation == SOUNTH_WALL):
+                        #     gripper_orientation = np.append(gripper_orientation, np.full(len(current_path), "Y"))
+                            
+
+                        # elif (orientation == EAST_WALL) or (orientation == WEST_WALL):
+                        #     gripper_orientation = np.append(gripper_orientation, np.full(len(current_path), "Y"))
+                            
+
+                    
                     # Plot the 3D paths
                     planner.plot_3d_path()
 
@@ -115,21 +156,13 @@ def main1():
                     """Perform inverse kinematics for the generated paths and visualize the motion using RobotArm."""
 
                     # Initialize the RobotArm with the URDF file path
-                    urdf_file_path = "app\\backend\\python code\\urdf_tes1.urdf"  # Replace with the actual file path
+                    urdf_file_path = "E:\\Capstone\\app\\backend\\python code\\urdf_tes1.urdf"
                     robot = RobotArm(urdf_file_path)
 
-                    target_positions = []
-                    target_orientations = []
-
-                    for path in paths:
-                        for point in path:
-                            target_positions.append(point)
-                            # Define a default orientation (you may need to adjust this based on your specific setup)
-                            target_orientations.append([0, 0, np.pi/4])
-
-                    # print("animateing")
-                    # # Animate the robotic arm along the generated path
-                    # robot.animate_robot(target_positions, target_orientations, interval=1,save_as_gif=False)  # Adjust arguments as needed
+            
+                    print("animateing")
+                    # Animate the robotic arm along the generated path
+                    robot.animate_robot(travle_paths, gripper_alinements, gripper_orientation)
 
                     state = 5
                     elapsed_time = timeit.default_timer() - start_time

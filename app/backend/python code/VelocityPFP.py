@@ -367,7 +367,7 @@ def main():
     angle_values, magnitudes_values, height_values = calculate_trajectory_values(start, end, max_acc, max_vel)
 
     # Plot the 3D trajectory
-    #plot_trajectory_3d(start, end, angle_values, magnitudes_values, height_values)
+    plot_trajectory_3d(start, end, angle_values, magnitudes_values, height_values)
 
 if __name__ == "__main__":
     main()

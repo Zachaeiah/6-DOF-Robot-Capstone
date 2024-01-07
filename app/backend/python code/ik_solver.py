@@ -8,38 +8,67 @@ import random
 import time
 
 class RobotArm:
-    def __init__(self, urdf_file_path):
+    def __init__(self, urdf_file_path: str) -> None:
+        """Initialize the RobotArm object.
+
+        Args:
+            urdf_file_path (str): Path to the URDF file.
+
+        Raises:
+            ValueError: If an error occurs during initialization.
+        """
         try:
+            # Create a robot chain from the URDF file
             self.my_chain = ikpy.chain.Chain.from_urdf_file(urdf_file_path, active_links_mask=[False, True, True, False, True, True, False, True, True])
             self.last_angles = None
         except Exception as e:
             raise ValueError(f"Error initializing the robot arm: {e}")
 
-    def calculate_ik(self, target_positions, target_orientations, precision=3, batch_size=1):
-        for i in range(0, len(target_positions), batch_size):
-            positions_batch = target_positions[i:i + batch_size]
-            orientations_batch = target_orientations[i:i + batch_size]
-            for target_position, target_orientation in zip(positions_batch, orientations_batch):
-                target_orientation = np.array(target_orientation, dtype=np.float32).reshape(3,)
-                try:
-                    # Use last angles if available
-                    if self.last_angles is not None:
-                        ik = self.my_chain.inverse_kinematics(np.array(target_position, dtype=np.float32), target_orientation, orientation_mode="Y", initial_position=self.last_angles)
-                    else:
-                        ik = self.my_chain.inverse_kinematics(np.array(target_position, dtype=np.float32), target_orientation, orientation_mode="Y")
-                    rounded_ik = (round(angle, precision) for angle in np.degrees(ik))
-                    self.last_angles = ik
-                    yield list(rounded_ik)
-                except Exception as e:
-                    print(f"An unexpected error occurred during inverse kinematics calculation: {e}")
-                    yield None  # Signal an error in the yield
-
-    def plot_robot(self, target_positions, target_orientations):
-        """Plot the robotic arm.
+    def calculate_ik(
+        self,
+        target_positions: list,
+        target_orientations: list,
+        orientation_modes: list,
+        precision: int = 3,
+        batch_size: int = 5
+    ) -> iter:
+        """Perform inverse kinematics calculations.
 
         Args:
             target_positions (list): List of target positions.
             target_orientations (list): List of target orientations.
+            orientation_modes (list): List of orientation modes.
+            precision (int, optional): Precision of the angles. Defaults to 3.
+            batch_size (int, optional): Batch size for calculations. Defaults to 5.
+
+        Yields:
+            list: List of rounded inverse kinematics angles or an empty list if an error occurs.
+        """
+        for i in range(0, len(target_positions), batch_size):
+            positions_batch = target_positions[i:i + batch_size]
+            orientations_batch = target_orientations[i:i + batch_size]
+            orientation_batch = orientation_modes[i:i + batch_size]
+            for target_position, target_orientation, orientation_mode in zip(positions_batch, orientations_batch, orientation_batch):
+                try:
+                    # Use last angles if available
+                    if self.last_angles is not None:
+                        ik = self.my_chain.inverse_kinematics(np.array(target_position, dtype=np.float32), target_orientation, orientation_mode=orientation_mode, initial_position=self.last_angles)
+                    else:
+                        ik = self.my_chain.inverse_kinematics(np.array(target_position, dtype=np.float32), target_orientation, orientation_mode=orientation_mode)
+                    rounded_ik = [round(angle, precision) for angle in np.degrees(ik)]
+                    self.last_angles = ik
+                    yield rounded_ik
+                except Exception as e:
+                    print(f"An unexpected error occurred during inverse kinematics calculation: {e}")
+                    yield []  # Return an empty list if an error occurs
+
+    def plot_robot(self, target_positions: list, target_orientations: list, orientation_modes: list) -> None:
+        """Plot the robot arm in 3D.
+
+        Args:
+            target_positions (list): List of target positions.
+            target_orientations (list): List of target orientations.
+            orientation_modes (list): List of orientation modes.
         """
         fig, ax = plot_utils.init_3d_figure()
         fig.set_figheight(9)
@@ -47,84 +76,81 @@ class RobotArm:
         for i in range(len(target_positions)):
             target_position = target_positions[i]
             target_orientation = target_orientations[i]
-            ik_solution = list(self.calculate_ik([target_position], [target_orientation], precision=2, batch_size=1))[0] # Extract the IK solution as a list
-            self.my_chain.plot(np.radians(ik_solution), ax, target=np.array(target_position, dtype=np.float32)) # Convert angles to radians before plotting
+            orientation_mode = orientation_modes[i]
+            ik_solution = list(self.calculate_ik([target_position], [target_orientation], [orientation_mode], precision=2, batch_size=1))[0]
+            
+            # Check if ik_solution is not None or an empty list before plotting
+            if ik_solution:
+                self.my_chain.plot(np.radians(ik_solution), ax, target=np.array(target_position, dtype=np.float32))
         plt.xlim(-1, 1)
         plt.ylim(-1, 1)
         ax.set_zlim(-1, 1)
         plt.show()
 
-    def animate_robot(self, target_positions, target_orientations, interval=1, save_as_gif=False, file_name="robot_animation.gif"):
-        """Animate the robotic arm.
+    def animate_robot(
+        self,
+        target_positions: list,
+        target_orientations: list,
+        orientation_modes: list,
+        interval: int = 1,
+        save_as_gif: bool = False,
+        file_name: str = "robot_animation.gif"
+    ) -> None:
+        fig, ax = plt.subplots(subplot_kw={'projection': '3d'}, figsize=(12, 8))
 
-        Args:
-            target_positions (list): List of target positions.
-            target_orientations (list): List of target orientations.
-            interval (int, optional): Interval for the animation. Defaults to 1.
-            save_as_gif (bool, optional): Save the animation as a GIF. Defaults to False.
-            file_name (str, optional): File name for the saved GIF. Defaults to "robot_animation.gif".
-        """
-        fig, axes = plt.subplots(2, 2, figsize=(12, 8), subplot_kw={'projection': '3d'})
-        axes = axes.flatten()
-
-        def update(frame, self, target_positions, target_orientations, axes):
+        def update(frame: int) -> None:
             """Update the animation frame.
 
             Args:
-                frame (int): The frame number.
-                self: The current object instance.
-                target_positions (list): List of target positions.
-                target_orientations (list): List of target orientations.
-                axes (list): List of subplots for each axis and isometric view.
+                frame (int): Current frame.
             """
-            for ax in axes:
-                ax.clear()
+            ax.clear()
 
             target_position = target_positions[frame]
             target_orientation = target_orientations[frame]
-            ik_solution = list(self.calculate_ik([target_position], [target_orientation], precision=2, batch_size=1))[0]
+            orientation_mode = orientation_modes[frame]
+            ik_solution = list(self.calculate_ik([target_position], [target_orientation], [orientation_mode], precision=2, batch_size=1))[0]
 
-            for i, ax in enumerate(axes):
-                self.my_chain.plot(np.radians(ik_solution), ax, target=np.array(target_position, dtype=np.float32))
-                ax.set_xlim(-1, 1)
-                ax.set_ylim(-1, 1)
-                ax.set_zlim(-1, 1)
+            self.my_chain.plot(np.radians(ik_solution), ax, target=np.array(target_position, dtype=np.float32))
+            ax.set_xlim(-1, 1)
+            ax.set_ylim(-1, 1)
+            ax.set_zlim(-1, 1)
 
-            # Set the views for the subplots
-            axes[0].view_init(elev=0, azim=0)
-            axes[1].view_init(elev=0, azim=90)
-            axes[2].view_init(elev=90, azim=0)
-            axes[3].view_init(elev=30, azim=45)
+            # Set the view for the subplot
+            #ax.view_init(elev=30, azim=45)
 
-        anim = animation.FuncAnimation(fig, update, frames=len(target_positions), fargs=(self, target_positions, target_orientations, axes), interval=interval, repeat=False)
+        anim = animation.FuncAnimation(fig, update, frames=len(target_positions), interval=interval, repeat=False)
 
         if save_as_gif:
-            anim_var = anim.save(file_name, writer='pillow')
-            plt.show(anim_var)
-
+            anim.save(file_name, writer='pillow')
         plt.show()
 
 # Main function for execution
 def main():
-    urdf_file_path = "app\\backend\\python code\\urdf_tes1.urdf"
-    robot = RobotArm(urdf_file_path)
+    # urdf_file_path = "app\\backend\\python code\\urdf_tes1.urdf"
+    # robot = RobotArm(urdf_file_path)
 
-    # Example array of target positions
-    target_positions = [[0.4, 0.4, 0.1] for _ in range(10)]
+    # # Example array of target positions
+    # target_positions = [[0.4, 0.4, 0.01*i] for i in range(1)]
 
-    # Example array of target orientations
-    target_orientations = [[0, i*(np.pi/180), 0] for i in range(10)]
+    # # Example array of target orientations
+    # target_orientations = [[0, 0, 1] for i in range(1)]
 
+    # orientations = ["Y" for i in range(1)]
 
-    # Calculate IK and print the results
-    ik_generator = robot.calculate_ik(target_positions, target_orientations, precision=1, batch_size=4)
-    for ik in ik_generator:
-        print(ik)
+    # robot.plot_robot(target_positions, target_orientations, orientations)
 
-    # Free the memory used by the generator
-    ik_generator = None
+    array1 = np.array([1, 2, 3, 4, 5, 6])
+    array2 = np.array([10, 20, 30, 40, 50, 60])
+    array2_length = 10  # Desired length of the new arrays
 
-    robot.animate_robot(target_positions, target_orientations, interval=1/360)
+    # Use NumPy vectorized operations for efficient interpolation
+    interpolated_arrays = np.linspace(array1, array2, array2_length)
+
+    # Transpose the result to get the desired shape
+    result = interpolated_arrays
+
+    print(result)
 
 
 # Function for stress testing
