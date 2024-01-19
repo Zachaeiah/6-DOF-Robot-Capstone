@@ -7,29 +7,69 @@ from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 from pyquaternion import Quaternion
 
 class PathPlanner:
-    def __init__(self, max_acc, sys_max_vel):
-        """_summary_
+    def __init__(self, max_acc: float, sys_max_vel: float) -> None:
+        """Initialize the PathPlanner.
 
         Args:
-            max_acc (_type_): _description_
+            max_acc (float): Maximum acceleration for the motion profile.
+            sys_max_vel (float): System's maximum velocity.
+
+        Attributes:
+            linear (bool): Indicates whether the motion is linear.
+            saved_paths (list): A list to store saved paths.
+            max_acc (float): Maximum acceleration for the motion profile.
+            sys_max_vel (float): System's maximum velocity.
+            linearVelocityProfile (MotionProfileGenerator): Instance of MotionProfileGenerator
+                responsible for generating linear velocity profiles.
         """
+
         self.linear = True
         self.saved_paths = []
         self.max_acc = max_acc
         self.sys_max_vel = sys_max_vel
         self.linearVelocityProfile = MotionProfileGenerator(max_acc, sys_max_vel, "linearVelocityProfile")
 
-
-    def points_on_linear_path_3d(self, start_point: tuple, end_point: tuple):
-        """
-        Generate points on a linear 3D path between two given points.
+    def XY_angle(self, vector1: np.array, vector2: np.array) -> float:
+        """Calculate the XY angle between two vectors.
 
         Args:
-            start_point (tuple): The starting point (x, y, z).
-            end_point (tuple): The ending point (x, y, z).
+            vector1 (np.array): First vector represented as a NumPy array.
+            vector2 (np.array): Second vector represented as a NumPy array.
 
         Returns:
-            np.ndarray: An array of interpolated points along the linear path.
+            float: Angle in radians between the XY components of the two vectors.
+        """
+        # Calculate the dot product
+        dot_product = np.dot(vector1[:-1], vector2[:-1])
+
+        # Calculate the magnitudes of the vectors
+        magnitude_vector1 = np.linalg.norm(vector1[:-1])
+        magnitude_vector2 = np.linalg.norm(vector2[:-1])
+
+        # Calculate the angle in radians
+        angle_radians = np.arccos(dot_product / (magnitude_vector1 * magnitude_vector2))
+
+        # Calculate the cross product to determine orientation
+        cross_product = np.cross(vector1[:-1], vector2[:-1])
+
+        # Check the z-component of the cross product
+        if cross_product > 0:
+            # Vector2 is counterclockwise (CCW) with respect to vector1
+            return angle_radians
+        else:
+            # Vector2 is clockwise (CW) with respect to vector1
+            return -angle_radians
+
+
+    def points_on_linear_path_3d(self, start_point: tuple, end_point: tuple) -> list:
+        """Generate points on a linear 3D path between two given points.
+
+        Args:
+            start_point (tuple): Starting point in 3D space.
+            end_point (tuple): Ending point in 3D space.
+
+        Returns:
+            list: List of 3D points representing the linear path.
         """
         
         start_point = np.array(start_point)
@@ -39,7 +79,7 @@ class PathPlanner:
         sys_time = self.linearVelocityProfile.move_time
 
         # Generate time values for motion profile
-        time_values = np.arange(0, sys_time, 0.03)
+        time_values = np.arange(0, sys_time, 0.01)
         self.linearVelocityProfile.Generator_profile(time_values)
         t_values = self.linearVelocityProfile.displacement
 
@@ -50,9 +90,19 @@ class PathPlanner:
         return interpolated_points   
         
 
-    def calculate_initial_final_angle_magnitude(self, start, end):
+    def calculate_initial_final_angle_magnitude(self, start: np.array, end: np.array) -> tuple:
+        """Calculate initial and final angles and magnitudes between two vectors.
+
+        Args:
+            start (np.array): Initial vector represented as a NumPy array.
+            end (np.array): Final vector represented as a NumPy array.
+
+        Returns:
+            tuple: A tuple containing initial angle, final angle, initial magnitude, and final magnitude.
+        """
+        
         angle_init = np.degrees(np.arctan2(start[1], start[0]))
-        angle_final = np.degrees(np.arctan2(end[1], end[0]))
+        angle_final = angle_init + np.degrees(self.XY_angle(start, end))
 
         magnitude_init = np.linalg.norm(start[:2])
         magnitude_final = np.linalg.norm(end[:2])
@@ -60,8 +110,23 @@ class PathPlanner:
         return angle_init, angle_final, magnitude_init, magnitude_final
 
 
-    def calculate_trajectory_circular_path_3d(self, start, end, max_acc, max_vel):
-        """Calculate trajectory values and profiles with error handling."""
+    def calculate_trajectory_circular_path_3d(self, start: np.array, end: np.array, max_acc: float, max_vel: float) -> tuple:
+        """Calculate the trajectory for a circular 3D path between two points.
+
+        Args:
+            start (np.array): Starting position represented as a NumPy array.
+            end (np.array): Ending position represented as a NumPy array.
+            max_acc (float): Maximum acceleration for the motion profiles.
+            max_vel (float): Maximum velocity for the motion profiles.
+
+        Raises:
+            ValueError: Raised for invalid input values.
+            Exception: Raised for unexpected errors during trajectory calculation.
+
+        Returns:
+            tuple: A tuple containing the calculated values for angle, magnitudes, and height.
+        """
+        
         try:
             angle_init, angle_final, magnitude_init, magnitude_final = self.calculate_initial_final_angle_magnitude(start, end)
 
@@ -70,7 +135,7 @@ class PathPlanner:
             height_profile = MotionProfileGenerator(max_acc, max_vel, "height_profile")
 
             # Set displacements for each profile
-            height_profile.Set_displacement(abs(end[2] - start[2]))
+            height_profile.Set_displacement(abs(end[-1] - start[-1]))
             magnitude_profile.Set_displacement(abs(magnitude_final - magnitude_init))
             angle_profile.Set_displacement(abs(angle_final - angle_init))
 
@@ -90,7 +155,7 @@ class PathPlanner:
             magnitude_profile.Generator_profile(time_values)
             angle_profile.Generator_profile(time_values)
 
-            # Calculate final values for each dimension
+             # Calculate final values for each dimension
             angle_values = angle_init + angle_profile.displacement if angle_final - angle_init > 0 else angle_init - angle_profile.displacement
             magnitudes_values = magnitude_init + magnitude_profile.displacement if magnitude_final - magnitude_init > 0 else magnitude_init - magnitude_profile.displacement
             height_values = start[2] + height_profile.displacement if end[-1] - start[-1] > 0 else start[2] - height_profile.displacement
@@ -107,7 +172,7 @@ class PathPlanner:
             raise e
 
 
-    def points_on_circular_path_3d(self, start_point: tuple, end_point: tuple):
+    def points_on_circular_path_3d(self, start_point: tuple, end_point: tuple)-> np.ndarray:
         """
         Generate points on a circular 3D path between two given points.
 
@@ -127,7 +192,7 @@ class PathPlanner:
         return np.column_stack((x_coordinates, y_coordinates, z_coordinates))
 
 
-    def generate_path(self, start_point, end_point, linear: bool):
+    def generate_path(self, start_point: np.array, end_point: np.array, linear: bool) -> np.ndarray:
         """
         Generate a 3D path between two points and store it.
 
@@ -151,7 +216,7 @@ class PathPlanner:
 
         return self.points
 
-    def generate_path(self, start_point, end_point, linear: bool):
+    def generate_path(self, start_point: np.array, end_point: np.array, linear: bool) -> np.ndarray:
         """
         Generate a 3D path between two points and store it.
 
@@ -179,7 +244,7 @@ class PathPlanner:
 
 
     
-    def plot_3d_path(self):
+    def plot_3d_path(self) -> None:
         """
         Plot and visualize the 3D paths.
         """
@@ -202,10 +267,6 @@ class PathPlanner:
             y_min, y_max = min(y_min, np.min(y_coords)), max(y_max, np.max(y_coords))
             z_min, z_max = min(z_min, np.min(z_coords)), max(z_max, np.max(z_coords))
 
-        # Add labels for the start and end points
-        ax.text(*self.start_point, 'Start', color='black', fontsize=10)
-        ax.text(*self.end_point, 'End', color='black', fontsize=10)
-
         ax.scatter([0], [0], color="red")
 
         # Customize azimuth (horizontal viewing angle) and elevation (vertical viewing angle)
@@ -222,19 +283,20 @@ class PathPlanner:
         # Show the plot
         plt.show()
 
-    def clear_saved_paths(self):
+    def clear_saved_paths(self)->None:
         """Clear the list of saved paths."""
         self.saved_paths = []
 
 def main():
     # Initialize PathPlanner with maximum acceleration
-    max_acc = 50
+    max_acc = 25
     max_vel = 50
-    start = (5, 5, -5)
-    end = (-2, -2, 5)
+    start =  (-0.51, -0.50, 0.0)
+    end = (0.0, 0.7, 0.6)
+
     path_planner = PathPlanner(max_acc, max_vel)
 
-    # # Generate and plot a linear path
+    # Generate and plot a linear path
     path_planner.generate_path(start, end, linear=True)
     
 

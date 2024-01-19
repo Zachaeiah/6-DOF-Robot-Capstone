@@ -48,7 +48,7 @@
       <child link="sholder_link"/>
       <origin xyz="0 0 0.0931375" rpy="0 0 0" />
       <axis xyz="0 1 0"/>
-      <limit lower="-1.57" upper="1.57" />
+      <limit lower="-3.141592654" upper="3.141592654" />
     </joint>
 
     <joint name="sholder_to_elbow_joint" type="fixed">

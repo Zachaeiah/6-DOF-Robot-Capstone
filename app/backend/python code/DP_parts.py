@@ -134,7 +134,7 @@ def demo_add_parts(parts_db):
             'HalfWeight': 40.0,
             'EmptyWeight': 8.0,
             'CurrentWeight': 75.0,
-            'InService': 1,
+            'InService': 0,
         },
         {   
             'PartID': 1,
@@ -148,7 +148,7 @@ def demo_add_parts(parts_db):
             'HalfWeight': 25.0,
             'EmptyWeight': 5.0,
             'CurrentWeight': 45.0,
-            'InService': 1,
+            'InService': 0,
         },
         {   
             'PartID': 2,
@@ -176,7 +176,7 @@ def demo_add_parts(parts_db):
             'HalfWeight': 35.0,
             'EmptyWeight': 7.0,
             'CurrentWeight': 60.0,
-            'InService': 1,
+            'InService': 0,
         },
         {   
             'PartID': 4,
@@ -190,7 +190,7 @@ def demo_add_parts(parts_db):
             'HalfWeight': 40.0,
             'EmptyWeight': 8.0,
             'CurrentWeight': 75.0,
-            'InService': 1,
+            'InService': 0,
         },
         {   
             'PartID': 5,
@@ -204,7 +204,7 @@ def demo_add_parts(parts_db):
             'HalfWeight': 25.0,
             'EmptyWeight': 5.0,
             'CurrentWeight': 45.0,
-            'InService': 1,
+            'InService': 0,
         },
         {   
             'PartID': 6,
@@ -232,7 +232,7 @@ def demo_add_parts(parts_db):
             'HalfWeight': 35.0,
             'EmptyWeight': 7.0,
             'CurrentWeight': 60.0,
-            'InService': 1,
+            'InService': 0,
         }
     ]
 

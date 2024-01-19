@@ -59,7 +59,9 @@ def main():
 
             new_times.append(motor_time)
 
-            print(f"motor: {index} steps_per_degree: {steps_per_degree:.5f} seconds_per_step: {seconds_per_step} number_of_steps: {number_of_steps:.5f} motor_time_seconds: {motor_time:.5f}")
+            print(1/motor_time)
+
+            #print(f"motor: {index} steps_per_degree: {steps_per_degree:.5f} seconds_per_step: {seconds_per_step} number_of_steps: {number_of_steps:.5f} motor_time_seconds: {motor_time:.5f}")
 
 
 

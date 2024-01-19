@@ -1,6 +1,8 @@
 """A script to manage the robotic arm and control its movements."""
 import numpy as np
 import timeit
+import matplotlib.pyplot as plt
+import matplotlib.animation as animation
 from DP_parts import *
 from ik_solver import *
 from intrerpolation import *
@@ -8,12 +10,71 @@ from MotorManager import *
 from Motors import *
 from VelocityPFP import *
 
+def rotate_x(matrix, angle_x):
+    """Rotate a 3x3 matrix around the X-axis."""
+    rotation_matrix_x = np.array([
+        [1, 0, 0],
+        [0, np.cos(angle_x), -np.sin(angle_x)],
+        [0, np.sin(angle_x), np.cos(angle_x)]
+    ])
+    rotated_matrix = np.dot(rotation_matrix_x, matrix)
+    return rotated_matrix
+
+def rotate_y(matrix, angle_y):
+    """Rotate a 3x3 matrix around the Y-axis."""
+    rotation_matrix_y = np.array([
+        [np.cos(angle_y), 0, np.sin(angle_y)],
+        [0, 1, 0],
+        [-np.sin(angle_y), 0, np.cos(angle_y)]
+    ])
+    rotated_matrix = np.dot(rotation_matrix_y, matrix)
+    return rotated_matrix
+
+def rotate_z(matrix, angle_z):
+    """Rotate a 3x3 matrix around the Z-axis."""
+    rotation_matrix_z = np.array([
+        [np.cos(angle_z), -np.sin(angle_z), 0],
+        [np.sin(angle_z), np.cos(angle_z), 0],
+        [0, 0, 1]
+    ])
+    rotated_matrix = np.dot(rotation_matrix_z, matrix)
+    return rotated_matrix
+
+def translate_point_along_z(point, orientation_matrix, translation_distance):
+    final_coordinates = np.dot(orientation_matrix, [0, 0, translation_distance]) + point
+
+    return final_coordinates
+
+def XY_angle(vector1, vector2):
+    # Calculate the dot product
+    dot_product = np.dot(vector1[:-1], vector2[:-1])
+
+    # Calculate the magnitudes of the vectors
+    magnitude_vector1 = np.linalg.norm(vector1[:-1])
+    magnitude_vector2 = np.linalg.norm(vector2[:-1])
+
+    # Calculate the angle in radians
+    angle_radians = np.arccos(dot_product / (magnitude_vector1 * magnitude_vector2))
+
+    # Calculate the cross product to determine orientation
+    cross_product = np.cross(vector1[:-1], vector2[:-1])
+
+    # Check the z-component of the cross product
+    if cross_product > 0:
+        # Vector2 is counterclockwise (CCW) with respect to vector1
+        return angle_radians
+    else:
+        # Vector2 is clockwise (CW) with respect to vector1
+        return -angle_radians
+
+
 LARGE_FONT = ("Verdana", 12)
 DROP_OFF_ZONE = (-0.51, -0.50, 0.0)
-DROP_OFF_ORINT = [0, -1, 0]
+DROP_OFF_ORINT = rotate_x(np.eye(3), np.pi/2)
+IDLE_POSITION = (0.0, -0.43209168, -1.21891881, 0.0, -1.92214302,  1.138704, 0.0, -1.57057404,  0.0)
 
 PICK_UP_ZONE = (0.51, -0.50, 0.00)
-GRAB_DISTANCE = 0.10
+GRAB_DISTANCE_Z = [0, 0, 0.1]
 NORTH_WALL = (0.0, 1.0, 0.0)
 EAST_WALL = (1.0, 0.0, 0.0)
 WEST_WALL = (-1.0, 0.0, 0.0)
@@ -55,7 +116,7 @@ def main1():
                     """Retrieve the list of parts to fetch."""
 
                     # Array of part names to fetch
-                    part_names_to_fetch = ['Part0', 'Part1']
+                    part_names_to_fetch = ['Part0','Part1', 'Part2', 'Part3']
                     state = 1  # Transition to the next state
 
                 elif state == 1:
@@ -87,7 +148,7 @@ def main1():
                     """Retrieve and store locations of all parts."""
 
                     locations = {}  # Dictionary to store locations of each part
-                    orientations = {}
+                    orientations = {}  # Dictionary to store orientations of each part
 
                     for part_name, part_info in part_info_dict.items():
                         location = (part_info['LocationX'], part_info['LocationY'], part_info['LocationZ'])
@@ -109,41 +170,84 @@ def main1():
                     max_acc = 50
                     max_vel = 50
                     travle_paths = []
-                    gripper_orientation = []
-                    gripper_alinements = []
+                    travle_orientation = []
+                    travle_alinements = []
+                    
 
                     planner = PathPlanner(max_acc, max_vel)
 
                     drop_off_zone = np.array(DROP_OFF_ZONE)
 
                     for location, orientation in zip(locations.values(), orientations.values()):
-                        location = np.array(location)
-                        orientation = np.array(orientation)
-
+                    
                         T1 = planner.generate_path(drop_off_zone, location, linear=False)
-                        T2 = planner.generate_path(location, location + GRAB_DISTANCE*orientation, linear=True)
-                        T3 = planner.generate_path(location + GRAB_DISTANCE*orientation, location, linear=True)
+
+                        print(location, orientation)
+
+                        if (orientation == EAST_WALL):
+                            if (XY_angle(drop_off_zone, location) >= 0):
+                                delta_angles = np.linspace(0, np.pi/2, len(T1))
+                            else:
+                                delta_angles = np.linspace(0, -np.pi/2, len(T1))
+                        
+                        elif (orientation == NORTH_WALL):
+                            if (XY_angle(drop_off_zone, location) >= 0):
+                                delta_angles = np.linspace(0, np.pi, len(T1))
+                            else:
+                                delta_angles = np.linspace(0, -np.pi, len(T1))
+
+                        elif (orientation == WEST_WALL):
+                            if (XY_angle(drop_off_zone, location) >= 0):
+                                delta_angles = np.linspace(0, np.pi/2, len(T1))
+                            else:
+                                delta_angles = np.linspace(0, -np.pi/2, len(T1))
+
+                        elif (orientation == SOUNTH_WALL):
+                            if (XY_angle(drop_off_zone, location) <= np.pi):
+                                delta_angles = np.linspace(0, 0, len(T1))
+                            else:
+                                delta_angles = np.linspace(0, 0, len(T1))
+                        else:
+                            print("No angle")
+                            delta_angles = np.linspace(0, 0, len(T1))
+
+                        #print(np.degrees(delta_angles))
+
+                        T1_alinements = ["all" for _ in range(len(T1))]
+                        T1_orientation = [rotate_z(DROP_OFF_ORINT, rad) for rad in delta_angles]
+                        
+                        translated_point = np.dot(T1_orientation[-1], GRAB_DISTANCE_Z) + T1[-1]
+
+                        T2 = planner.generate_path(T1[-1], translated_point, linear=True)
+
+                        T2_alinements = ["all" for _ in range(len(T2))]
+                        T2_orientation = [T1_orientation[-1] for _ in range(len(T2))]
+
+                        T3 = planner.generate_path(T2[-1], location, linear=True)
+                        T3_alinements = ["all" for _ in range(len(T3))]
+                        T3_orientation = [T2_orientation[-1] for _ in range(len(T3))]
+                        
+
                         T4 = planner.generate_path(location, drop_off_zone, linear=False)
+                        T4_alinements = ["all" for _ in range(len(T4))]
+                        T4_orientation = [rotate_z(T3_orientation[-1], -rad) for rad in delta_angles]
+
                         travle_paths.extend(T1)
                         travle_paths.extend(T2)
                         travle_paths.extend(T3)
                         travle_paths.extend(T4)
 
-                        
+                        travle_orientation.extend(T1_orientation)
+                        travle_orientation.extend(T2_orientation)
+                        travle_orientation.extend(T3_orientation)
+                        travle_orientation.extend(T4_orientation)
 
-                        for _ in range (len(travle_paths)):
-                            gripper_alinements.append([0, 0, 1])
-                            gripper_orientation.append("Y")
 
-                        # if (orientation == NORTH_WALL) or (orientation == SOUNTH_WALL):
-                        #     gripper_orientation = np.append(gripper_orientation, np.full(len(current_path), "Y"))
-                            
+                        travle_alinements.extend(T1_alinements)
+                        travle_alinements.extend(T2_alinements)
+                        travle_alinements.extend(T3_alinements)
+                        travle_alinements.extend(T4_alinements)
 
-                        # elif (orientation == EAST_WALL) or (orientation == WEST_WALL):
-                        #     gripper_orientation = np.append(gripper_orientation, np.full(len(current_path), "Y"))
-                            
-
-                    
                     # Plot the 3D paths
                     planner.plot_3d_path()
 
@@ -157,12 +261,12 @@ def main1():
 
                     # Initialize the RobotArm with the URDF file path
                     urdf_file_path = "E:\\Capstone\\app\\backend\\python code\\urdf_tes1.urdf"
-                    robot = RobotArm(urdf_file_path)
+                    robot = RobotArm(urdf_file_path, IDLE_POSITION)
 
             
                     print("animateing")
-                    # Animate the robotic arm along the generated path
-                    robot.animate_robot(travle_paths, gripper_alinements, gripper_orientation)
+
+                    #robot.animate_ik(travle_paths, travle_orientation, travle_alinements, interval=1)
 
                     state = 5
                     elapsed_time = timeit.default_timer() - start_time
@@ -179,6 +283,8 @@ def main1():
     except Exception as e:
         print(f"Error: {e}")
         run = False
+
+
 
 
 if __name__ == "__main__":

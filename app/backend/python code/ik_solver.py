@@ -4,11 +4,12 @@ import ikpy.utils.plot as plot_utils
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
+from scipy.spatial.transform import Rotation as R
 import random
 import time
 
 class RobotArm:
-    def __init__(self, urdf_file_path: str) -> None:
+    def __init__(self, urdf_file_path: str = None, initial_position: list = None) -> None:
         """Initialize the RobotArm object.
 
         Args:
@@ -21,6 +22,7 @@ class RobotArm:
             # Create a robot chain from the URDF file
             self.my_chain = ikpy.chain.Chain.from_urdf_file(urdf_file_path, active_links_mask=[False, True, True, False, True, True, False, True, True])
             self.last_angles = None
+            self.initial_position = initial_position
         except Exception as e:
             raise ValueError(f"Error initializing the robot arm: {e}")
 
@@ -62,32 +64,78 @@ class RobotArm:
                     print(f"An unexpected error occurred during inverse kinematics calculation: {e}")
                     yield []  # Return an empty list if an error occurs
 
-    def plot_robot(self, target_positions: list, target_orientations: list, orientation_modes: list) -> None:
-        """Plot the robot arm in 3D.
+    def calculate_fk(
+        self,
+        joint_angles: list,
+        batch_size: int = 5
+    ) -> iter:
+        """Calculate forward kinematics for a list of joint angles.
 
         Args:
-            target_positions (list): List of target positions.
-            target_orientations (list): List of target orientations.
-            orientation_modes (list): List of orientation modes.
-        """
-        fig, ax = plot_utils.init_3d_figure()
-        fig.set_figheight(9)
-        fig.set_figwidth(13)
-        for i in range(len(target_positions)):
-            target_position = target_positions[i]
-            target_orientation = target_orientations[i]
-            orientation_mode = orientation_modes[i]
-            ik_solution = list(self.calculate_ik([target_position], [target_orientation], [orientation_mode], precision=2, batch_size=1))[0]
-            
-            # Check if ik_solution is not None or an empty list before plotting
-            if ik_solution:
-                self.my_chain.plot(np.radians(ik_solution), ax, target=np.array(target_position, dtype=np.float32))
-        plt.xlim(-1, 1)
-        plt.ylim(-1, 1)
-        ax.set_zlim(-1, 1)
-        plt.show()
+            joint_angles (list): List of joint angles.
+            precision (int, optional): Precision of the angles. Defaults to 3.
+            batch_size (int, optional): Batch size for calculations. Defaults to 5.
 
-    def animate_robot(
+        Returns:
+            Iterator[Tuple[np.ndarray, np.ndarray]]: An iterator yielding tuples of positions and orientations.
+
+        Yields:
+            Tuple[np.ndarray, np.ndarray]: A tuple containing positions (3D) and orientations (3x3 matrix).
+        """
+        for i in range(0, len(joint_angles), batch_size):
+            joint_batch = joint_angles[i:i + batch_size]
+            for joints in joint_batch:
+                try:
+                    # Convert joint angles to radians
+                    joint_angles_rad = np.radians(joints)
+
+                    # Calculate forward kinematics
+                    end_effector = self.my_chain.forward_kinematics(joint_angles_rad)
+                    orientation = end_effector[:3, :3]
+                    positions = end_effector[:3, 3]
+
+                    yield positions, orientation
+
+                except Exception as e:
+                    print(f"An unexpected error occurred during forward kinematics calculation: {e}")
+                    yield np.array([]), np.array([])  # Return empty arrays if an error occurs
+
+    def animate_fk(
+        self,
+        joint_angles_trajectory: list,
+        interval: float = 0.1
+    ) -> None:
+        """Animate the forward kinematics of the robot arm using ikpy plotting.
+
+        Args:
+            joint_angles_trajectory (list): List of joint angles over time.
+            interval (float, optional): Time interval between updates in seconds. Defaults to 0.1.
+        """
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
+        ax.set_xlim3d(-1, 1)
+        ax.set_ylim3d(-1, 1)
+        ax.set_zlim3d(0, 2)
+
+        # Plot the robot arm once for initialization
+        self.my_chain.plot(self.last_angles, ax, target=self.my_chain.forward_kinematics(self.last_angles))
+
+        def update(frame):
+            ax.cla()  # Clear the previous frame
+            joint_angles = joint_angles_trajectory[frame]
+
+            # Plot the robot arm with the updated joint angles
+            self.my_chain.plot(joint_angles, ax, target=self.my_chain.forward_kinematics(joint_angles))
+
+            ax.set_xlabel('X')
+            ax.set_ylabel('Y')
+            ax.set_zlabel('Z')
+            plt.title(f'Frame {frame}')
+
+        ani = animation.FuncAnimation(fig, update, frames=len(joint_angles_trajectory), interval=interval, repeat=False)
+        plt.show()
+    
+    def animate_ik(
         self,
         target_positions: list,
         target_orientations: list,
@@ -98,6 +146,12 @@ class RobotArm:
     ) -> None:
         fig, ax = plt.subplots(subplot_kw={'projection': '3d'}, figsize=(12, 8))
 
+        # Initialize a line for the trailing plot
+        line, = ax.plot([], [], [], color='red', marker='o')
+
+        
+
+
         def update(frame: int) -> None:
             """Update the animation frame.
 
@@ -106,18 +160,30 @@ class RobotArm:
             """
             ax.clear()
 
+            trailing_x = [tup[0] for tup in target_positions[frame-7:frame]]
+            trailing_y = [tup[1] for tup in target_positions[frame-7:frame]]
+            trailing_z = [tup[2] for tup in target_positions[frame-7:frame]]
+            ax.scatter(trailing_x, trailing_y, trailing_z, color="red", s=10, marker='o', alpha=0.1)
+
             target_position = target_positions[frame]
             target_orientation = target_orientations[frame]
             orientation_mode = orientation_modes[frame]
+            
             ik_solution = list(self.calculate_ik([target_position], [target_orientation], [orientation_mode], precision=2, batch_size=1))[0]
 
             self.my_chain.plot(np.radians(ik_solution), ax, target=np.array(target_position, dtype=np.float32))
+
+            # Add arrows at the origin for the axes
+            ax.quiver(0, 0, 0, 1, 0, 0, color=(0.0 , 0.5 , 0.0), arrow_length_ratio=0.05)
+            ax.quiver(0, 0, 0, 0, 1, 0, color=(0.36, 0.96, 0.96), arrow_length_ratio=0.05)
+            ax.quiver(0, 0, 0, 0, 0, 1, color=(1.0 , 0.64, 0.0), arrow_length_ratio=0.05)
+
+            ax.set_xlabel('X')
+            ax.set_ylabel('Y')
+            ax.set_zlabel('Z')
             ax.set_xlim(-1, 1)
             ax.set_ylim(-1, 1)
             ax.set_zlim(-1, 1)
-
-            # Set the view for the subplot
-            #ax.view_init(elev=30, azim=45)
 
         anim = animation.FuncAnimation(fig, update, frames=len(target_positions), interval=interval, repeat=False)
 
@@ -125,35 +191,59 @@ class RobotArm:
             anim.save(file_name, writer='pillow')
         plt.show()
 
+def rotate_x(matrix, angle_x):
+    """Rotate a 3x3 matrix around the X-axis."""
+    rotation_matrix_x = np.array([
+        [1, 0, 0],
+        [0, np.cos(angle_x), -np.sin(angle_x)],
+        [0, np.sin(angle_x), np.cos(angle_x)]
+    ])
+    rotated_matrix = np.dot(rotation_matrix_x, matrix)
+    return rotated_matrix
+
+def rotate_y(matrix, angle_y):
+    """Rotate a 3x3 matrix around the Y-axis."""
+    rotation_matrix_y = np.array([
+        [np.cos(angle_y), 0, np.sin(angle_y)],
+        [0, 1, 0],
+        [-np.sin(angle_y), 0, np.cos(angle_y)]
+    ])
+    rotated_matrix = np.dot(rotation_matrix_y, matrix)
+    return rotated_matrix
+
+def rotate_z(matrix, angle_z):
+    """Rotate a 3x3 matrix around the Z-axis."""
+    rotation_matrix_z = np.array([
+        [np.cos(angle_z), -np.sin(angle_z), 0],
+        [np.sin(angle_z), np.cos(angle_z), 0],
+        [0, 0, 1]
+    ])
+    rotated_matrix = np.dot(rotation_matrix_z, matrix)
+    return rotated_matrix
+
+# Main function for execution
 # Main function for execution
 def main():
-    # urdf_file_path = "app\\backend\\python code\\urdf_tes1.urdf"
-    # robot = RobotArm(urdf_file_path)
+    urdf_file_path = "app\\backend\\python code\\urdf_tes1.urdf"
+    initial_position = [0.0, -0.43209168, -1.21891881, 0.0, -1.92214302,  1.138704, 0.0, -1.57057404,  0.0]
+    robot = RobotArm(urdf_file_path, initial_position)
+    num_positions = 3
 
-    # # Example array of target positions
-    # target_positions = [[0.4, 0.4, 0.01*i] for i in range(1)]
+    # Example array of target positions
+    target_positions = [(-0.51, -0.50, 0.1) for i in range(num_positions)]
 
-    # # Example array of target orientations
-    # target_orientations = [[0, 0, 1] for i in range(1)]
-
-    # orientations = ["Y" for i in range(1)]
-
-    # robot.plot_robot(target_positions, target_orientations, orientations)
-
-    array1 = np.array([1, 2, 3, 4, 5, 6])
-    array2 = np.array([10, 20, 30, 40, 50, 60])
-    array2_length = 10  # Desired length of the new arrays
-
-    # Use NumPy vectorized operations for efficient interpolation
-    interpolated_arrays = np.linspace(array1, array2, array2_length)
-
-    # Transpose the result to get the desired shape
-    result = interpolated_arrays
-
-    print(result)
+    # Example array of target orientations rotating around the x-axis
+    target_orientations_x = [np.eye(3) for i in range(0, num_positions)]
 
 
-# Function for stress testing
+    alinement = ["all" for i in range(num_positions)]
+
+    robot.animate_ik(target_positions, target_orientations_x, alinement)
+
+if __name__ == "__main__":
+    main()
+
+    # Function for stress testing
 def stress_test():
     urdf_file_path = "urdf_tes1.urdf"
     robot = RobotArm(urdf_file_path)
@@ -240,6 +330,3 @@ def run_stress_test_with_batch_range(batch_size_range):
     fig.legend(loc="upper right")
     plt.grid(True)
     plt.show()
-
-if __name__ == "__main__":
-    main()

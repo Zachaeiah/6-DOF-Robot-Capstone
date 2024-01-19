@@ -42,11 +42,13 @@ def error_handling_wrapper(func):
         except tk.TclError as tcl_error:
             # Handle TclError, which might occur for Tkinter-related issues
             error_msg = f"TclError in {func.__name__}: {str(tcl_error)}"
+            print(error_msg)
             self.popup_error(error_msg)
 
         except Exception as e:
             # Handle other unexpected errors 
             error_msg = f"Error in {func.__name__}: {str(e)}"
+            print(error_msg)
             self.popup_error(error_msg)
 
     # Copy the original function's metadata to the wrapper
@@ -56,7 +58,62 @@ def error_handling_wrapper(func):
 
     return wrapper
 
+def rotate_x(matrix, angle_x):
+    """Rotate a 3x3 matrix around the X-axis."""
+    rotation_matrix_x = np.array([
+        [1, 0, 0],
+        [0, np.cos(angle_x), -np.sin(angle_x)],
+        [0, np.sin(angle_x), np.cos(angle_x)]
+    ])
+    rotated_matrix = np.dot(rotation_matrix_x, matrix)
+    return rotated_matrix
 
+def rotate_y(matrix, angle_y):
+    """Rotate a 3x3 matrix around the Y-axis."""
+    rotation_matrix_y = np.array([
+        [np.cos(angle_y), 0, np.sin(angle_y)],
+        [0, 1, 0],
+        [-np.sin(angle_y), 0, np.cos(angle_y)]
+    ])
+    rotated_matrix = np.dot(rotation_matrix_y, matrix)
+    return rotated_matrix
+
+def rotate_z(matrix, angle_z):
+    """Rotate a 3x3 matrix around the Z-axis."""
+    rotation_matrix_z = np.array([
+        [np.cos(angle_z), -np.sin(angle_z), 0],
+        [np.sin(angle_z), np.cos(angle_z), 0],
+        [0, 0, 1]
+    ])
+    rotated_matrix = np.dot(rotation_matrix_z, matrix)
+    return rotated_matrix
+
+def translate_point_along_z(point, orientation_matrix, translation_distance):
+    final_coordinates = np.dot(orientation_matrix, [0, 0, translation_distance]) + point
+
+    return final_coordinates
+
+def XY_angle(vector1, vector2):
+    # Calculate the dot product
+    dot_product = np.dot(vector1[:-1], vector2[:-1])
+
+    # Calculate the magnitudes of the vectors
+    magnitude_vector1 = np.linalg.norm(vector1[:-1])
+    magnitude_vector2 = np.linalg.norm(vector2[:-1])
+
+    # Calculate the angle in radians
+    angle_radians = np.arccos(dot_product / (magnitude_vector1 * magnitude_vector2))
+
+    # Calculate the cross product to determine orientation
+    cross_product = np.cross(vector1[:-1], vector2[:-1])
+
+    # Check the z-component of the cross product
+    if cross_product > 0:
+        # Vector2 is counterclockwise (CCW) with respect to vector1
+        return angle_radians
+    else:
+        # Vector2 is clockwise (CW) with respect to vector1
+        return -angle_radians
 
 class RobotCart(tk.Tk):
     """Main application class representing a robot control interface.
@@ -96,7 +153,7 @@ class RobotCart(tk.Tk):
             frame.grid(row=0, column=0, sticky="nsew")
 
         # Show the working page by default
-        self.show_frame(MainUserPage)
+        self.show_frame(DataBacePannle)
 
         # Create a PartsDatabase instance and create the Parts table
         try:
@@ -382,7 +439,6 @@ class SecurityPage(PageBase):
             # If the credentials are incorrect, show a message
             messagebox.showerror("Login Failed", "Incorrect username or password")
 
-
 class MainUserPage(PageBase):
     """Page for selecting and managing parts.
 
@@ -497,7 +553,10 @@ class MainUserPage(PageBase):
             self.parts_treeview.tag_configure('evenrow', background='lightblue')
             self.parts_treeview.tag_configure('lowweight', background='lightcoral')  # Add a tag for low weight
 
-            # Iterate through the retrieved data and insert it into the Treeview
+            # Clear existing content in the parts_treeview
+            self.parts_treeview.delete(*self.parts_treeview.get_children())
+
+            # Iterate through the retrieved data and insert it into the parts_treeview
             for idx, record in enumerate(data):
                 # Determine the tag for alternate row coloring
                 tag = 'evenrow' if idx % 2 == 0 else 'oddrow'
@@ -505,10 +564,10 @@ class MainUserPage(PageBase):
                 service = "In Service" if record[13] == 1 else " "
 
                 # Check if CurrentWeight is below 5 and set a different tag for low weight
-                if record[12] < record[10]:
+                if record[12] < 5:  # Replace 5 with the actual threshold for low weight
                     tag = 'lowweight'
 
-                # Insert the data into the Treeview with specified tags
+                # Insert the data into the parts_treeview with specified tags
                 self.parts_treeview.insert(parent='', index='end', iid=idx, text='', values=(record[1], record[0], service, record[12]), tags=(tag,))
 
         finally:
@@ -1110,11 +1169,14 @@ class DataBacePannle(PageBase):
 
         """
         try:
+            # Clear existing content in the parts_treeview
+            self.parts_treeview.delete(*self.parts_treeview.get_children())
+
             # Establish a connection to the Parts database
             self.parts_db.connect()
-    
+
             # Execute a SQL query to select all records from the Parts table and order by the second column (index 1)
-            self.parts_db.cursor.execute("SELECT * FROM Parts ORDER BY PartName")  # Replace 'column_name' with the actual column name you want to sort by
+            self.parts_db.cursor.execute("SELECT * FROM Parts ORDER BY PartName")
 
             # Fetch all the data from the executed query
             data = self.parts_db.cursor.fetchall()
@@ -1158,17 +1220,21 @@ class DataBacePannle(PageBase):
         button_frame = tk.Frame(self.content_frame)  # Change 'self' to 'self.content_frame'
         button_frame.grid(row=3, column=0, columnspan=2, pady=10, sticky="nsew")  # Use 'grid' instead of 'pack'
 
+        # Button to return to Part Selection
+        return_button = tk.Button(button_frame, text="Part Selection", command=lambda: controller.show_frame(MainUserPage))
+        return_button.grid(row=0, column=0, padx=10, pady=10, sticky="nw")
+
         # Create a button to refresh the data
         refresh_button = tk.Button(button_frame, text="Refresh Data", command=self.load_data, bg='#4CAF50')
-        refresh_button.grid(row=0, column=0, padx=10, pady=10)
+        refresh_button.grid(row=0, column=1, padx=10, pady=10)
 
         # Create a button to search the data
         search_button = tk.Button(button_frame, text="Search Data", command=self.search_data, bg='#2196F3')
-        search_button.grid(row=0, column=1, padx=10, pady=10)
+        search_button.grid(row=0, column=2, padx=10, pady=10)
 
         # Button to save and edit motor data
         edit_motor_button = tk.Button(button_frame, text="Save Edit", command = self.update_part_data)
-        edit_motor_button.grid(row=0, column=2, padx=10, pady=10)
+        edit_motor_button.grid(row=0, column=3, padx=10, pady=10)
 
     @error_handling_wrapper
     def parts_entry_boxes(self) -> None:
@@ -1227,7 +1293,7 @@ class DataBacePannle(PageBase):
         self.OrientationZ.set(part_data[8])
         self.FullWeight.set(part_data[9])
         self.HalfWeight.set(part_data[10])
-        self.EmptyWeight.set(part_data[11])  # Fixed typo: use part_data[11] instead of part_data[1]
+        self.EmptyWeight.set(part_data[11]) 
         self.CurrentWeight.set(part_data[12])
         self.InService.set(part_data[13]) 
 
@@ -1452,12 +1518,18 @@ class MoshionPlanningPage(PageBase):
         super().__init__(parent, controller, "Motion Verification")
 
         # Define drop-off and pick-up zones in 3D space
-        self.DROP_OFF_ZONE = (-0.50, -0.100, 0.0)
-        self.PICK_UP_ZONE = (0.50, -0.100, 0.50)
+        self.DROP_OFF_ZONE = [-0.51, -0.50, 0.0]
+        self.PICK_UP_ZONE = [0.50, -0.50, 0.0]
 
-        # Create a canvas for displaying 3D paths
-        self.canvas_frame = ttk.Frame(self.content_frame)
-        self.canvas_frame.grid(row=0, column=0, columnspan=2, pady=10, sticky="nsew")
+        self.DROP_OFF_ORINT = rotate_x(np.eye(3), np.pi/2)
+        self.IDLE_POSITION = (0.0, -0.43209168, -1.21891881, 0.0, -1.92214302,  1.138704, 0.0, -1.57057404,  0.0)
+        self.GRAB_DISTANCE_Z = [0, 0, 0.1]
+        self.NORTH_WALL = (0.0, 1.0, 0.0)
+        self.EAST_WALL = (1.0, 0.0, 0.0)
+        self.WEST_WALL = (-1.0, 0.0, 0.0)
+        self.SOUNTH_WALL = (0.0, -1.0, 0.0)
+        max_acc = 50
+        max_vel = 50
 
         # Set the default size for figures in the canvas
         self.figsizes = (8, 6)
@@ -1469,13 +1541,32 @@ class MoshionPlanningPage(PageBase):
         self.part_info_dict = {}
 
         # Dictionary to store locations of each part
-        self.locations = {}
+        self.locations = {}  
+
+        # Dictionary to store orientations of each part
+        self.orientations = {}  
 
         # List to store part names to fetch
         self.part_names_to_fetch = []
 
+        # list to stor the path of the robot
+        self.travle_paths = []
+
+        # list of the orientations alone the
+        self.travle_orientation = []
+
+        # what axix to fix alone the path
+        self.travle_alinements = []
+
         # Create a PartsDatabase instance for handling parts data
         self.parts_db = PartsDatabase()
+
+        # Create a pth panner for moshion planning
+        self.planner = PathPlanner(max_acc, max_vel)
+
+        # Initialize the RobotArm with the URDF file path
+        urdf_file_path = "E:\\Capstone\\app\\backend\\python code\\urdf_tes1.urdf"
+        self.robot = RobotArm(urdf_file_path, self.IDLE_POSITION)
 
         # Create buttons for interaction with available parts
         self.create_buttons(controller)
@@ -1547,9 +1638,12 @@ class MoshionPlanningPage(PageBase):
 
         Iterate through part_info_dict and extract the location information for each part, storing it in the locations dictionary.
         """
+
         for part_name, part_info in self.part_info_dict.items():
             location = (part_info['LocationX'], part_info['LocationY'], part_info['LocationZ'])
+            orientation = (part_info['Orientation'][0], part_info['Orientation'][1], part_info['Orientation'][2])
             self.locations[part_name] = location
+            self.orientations[part_name] = orientation
 
         # Proceed to generate the robot path using the collected part locations
         self.generate_robot_path()
@@ -1557,120 +1651,89 @@ class MoshionPlanningPage(PageBase):
     @error_handling_wrapper
     def generate_robot_path(self):
         """Generate paths and velocity profiles for each part."""
-        max_acc = 100
-        max_vel = 100
-        planner = PathPlanner(max_acc, max_vel)
 
-        # Pre-allocate space for direction vectors and paths
-        self.direction_vectors = np.zeros((len(self.locations), 3))
-        self.paths = []
+        for location, orientation in zip(self.locations.values(), self.orientations.values()):
 
-        # Calculate direction vectors and generate paths
-        for idx, (part_name, location) in enumerate(self.locations.items()):
-            self.direction_vectors[idx, :] = np.array(location) / np.linalg.norm(location)
-            self.paths.append(planner.generate_path(location, self.DROP_OFF_ZONE, linear=False))
+            print(location, orientation)
+        
+            T1 = self.planner.generate_path(self.DROP_OFF_ZONE, location, linear=False)
 
+            if (orientation == self.EAST_WALL):
+                if (XY_angle(self.DROP_OFF_ZONE, location) >= 0):
+                    delta_angles = np.linspace(0, np.pi/2, len(T1))
+                else:
+                    delta_angles = np.linspace(0, -np.pi/2, len(T1))
+            
+            elif (orientation == self.NORTH_WALL):
+                if (XY_angle(self.DROP_OFF_ZONE, location) >= 0):
+                    delta_angles = np.linspace(0, np.pi, len(T1))
+                else:
+                    delta_angles = np.linspace(0, -np.pi, len(T1))
+
+            elif (orientation == self.WEST_WALL):
+                if (XY_angle(self.DROP_OFF_ZONE, location) >= 0):
+                    delta_angles = np.linspace(0, np.pi/2, len(T1))
+                else:
+                    delta_angles = np.linspace(0, -np.pi/2, len(T1))
+
+            elif (orientation == self.SOUNTH_WALL):
+                if (XY_angle(self.DROP_OFF_ZONE, location) <= np.pi):
+                    delta_angles = np.linspace(0, 0, len(T1))
+                else:
+                    delta_angles = np.linspace(0, 0, len(T1))
+            else:
+                print("No angle")
+                delta_angles = np.linspace(0, 0, len(T1))
+
+            T1_alinements = ["all" for _ in range(len(T1))]
+            T1_orientation = [rotate_z(self.DROP_OFF_ORINT, rad) for rad in delta_angles]
+            
+            translated_point = np.dot(T1_orientation[-1], self.GRAB_DISTANCE_Z) + location
+
+            T2 = self.planner.generate_path(T1[-1], translated_point, linear=True)
+            T2_alinements = ["all" for _ in range(len(T2))]
+            T2_orientation = [T1_orientation[-1] for _ in range(len(T2))]
+
+            T3 = self.planner.generate_path(T2[-1], location, linear=True)
+            T3_alinements = ["all" for _ in range(len(T3))]
+            T3_orientation = [T2_orientation[-1] for _ in range(len(T3))]
+            
+            T4 = self.planner.generate_path(location, self.DROP_OFF_ZONE, linear=False)
+            T4_alinements = ["all" for _ in range(len(T4))]
+            T4_orientation = [rotate_z(T3_orientation[-1], -rad) for rad in delta_angles]
+
+            self.travle_paths.extend(T1)
+            self.travle_paths.extend(T2)
+            self.travle_paths.extend(T3)
+            self.travle_paths.extend(T4)
+
+            self.travle_orientation.extend(T1_orientation)
+            self.travle_orientation.extend(T2_orientation)
+            self.travle_orientation.extend(T3_orientation)
+            self.travle_orientation.extend(T4_orientation)
+
+
+            self.travle_alinements.extend(T1_alinements)
+            self.travle_alinements.extend(T2_alinements)
+            self.travle_alinements.extend(T3_alinements)
+            self.travle_alinements.extend(T4_alinements)
+
+        # Plot the 3D paths
         self.show_path()
 
     @error_handling_wrapper
     def show_path(self):
         """Display the generated paths."""
-
-        # Create a new figure and a single 3D plot for the existing paths
-        fig_path = plt.figure(figsize = self.figsizes)
-        ax_path = fig_path.add_subplot(111, projection='3d')
-
-        # Initialize variables to store min and max values for each axis
-        x_min, x_max = float('inf'), float('-inf')
-        y_min, y_max = float('inf'), float('-inf')
-        z_min, z_max = float('inf'), float('-inf')
-
-        for path in self.paths:
-            x_coords, y_coords, z_coords = path.T
-
-            # Customize marker size and transparency
-            ax_path.scatter(x_coords, y_coords, z_coords, s=20, marker='o', alpha=0.5)
-
-            # Update min and max values for each axis
-            x_min = min(x_min, np.min(x_coords))
-            x_max = max(x_max, np.max(x_coords))
-            y_min = min(y_min, np.min(y_coords))
-            y_max = max(y_max, np.max(y_coords))
-            z_min = min(z_min, np.min(z_coords))
-            z_max = max(z_max, np.max(z_coords))
-
-        ax_path.scatter([0], [0], color="red")
-
-        # Customize azimuth (horizontal viewing angle) and elevation (vertical viewing angle)
-        ax_path.view_init(azim=-45, elev=20)
-
-        # Add grid lines
-        ax_path.grid(True)
-
-        ax_path.set_xlabel('X')
-        ax_path.set_ylabel('Y')
-        ax_path.set_zlabel('Z')
-
-        # Embed the matplotlib figure in the Tkinter window on the left side
-        canvas_path = FigureCanvasTkAgg(fig_path, master=self.canvas_frame)
-        canvas_path.draw()
-        canvas_path.get_tk_widget().pack(side=tk.LEFT, fill=tk.BOTH, expand=1)
-
-        # Show the plot in the Tkinter window
-        canvas_path.get_tk_widget().pack(side=tk.LEFT, fill=tk.BOTH, expand=1)
+        self.planner.plot_3d_path()
+        
 
     @error_handling_wrapper
     def show_animation(self):
         """Perform inverse kinematics for the generated paths and visualize the motion using RobotArm."""
 
-        # Initialize the RobotArm with the URDF file path
-        urdf_file_path = "app\\backend\\python code\\urdf_tes1.urdf"  # Replace with the actual file path
-        robot = RobotArm(urdf_file_path)
-
-        target_positions = []
-        target_orientations = []
-
-        for vector, path in enumerate(self.paths):
-            for point in path:
-                target_positions.append(point)
-                target_orientations.append([0, 0, np.pi/4])
-
         print("Animating")
 
-        # Create a new figure and a single 3D plot for the robot arm animation
-        fig_robot = plt.figure(figsize = self.figsizes)
-        ax_robot = fig_robot.add_subplot(111, projection='3d')
-
-        def update(frame, self, target_positions, target_orientations, ax):
-            """Update the animation frame.
-
-            Args:
-                frame (int): The frame number.
-                self: The current object instance.
-                target_positions (list): List of target positions.
-                target_orientations (list): List of target orientations.
-                ax: The subplot for the 3D plot.
-            """
-            ax.clear()
-
-            target_position = target_positions[frame]
-            target_orientation = target_orientations[frame]
-            ik_solution = list(robot.calculate_ik([target_position], [target_orientation], precision=2, batch_size=1))[0]
-
-            robot.my_chain.plot(np.radians(ik_solution), ax, target=np.array(target_position, dtype=np.float32))
-            ax.set_xlim(-1, 1)
-            ax.set_ylim(-1, 1)
-            ax.set_zlim(-1, 1)
-
-            # Set the view for the plot
-            # ax.view_init(elev=30, azim=45)
-
-        anim = animation.FuncAnimation(fig_robot, update, frames=len(target_positions), fargs=(self, target_positions, target_orientations, ax_robot), interval=1, repeat=False)
-
-        # Embed the Matplotlib figure in the Tkinter window on the right side
-        canvas_robot = FigureCanvasTkAgg(fig_robot, master=self.canvas_frame)
-        canvas_robot.draw()
-        canvas_robot.get_tk_widget().pack(side=tk.RIGHT, fill=tk.BOTH, expand=1)
+        self.robot.animate_ik(self.travle_paths, self.travle_orientation, self.travle_alinements)
 
 
 if __name__ == "__main__":

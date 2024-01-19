@@ -49,20 +49,24 @@ class MotionProfileGenerator:
         Args:
             move_time (float): Total time for the motion profile.
         """
-        if move_time <= 0:
+
+        if (move_time <= 0) or (self.is_moving == False):
             self.is_moving = False
         else:
             self.move_time = move_time
             try:
                 under_sqrt: float = (self.max_acc ** 2) * (move_time ** 2) - (6 * self.max_acc * self.displacement)
+                if (-1e-5 < under_sqrt < 1e-5):
+                    under_sqrt = 0
+
                 noom: float = self.max_acc * move_time - math.sqrt(under_sqrt)
                 self.max_vel = min(noom / 3, self.sys_max_vel)
             except ValueError as ve:
-                print(f"ValueError in {self.__repr__()} - Set_move_time: {ve}")
+                print(f"ValueError in {self.__repr__()}:{self.MotionProfilename} - Set_move_time: {ve}")
                 # Handle the ValueError as needed or re-raise it
                 raise
             except Exception as e:
-                print(f"An unexpected error occurred in {self.__repr__()} - Set_move_time: {e}")
+                print(f"An unexpected error occurred in {self.__repr__()}:{self.MotionProfilename} - Set_move_time: {e}")
                 # Handle the unexpected error as needed or re-raise it
                 raise
     
@@ -77,7 +81,7 @@ class MotionProfileGenerator:
         Returns:
             bool: True if the displacement is valid and motion is possible, False otherwise.
         """
-        if displacement <= 0:
+        if (displacement <= 0.0001) or (self.is_moving == False):
             self.is_moving = False
         else:
             self.displacement = displacement
@@ -106,7 +110,7 @@ class MotionProfileGenerator:
         Returns:
             float: Maximum velocity.
         """
-        if not self.is_moving:
+        if self.is_moving == False:
             return 0
         return min(self.sys_max_vel, math.sqrt(6 * self.max_acc * self.displacement) / 3)
 
@@ -118,12 +122,13 @@ class MotionProfileGenerator:
         Returns:
             float: Total time.
         """
-        if not self.is_moving:
+        if self.is_moving == False:
             return 0
         try:
             return ((3 * self.max_vel) / (2 * self.max_acc)) + (self.displacement / self.max_vel)
         except Exception as e:
             print(f"An unexpected error occurred in {self.__repr__()} - calculate_move_time: {e}")
+            return 0
             # Handle the unexpected error as needed or re-raise it
             raise
 
@@ -359,7 +364,7 @@ def plot_trajectory_3d(start, end, angle_values, magnitudes_values, height_value
 def main():
     # Example values
     start = (5, 5, -5)
-    end = (-2, -2, 5)
+    end = (5, -5, 5)
     max_acc = 25
     max_vel = 50
 
