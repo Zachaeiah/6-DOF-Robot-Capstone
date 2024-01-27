@@ -182,8 +182,6 @@ def main1():
                     
                         T1 = planner.generate_path(drop_off_zone, location, linear=False)
 
-                        print(location, orientation)
-
                         if (orientation == EAST_WALL):
                             if (XY_angle(drop_off_zone, location) >= 0):
                                 delta_angles = np.linspace(0, np.pi/2, len(T1))
@@ -249,7 +247,7 @@ def main1():
                         travle_alinements.extend(T4_alinements)
 
                     # Plot the 3D paths
-                    planner.plot_3d_path()
+                    # planner.plot_3d_path()
 
                     state = 4
                     elapsed_time = timeit.default_timer() - start_time
@@ -260,13 +258,15 @@ def main1():
                     """Perform inverse kinematics for the generated paths and visualize the motion using RobotArm."""
 
                     # Initialize the RobotArm with the URDF file path
-                    urdf_file_path = "E:\\Capstone\\app\\backend\\python code\\urdf_tes1.urdf"
+                    
+                    # urdf_file_path = "E:\\Capstone\\app\\backend\\python code\\urdf_tes1.urdf"
+                    urdf_file_path = "C:\\Users\\zachl\\Capstone2024\\app\\backend\\python code\\urdf_tes2.urdf"
                     robot = RobotArm(urdf_file_path, IDLE_POSITION)
 
             
                     print("animateing")
 
-                    #robot.animate_ik(travle_paths, travle_orientation, travle_alinements, interval=1)
+                    robot.animate_ik(travle_paths, travle_orientation, travle_alinements, interval=1)
 
                     state = 5
                     elapsed_time = timeit.default_timer() - start_time

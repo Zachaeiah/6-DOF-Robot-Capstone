@@ -69,36 +69,23 @@ class RobotArm:
         joint_angles: list,
         batch_size: int = 5
     ) -> iter:
-        """Calculate forward kinematics for a list of joint angles.
-
-        Args:
-            joint_angles (list): List of joint angles.
-            precision (int, optional): Precision of the angles. Defaults to 3.
-            batch_size (int, optional): Batch size for calculations. Defaults to 5.
-
-        Returns:
-            Iterator[Tuple[np.ndarray, np.ndarray]]: An iterator yielding tuples of positions and orientations.
-
-        Yields:
-            Tuple[np.ndarray, np.ndarray]: A tuple containing positions (3D) and orientations (3x3 matrix).
-        """
         for i in range(0, len(joint_angles), batch_size):
             joint_batch = joint_angles[i:i + batch_size]
             for joints in joint_batch:
                 try:
                     # Convert joint angles to radians
-                    joint_angles_rad = np.radians(joints)
+                    joint_angles_rad = joints
 
                     # Calculate forward kinematics
                     end_effector = self.my_chain.forward_kinematics(joint_angles_rad)
                     orientation = end_effector[:3, :3]
                     positions = end_effector[:3, 3]
 
-                    yield positions, orientation
+                    yield positions, orientation, end_effector  # Include all three values in the yield statement
 
                 except Exception as e:
                     print(f"An unexpected error occurred during forward kinematics calculation: {e}")
-                    yield np.array([]), np.array([])  # Return empty arrays if an error occurs
+                    yield np.array([]), np.array([]), np.array([])  # Return empty arrays if an error occurs
 
     def animate_fk(
         self,
@@ -111,8 +98,8 @@ class RobotArm:
             joint_angles_trajectory (list): List of joint angles over time.
             interval (float, optional): Time interval between updates in seconds. Defaults to 0.1.
         """
-        fig = plt.figure()
-        ax = fig.add_subplot(111, projection='3d')
+        fig, ax = plt.subplots(subplot_kw={'projection': '3d'}, figsize=(12, 8))
+
         ax.set_xlim3d(-1, 1)
         ax.set_ylim3d(-1, 1)
         ax.set_zlim3d(0, 2)
@@ -121,15 +108,23 @@ class RobotArm:
         self.my_chain.plot(self.last_angles, ax, target=self.my_chain.forward_kinematics(self.last_angles))
 
         def update(frame):
-            ax.cla()  # Clear the previous frame
+            ax.clear()  # Clear the previous frame
             joint_angles = joint_angles_trajectory[frame]
 
             # Plot the robot arm with the updated joint angles
             self.my_chain.plot(joint_angles, ax, target=self.my_chain.forward_kinematics(joint_angles))
 
+            # Add arrows at the origin for the axes
+            ax.quiver(0, 0, 0, 1, 0, 0, color=(0.0 , 0.5 , 0.0), arrow_length_ratio=0.05)
+            ax.quiver(0, 0, 0, 0, 1, 0, color=(0.36, 0.96, 0.96), arrow_length_ratio=0.05)
+            ax.quiver(0, 0, 0, 0, 0, 1, color=(1.0 , 0.64, 0.0), arrow_length_ratio=0.05)
+
             ax.set_xlabel('X')
             ax.set_ylabel('Y')
             ax.set_zlabel('Z')
+            ax.set_xlim(-1, 1)
+            ax.set_ylim(-1, 1)
+            ax.set_zlim(-1, 1)
             plt.title(f'Frame {frame}')
 
         ani = animation.FuncAnimation(fig, update, frames=len(joint_angles_trajectory), interval=interval, repeat=False)
@@ -224,21 +219,27 @@ def rotate_z(matrix, angle_z):
 # Main function for execution
 # Main function for execution
 def main():
-    urdf_file_path = "app\\backend\\python code\\urdf_tes1.urdf"
+    #urdf_file_path = "app\\backend\\python code\\urdf_tes1.urdf"
+    urdf_file_path = "C:\\Users\\zachl\\Capstone2024\\app\\backend\\python code\\urdf_tes2.urdf"
     initial_position = [0.0, -0.43209168, -1.21891881, 0.0, -1.92214302,  1.138704, 0.0, -1.57057404,  0.0]
     robot = RobotArm(urdf_file_path, initial_position)
-    num_positions = 3
+    num_positions = 1
 
-    # Example array of target positions
-    target_positions = [(-0.51, -0.50, 0.1) for i in range(num_positions)]
+    target = [[1.4,0,0.252] for i in range(0, num_positions)]
 
-    # Example array of target orientations rotating around the x-axis
-    target_orientations_x = [np.eye(3) for i in range(0, num_positions)]
+    orientation = [[0,0,1]  for i in range(0, num_positions)]
 
+    alinment = ["Y" for _ in range(0, num_positions)]
 
-    alinement = ["all" for i in range(num_positions)]
+    # Set self.last_angles to initial_position
+    robot.last_angles = initial_position
 
-    robot.animate_ik(target_positions, target_orientations_x, alinement)
+    IK = robot.calculate_ik(target,orientation,alinment)
+    
+    for ik in IK:
+        print(ik)
+
+    robot.animate_ik(target,orientation,alinment, interval=10)
 
 if __name__ == "__main__":
     main()

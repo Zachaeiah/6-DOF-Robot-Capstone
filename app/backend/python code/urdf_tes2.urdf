@@ -1,0 +1,178 @@
+<robot name="robot_arm">
+
+    <link name="base_link">
+    <visual>
+        <origin xyz="0.0 0.0 0.021" rpy="0.0 0.0 0.0"/>
+      <geometry>
+        <cylinder length="0.042" radius="0.05080"/>
+      </geometry>
+       <material name="red">
+            <color rgba="1.0 0.0 0.0 1.0"/>
+        </material>
+    </visual> 
+  </link>  
+
+   <link name="base_rot">
+    <visual>
+      <geometry>
+        <cylinder length="0.2107" radius="0.05080"/>
+      </geometry>
+      <material name="blue">
+            <color rgba="0.0 0.0 1.0 1.0"/>
+      </material>
+    </visual> 
+  </link>
+
+  <joint name="base_joint" type="revolute">
+      <parent link="base_link"/>
+      <child link="base_rot"/>
+      <origin xyz="0 0 0.14735" rpy="0 0 0" />
+      <axis xyz="0 0 -1"/>
+    </joint>
+
+    <!-- Define the "sholder_link" -->
+    <link name="sholder_link">
+        <visual>
+            <origin xyz="0.0 0.0 0.2947" rpy="0.0 0.0 0.0"/>
+            <geometry>
+                <cylinder length="0.535" radius="0.05080"/>
+            </geometry>
+            <material name="green">
+                <color rgba="0.0 1.0 0.0 1.0"/>
+            </material>
+        </visual>
+    </link>
+
+    <joint name="shoulder_joint" type="revolute">
+      <parent link="base_rot"/>
+      <child link="sholder_link"/>
+      <origin xyz="0 0 0.073675" rpy="0 0 0" />
+      <axis xyz="0 1 0"/>
+      <limit lower="-2.09439510" upper="2.094395102" />
+    </joint>
+
+    <joint name="sholder_to_elbow_joint" type="fixed">
+        <origin xyz="0.0 0.0 0.564" rpy="-1.570796 0.0 0.0"/>
+        <parent link="sholder_link"/>
+        <child link="sholder_to_elbow_link"/>
+    </joint>
+
+    <link name="sholder_to_elbow_link">
+        <visual>
+            <origin xyz="0.0 0.0 -0.058" rpy="0.0 0.0 0.0"/>
+            <geometry>
+                <cylinder length="0.116" radius="0.05080"/>
+            </geometry>
+            <material name="blue">
+                <color rgba="0.0 0.0 1.0 1.0"/>
+            </material>
+        </visual>
+    </link> 
+
+<!-- Define the joint connecting the "sholder_link" to the "elbow_link" -->
+    <joint name="elbow_joint" type="revolute">
+        <origin xyz="0.0 0.0 -0.116" rpy="1.570796 0.0 0.0"/>
+        <parent link="sholder_to_elbow_link"/>
+        <child link="elbow_link"/>
+        <axis xyz="0 1 0"/>
+        <limit lower="-2.487094189" upper="2.487094189" effort="60.0" velocity="100.0"/>
+    </joint>
+
+    <!-- Define the "elbow_link" -->
+    <link name="elbow_link">
+        <visual>
+            <origin xyz="0.0 0.0 0.102" rpy="0.0 0.0 0.0"/>
+            <geometry>
+                <cylinder length="0.204" radius="0.05080"/>
+            </geometry>
+            <material name="green">
+                <color rgba="0.0 1.0 0.0 1.0"/>
+            </material>
+        </visual>
+    </link>
+<!-- Define the joint connecting the "elbow_link" to the "elbow_revolute_link" -->
+    <joint name="elbow_revolute_joint" type="revolute">
+        <origin xyz="0.0 0.0 0.204" rpy="0.0 0.0 0.0"/>
+        <parent link="elbow_link"/>
+        <child link="elbow_revolute_link"/>
+        <axis xyz="0 0 -1"/>
+        <limit lower="-3.141692" upper="3.141692" effort="60.0" velocity="100.0"/>
+    </joint>
+
+    <!-- Define the "elbow_revolute_link" -->
+    <link name="elbow_revolute_link">
+        <visual>
+            <origin xyz="0.0 0.0 0.105" rpy="0.0 0.0 0.0"/>
+            <geometry>
+                <cylinder length="0.210" radius="0.05080"/>
+            </geometry>
+            <material name="red">
+                <color rgba="1.0 0.0 0.0 1.0"/>
+            </material>
+        </visual>
+    </link>
+
+      <joint name="elbow_revolute_to_wrist_joint" type="fixed">
+        <origin xyz="0.0 0.0 0.239" rpy="-1.570796 0.0 0.0"/>
+        <parent link="elbow_revolute_link"/>
+        <child link="elbow_revolute_to_wrist_link"/>
+    </joint>
+
+    <link name="elbow_revolute_to_wrist_link">
+        <visual>
+            <origin xyz="0.0 0.0 0.0535" rpy="0.0 0.0 0.0"/>
+            <geometry>
+                <cylinder length="0.107" radius="0.05080"/>
+            </geometry>
+            <material name="blue">
+                <color rgba="0.0 0.0 1.0 1.0"/>
+            </material>
+        </visual>
+     
+    </link>
+<!-- Define the joint connecting the "elbow_revolute_link" to the "wrist_link" -->
+    <joint name="wrist_joint" type="revolute">
+        <origin xyz="0.0 0.0 0.107" rpy="1.570796 0.0 0.0"/>
+        <parent link="elbow_revolute_to_wrist_link"/>
+        <child link="wrist_link"/>
+        <axis xyz="0 -1 0"/>
+        <limit lower="-3.141692" upper="3.141692" effort="60.0" velocity="100.0"/>
+    </joint>
+
+    <!-- Define the "wrist_link" -->
+    <link name="wrist_link">
+        <visual>
+            <origin xyz="0.0 0.0 0.0945" rpy="0.0 0.0 0.0"/>
+            <geometry>
+                <cylinder length="0.189" radius="0.05080"/>
+            </geometry>
+            <material name="green">
+                <color rgba="1.0 0.0 0.0 1.0"/>
+            </material>
+        </visual>
+       
+    </link>
+<!-- Define the joint connecting the "wrist_link" to the "wrist_revolute_link" -->
+    <joint name="wrist_revolute_link" type="revolute">
+        <origin xyz="0.0 0.0 0.189" rpy="0 0.0 0.0"/>
+        <parent link="wrist_link"/>
+        <child link="wrist_revolute_link"/>
+        <axis xyz="0 0 1"/>
+        <limit lower="-3.141692" upper="3.141692" effort="60.0" velocity="100.0"/>
+    </joint>
+
+    <!-- Define the "wrist_revolute_link" -->
+    <link name="wrist_revolute_link">
+        <visual>
+            <origin xyz="0.0 0.0 0.025" rpy="0.0 0.0 0.0"/>
+            <geometry>
+                <cylinder length="0.05" radius="0.05080"/>
+            </geometry>
+            <material name="red">
+                <color rgba="1.0 0.0 0.0 1.0"/>
+            </material>
+        </visual>
+    </link>
+  
+  
+</robot>

@@ -153,7 +153,7 @@ class RobotCart(tk.Tk):
             frame.grid(row=0, column=0, sticky="nsew")
 
         # Show the working page by default
-        self.show_frame(DataBacePannle)
+        self.show_frame(MainUserPage)
 
         # Create a PartsDatabase instance and create the Parts table
         try:
@@ -1565,7 +1565,8 @@ class MoshionPlanningPage(PageBase):
         self.planner = PathPlanner(max_acc, max_vel)
 
         # Initialize the RobotArm with the URDF file path
-        urdf_file_path = "E:\\Capstone\\app\\backend\\python code\\urdf_tes1.urdf"
+        urdf_file_path = "C:\\Users\\zachl\\Capstone2024\\app\\backend\\python code\\urdf_tes1.urdf"
+        #urdf_file_path = "E:\\Capstone\\app\\backend\\python code\\urdf_tes1.urdf"
         self.robot = RobotArm(urdf_file_path, self.IDLE_POSITION)
 
         # Create buttons for interaction with available parts
