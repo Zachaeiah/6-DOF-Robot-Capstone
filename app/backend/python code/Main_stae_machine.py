@@ -69,7 +69,7 @@ def XY_angle(vector1, vector2):
 
 
 LARGE_FONT = ("Verdana", 12)
-DROP_OFF_ZONE = (-0.51, -0.50, 0.0)
+DROP_OFF_ZONE = (-0.3, -0.50, 0.0)
 DROP_OFF_ORINT = rotate_x(np.eye(3), np.pi/2)
 IDLE_POSITION = (0.0, -0.43209168, -1.21891881, 0.0, -1.92214302,  1.138704, 0.0, -1.57057404,  0.0)
 
@@ -116,7 +116,7 @@ def main1():
                     """Retrieve the list of parts to fetch."""
 
                     # Array of part names to fetch
-                    part_names_to_fetch = ['Part0','Part1', 'Part2', 'Part3']
+                    part_names_to_fetch = ['Part0','Part1', 'Part6', 'Part7']
                     state = 1  # Transition to the next state
 
                 elif state == 1:
@@ -211,23 +211,17 @@ def main1():
 
                         #print(np.degrees(delta_angles))
 
-                        T1_alinements = ["all" for _ in range(len(T1))]
                         T1_orientation = [rotate_z(DROP_OFF_ORINT, rad) for rad in delta_angles]
                         
                         translated_point = np.dot(T1_orientation[-1], GRAB_DISTANCE_Z) + T1[-1]
 
                         T2 = planner.generate_path(T1[-1], translated_point, linear=True)
-
-                        T2_alinements = ["all" for _ in range(len(T2))]
                         T2_orientation = [T1_orientation[-1] for _ in range(len(T2))]
 
                         T3 = planner.generate_path(T2[-1], location, linear=True)
-                        T3_alinements = ["all" for _ in range(len(T3))]
                         T3_orientation = [T2_orientation[-1] for _ in range(len(T3))]
-                        
-
+                    
                         T4 = planner.generate_path(location, drop_off_zone, linear=False)
-                        T4_alinements = ["all" for _ in range(len(T4))]
                         T4_orientation = [rotate_z(T3_orientation[-1], -rad) for rad in delta_angles]
 
                         travle_paths.extend(T1)
@@ -241,12 +235,9 @@ def main1():
                         travle_orientation.extend(T4_orientation)
 
 
-                        travle_alinements.extend(T1_alinements)
-                        travle_alinements.extend(T2_alinements)
-                        travle_alinements.extend(T3_alinements)
-                        travle_alinements.extend(T4_alinements)
+                    travle_alinements = ["all"for _ in range(len(travle_paths))]
 
-                    # Plot the 3D paths
+                    # # Plot the 3D paths
                     # planner.plot_3d_path()
 
                     state = 4
@@ -259,14 +250,16 @@ def main1():
 
                     # Initialize the RobotArm with the URDF file path
                     
-                    # urdf_file_path = "E:\\Capstone\\app\\backend\\python code\\urdf_tes1.urdf"
-                    urdf_file_path = "C:\\Users\\zachl\\Capstone2024\\app\\backend\\python code\\urdf_tes2.urdf"
+                    urdf_file_path = "E:\\Capstone\\app\\backend\\python code\\urdf_tes2.urdf"
+                    #urdf_file_path = "C:\\Users\\zachl\\Capstone2024\\app\\backend\\python code\\urdf_tes2.urdf"
                     robot = RobotArm(urdf_file_path, IDLE_POSITION)
 
             
                     print("animateing")
 
-                    robot.animate_ik(travle_paths, travle_orientation, travle_alinements, interval=1)
+                    print(len(travle_paths), len(travle_orientation), len(travle_alinements))
+
+                    robot.animate_ik(travle_paths, travle_orientation, travle_alinements, interval=250)
 
                     state = 5
                     elapsed_time = timeit.default_timer() - start_time

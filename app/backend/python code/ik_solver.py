@@ -31,7 +31,6 @@ class RobotArm:
         target_positions: list,
         target_orientations: list,
         orientation_modes: list,
-        precision: int = 3,
         batch_size: int = 5
     ) -> iter:
         """Perform inverse kinematics calculations.
@@ -57,9 +56,18 @@ class RobotArm:
                         ik = self.my_chain.inverse_kinematics(np.array(target_position, dtype=np.float32), target_orientation, orientation_mode=orientation_mode, initial_position=self.last_angles)
                     else:
                         ik = self.my_chain.inverse_kinematics(np.array(target_position, dtype=np.float32), target_orientation, orientation_mode=orientation_mode)
-                    rounded_ik = [round(angle, precision) for angle in np.degrees(ik)]
+
+                    fk = self.my_chain.forward_kinematics(ik)
+                    achieved_position = fk[:3, 3]
+                    achieved_orientation = fk[:3, :3]
+
+                    # Calculate error between target and achieved position/orientation
+                    position_error = target_position - achieved_position
+                    orientation_error = target_orientation - achieved_orientation
+
+
                     self.last_angles = ik
-                    yield rounded_ik
+                    yield (ik, position_error, orientation_error)
                 except Exception as e:
                     print(f"An unexpected error occurred during inverse kinematics calculation: {e}")
                     yield []  # Return an empty list if an error occurs
@@ -69,15 +77,25 @@ class RobotArm:
         joint_angles: list,
         batch_size: int = 5
     ) -> iter:
+        """_summary_
+
+        Args:
+            joint_angles (list): _description_
+            batch_size (int, optional): _description_. Defaults to 5.
+
+        Returns:
+            iter: _description_
+
+        Yields:
+            Iterator[iter]: _description_
+        """
         for i in range(0, len(joint_angles), batch_size):
             joint_batch = joint_angles[i:i + batch_size]
             for joints in joint_batch:
                 try:
-                    # Convert joint angles to radians
-                    joint_angles_rad = joints
 
                     # Calculate forward kinematics
-                    end_effector = self.my_chain.forward_kinematics(joint_angles_rad)
+                    end_effector = self.my_chain.forward_kinematics(joints)
                     orientation = end_effector[:3, :3]
                     positions = end_effector[:3, 3]
 
@@ -164,9 +182,9 @@ class RobotArm:
             target_orientation = target_orientations[frame]
             orientation_mode = orientation_modes[frame]
             
-            ik_solution = list(self.calculate_ik([target_position], [target_orientation], [orientation_mode], precision=2, batch_size=1))[0]
+            ik_solution = list(self.calculate_ik([target_position], [target_orientation], [orientation_mode], batch_size=1))[0]
 
-            self.my_chain.plot(np.radians(ik_solution), ax, target=np.array(target_position, dtype=np.float32))
+            self.my_chain.plot(ik_solution[0], ax, target=np.array(target_position, dtype=np.float32))
 
             # Add arrows at the origin for the axes
             ax.quiver(0, 0, 0, 1, 0, 0, color=(0.0 , 0.5 , 0.0), arrow_length_ratio=0.05)
@@ -179,6 +197,7 @@ class RobotArm:
             ax.set_xlim(-1, 1)
             ax.set_ylim(-1, 1)
             ax.set_zlim(-1, 1)
+            plt.title(str(target_position))
 
         anim = animation.FuncAnimation(fig, update, frames=len(target_positions), interval=interval, repeat=False)
 
@@ -216,30 +235,58 @@ def rotate_z(matrix, angle_z):
     rotated_matrix = np.dot(rotation_matrix_z, matrix)
     return rotated_matrix
 
-# Main function for execution
-# Main function for execution
+def optimize_workspace(robot, max_error=0.001):
+    best_sq = None
+    best_hi = None
+    pr_surf = 0
+    max_surf = 0
+
+    for sq in np.arange(0.5, .8, 0.01):
+        for hi in np.arange(0.25, 0.8, 0.01):
+            target = [[sq, sq, -hi]]
+            orientation = [rotate_y(np.eye(3), np.pi/2)]
+            alignment = ["all"]
+
+            IK = robot.calculate_ik(target, orientation, alignment)
+
+            for ik in IK:
+                pr_surf = 8*abs(ik[0][0])*abs(ik[0][2])
+                if ik[1] is not None and all(error < max_error for error in ik[1]) and (pr_surf > max_surf):
+                    max_surf = 8*abs(ik[0][0])*abs(ik[0][2])
+                    best_hi = hi
+                    best_sq = sq
+
+    return best_sq, best_hi, max_surf
+
 def main():
-    #urdf_file_path = "app\\backend\\python code\\urdf_tes1.urdf"
-    urdf_file_path = "C:\\Users\\zachl\\Capstone2024\\app\\backend\\python code\\urdf_tes2.urdf"
-    initial_position = [0.0, -0.43209168, -1.21891881, 0.0, -1.92214302,  1.138704, 0.0, -1.57057404,  0.0]
+    urdf_file_path = "app\\backend\\python code\\urdf_tes2.urdf"
+    initial_position = [0, 0, 0, 0, 0, 0, 0, 0, 0]
     robot = RobotArm(urdf_file_path, initial_position)
     num_positions = 1
 
-    target = [[1.4,0,0.252] for i in range(0, num_positions)]
+    #sq, hi, _ = optimize_workspace(robot)
 
-    orientation = [[0,0,1]  for i in range(0, num_positions)]
+    #X and Y max are 0.7m
+    #Z min -0.3m Z max 0.75m
+    # work surface aria is 5.88m^2
+    target = [[0.7, -0.7, 0.75] for i in range(0, num_positions)]
 
-    alinment = ["Y" for _ in range(0, num_positions)]
+    orientation = [rotate_x(np.eye(3), np.pi/2)  for i in range(0, num_positions)]
+
+    alinment = ["all" for _ in range(0, num_positions)]
 
     # Set self.last_angles to initial_position
     robot.last_angles = initial_position
 
     IK = robot.calculate_ik(target,orientation,alinment)
     
+    #the error must be cmaller then 0.001
     for ik in IK:
-        print(ik)
+        print(ik[0])
+        print(ik[1])
+        
 
-    robot.animate_ik(target,orientation,alinment, interval=10)
+    robot.animate_ik(target,orientation,alinment)
 
 if __name__ == "__main__":
     main()

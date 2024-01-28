@@ -75,7 +75,7 @@
         <parent link="sholder_to_elbow_link"/>
         <child link="elbow_link"/>
         <axis xyz="0 1 0"/>
-        <limit lower="-2.487094189" upper="2.487094189" effort="60.0" velocity="100.0"/>
+        <limit lower="-3.141692" upper="3.141692" effort="60.0" velocity="100.0"/>
     </joint>
 
     <!-- Define the "elbow_link" -->
@@ -173,6 +173,4 @@
             </material>
         </visual>
     </link>
-  
-  
 </robot>
