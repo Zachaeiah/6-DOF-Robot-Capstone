@@ -56,7 +56,6 @@ class RobotArm:
                         ik = self.my_chain.inverse_kinematics(np.array(target_position, dtype=np.float32), target_orientation, orientation_mode=orientation_mode, initial_position=self.last_angles)
                     else:
                         ik = self.my_chain.inverse_kinematics(np.array(target_position, dtype=np.float32), target_orientation, orientation_mode=orientation_mode)
-
                     fk = self.my_chain.forward_kinematics(ik)
                     achieved_position = fk[:3, 3]
                     achieved_orientation = fk[:3, :3]
@@ -183,7 +182,7 @@ class RobotArm:
             orientation_mode = orientation_modes[frame]
             
             ik_solution = list(self.calculate_ik([target_position], [target_orientation], [orientation_mode], batch_size=1))[0]
-
+            
             self.my_chain.plot(ik_solution[0], ax, target=np.array(target_position, dtype=np.float32))
 
             # Add arrows at the origin for the axes
@@ -197,7 +196,6 @@ class RobotArm:
             ax.set_xlim(-1, 1)
             ax.set_ylim(-1, 1)
             ax.set_zlim(-1, 1)
-            plt.title(str(target_position))
 
         anim = animation.FuncAnimation(fig, update, frames=len(target_positions), interval=interval, repeat=False)
 
@@ -235,43 +233,19 @@ def rotate_z(matrix, angle_z):
     rotated_matrix = np.dot(rotation_matrix_z, matrix)
     return rotated_matrix
 
-def optimize_workspace(robot, max_error=0.001):
-    best_sq = None
-    best_hi = None
-    pr_surf = 0
-    max_surf = 0
-
-    for sq in np.arange(0.5, .8, 0.01):
-        for hi in np.arange(0.25, 0.8, 0.01):
-            target = [[sq, sq, -hi]]
-            orientation = [rotate_y(np.eye(3), np.pi/2)]
-            alignment = ["all"]
-
-            IK = robot.calculate_ik(target, orientation, alignment)
-
-            for ik in IK:
-                pr_surf = 8*abs(ik[0][0])*abs(ik[0][2])
-                if ik[1] is not None and all(error < max_error for error in ik[1]) and (pr_surf > max_surf):
-                    max_surf = 8*abs(ik[0][0])*abs(ik[0][2])
-                    best_hi = hi
-                    best_sq = sq
-
-    return best_sq, best_hi, max_surf
-
 def main():
     urdf_file_path = "app\\backend\\python code\\urdf_tes2.urdf"
-    initial_position = (0, 1.547251, 0.85059601, 0, 2.2922552, -0.02354534, 0, 1.57205453, 1.57082596)
+    initial_position = [ 0.00000000e+00,  2.35449960e-02,  8.50596010e-01,  0.00000000e+00,2.29225520e+00,  2.35453414e-02,  0.00000000e+00, -1.57205453e+00,2.96303678e-05]
     robot = RobotArm(urdf_file_path, initial_position)
-    num_positions = 1
+    num_positions = 140
 
-    #sq, hi, _ = optimize_workspace(robot)
 
     #X and Y max are 0.7m
     #Z min -0.3m Z max 0.75m
     # work surface aria is 5.88m^2
-    target = [[0.001, -0.615, 0.15] for i in range(0, num_positions)]
+    target = [[-0.7+0.01*i, -0.615, 0.15] for i in range(0, num_positions)]
 
-    orientation = [rotate_x(np.eye(3), np.pi/2)  for i in range(0, num_positions)]
+    orientation = [rotate_y(rotate_x(np.eye(3), np.pi/2), np.pi/2)  for i in range(0, num_positions)]
 
     alinment = ["all" for _ in range(0, num_positions)]
 
@@ -281,12 +255,20 @@ def main():
     IK = robot.calculate_ik(target,orientation,alinment)
     
     #the error must be cmaller then 0.001
+    deg = []
     for ik in IK:
-        print(ik[0])
-        print(ik[1])
+        deg.append(np.degrees(ik[0][-1]))
+    
+    # plt.scatter(deg, np.arange(0, len(deg), 1))
+    # plt.show()
+        
         
 
-    robot.animate_ik(target,orientation,alinment)
+    # robot.animate_ik(target,orientation,alinment, interval=100)
+        
+    robot.animate_fk([[ 0.00000000e+00,  2.35449960e-02,  8.50596010e-01,  0.00000000e+00,2.29225520e+00,  2.35453414e-02,  0.00000000e+00, -1.57205453e+00,2.96303678e-05]])
+
+    
 
 if __name__ == "__main__":
     main()
