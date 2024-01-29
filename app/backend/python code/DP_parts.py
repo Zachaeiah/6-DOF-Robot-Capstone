@@ -1,6 +1,5 @@
 import sqlite3
 import numpy as np
-from faker import Faker
 import random
 
 class PartsDatabase:
@@ -8,7 +7,6 @@ class PartsDatabase:
         self.db_name = db_name
         self.conn = None
         self.cursor = None
-        self.fake = Faker()
 
     def connect(self):
         try:
@@ -272,7 +270,7 @@ def main():
     # Create the Parts table
     parts_db.create_parts_table()
 
-    demo_add_parts(parts_db)
+    #demo_add_parts(parts_db)
 
 
 if __name__ == "__main__":

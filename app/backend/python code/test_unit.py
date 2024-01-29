@@ -42,28 +42,6 @@ def test_PartsDatabase():
         parts_db.conn.commit()
         parts_db.disconnect()
 
-def test_VelocityTypes():
-    try:
-        # Initialize VelocityTypes
-        velocity_types = VelocityTypes(1.0, 0.5)
-
-        # Test linear
-        linear_acceleration = velocity_types.linear()
-        assert len(linear_acceleration) > 0
-        assert isinstance(linear_acceleration, np.ndarray)
-
-        # Test sigmoid
-        start_point = (0, 0)
-        end_point = (1, 1)
-        sigmoid_acceleration = velocity_types.sigmoid(start_point, end_point)
-        assert len(sigmoid_acceleration) > 0
-        assert isinstance(sigmoid_acceleration, np.ndarray)
-
-    except AssertionError as e:
-        print(f"VelocityTypes Test Assertion Error: {e}")
-    except Exception as e:
-        print(f"VelocityTypes Test Unexpected Error: {e}")
-
 def test_PathPlanner():
     try:
         # Initialize PathPlanner

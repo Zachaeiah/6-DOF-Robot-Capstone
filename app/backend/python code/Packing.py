@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
+import numpy as np
 import random
-
 
 class Box:
     def __init__(self, name: str, width, height):
@@ -24,8 +24,6 @@ class Box:
     def __repr__(self):
         return f"Name: {self.name}, Width = {self.width}, Height = {self.height}, Position={self.position})"
 
-
-
 def generate_random_boxes(num_boxes, max_width, max_height):
     """Generate a list of random Box objects.
 
@@ -39,23 +37,24 @@ def generate_random_boxes(num_boxes, max_width, max_height):
     """
     return [Box(f"Box-{i+1}", random.randint(1, max_width), max_height) for i in range(num_boxes)]
 
-
-def generate__boxes(num_boxes, max_width, max_height):
-    """Generate a list of Box objects with uniform dimensions.
+def generate__boxes(num_boxes: int, widths: list[float], heights: list[float], names: list[str]):
+    """_summary_
 
     Args:
-        num_boxes (int): The number of boxes to generate.
-        max_width (int): The width of the boxes.
-        max_height (int): The height of the boxes.
+        num_boxes (int): _description_
+        widths (list[float]): _description_
+        heights (list[float]): _description_
+        names (list[str]): _description_
 
     Returns:
-        List[Box]: A list of Box objects.
+        _type_: _description_
     """
-    return [Box(f"Box-{i+1}", max_width, max_height) for i in range(num_boxes)]
+
+    return [Box(names[i], heights[i], widths[i]) for i in range(num_boxes)]
 
 
 class BoxPlacer:
-    def __init__(self, grid_size, shelf_height=20, margin=10, offset=10):
+    def __init__(self, grid_size, shelf_height=0.05, margin=0.05, offset=0.0):
         """Initialize a BoxPlacer object.
 
         Args:
@@ -327,36 +326,28 @@ class BoxPlacer:
         return bool(self.boxes)
 
 
+def main():
+    # Example usage
+    grid_size = (1.40, 1.40)
+    box_placer = BoxPlacer(grid_size, shelf_height=0.1, margin=0.01, offset=0.01)
 
-# Example usage
-grid_size = (1400, 1400)
-box_placer = BoxPlacer(grid_size)
-box_placer.add_no_go_rectangle(100, 180, 1000, 100)
+    num_boxes = 50
+    box_widths = 0.1*np.ones(num_boxes)
+    box_hights = 0.15*np.ones(num_boxes)
+    box_names = [f"Box:{num}" for num in np.arange(0, num_boxes)]
 
-# Initial boxes
-initial_boxes = generate__boxes(100, 140, 56)
-box_placer.boxes.extend(initial_boxes)
+    # Initial boxes
+    initial_boxes = generate__boxes(num_boxes, box_widths, box_hights, box_names)
 
-# Place and plot initial boxes
-remaining_boxes = box_placer.place_boxes()
-removed_box = box_placer.remove_box_by_name("Box-59")
+    box_placer.boxes.extend(initial_boxes)
 
-print(removed_box)
+    # Place and plot initial boxes
+    remaining_boxes = box_placer.place_boxes()
 
-new_box = Box("NewB", 140, 56)
-box_placer.add_box(new_box)
+    box_placer.plot_boxes()
 
-new_box = Box("NewB", 140, 56)
-box_placer.add_box(new_box)
-
-new_box = Box("NewB", 140, 56)
-box_placer.add_box(new_box)
-
-box_placer.add_box(removed_box)
-
-box_placer.plot_boxes()
-
-
+if __name__ == "__main__":
+    main()
 
 
 

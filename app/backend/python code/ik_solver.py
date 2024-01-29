@@ -269,7 +269,7 @@ def main():
     #X and Y max are 0.7m
     #Z min -0.3m Z max 0.75m
     # work surface aria is 5.88m^2
-    target = [[0.7, -0.7, 0.75] for i in range(0, num_positions)]
+    target = [[0.001, -0.615, 0.15] for i in range(0, num_positions)]
 
     orientation = [rotate_x(np.eye(3), np.pi/2)  for i in range(0, num_positions)]
 
