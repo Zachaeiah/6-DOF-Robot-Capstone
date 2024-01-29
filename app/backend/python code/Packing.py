@@ -15,6 +15,11 @@ class Box:
         self.name = name
         self.width = width
         self.height = height
+        self.FullWeight = None
+        self.HalfWeight = None
+        self.EmptyWeight = None
+        self.CurrentWeight = None
+        self.InService = False
         self.position = None
     
     

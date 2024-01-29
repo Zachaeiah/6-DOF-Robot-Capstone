@@ -260,7 +260,7 @@ def optimize_workspace(robot, max_error=0.001):
 
 def main():
     urdf_file_path = "app\\backend\\python code\\urdf_tes2.urdf"
-    initial_position = [0, 0, 0, 0, 0, 0, 0, 0, 0]
+    initial_position = (0, 1.547251, 0.85059601, 0, 2.2922552, -0.02354534, 0, 1.57205453, 1.57082596)
     robot = RobotArm(urdf_file_path, initial_position)
     num_positions = 1
 
