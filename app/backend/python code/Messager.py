@@ -1,4 +1,5 @@
 from Robot import *
+import serial as ser
 
 class messager:
     """
@@ -13,7 +14,7 @@ class messager:
 
     """
 
-    def __init__(self, robot: Robot):
+    def __init__(self, robot: Robot): 
         """
         Initialize the Messager object.
 

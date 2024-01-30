@@ -264,10 +264,9 @@ def main():
         
         
 
-    # robot.animate_ik(target,orientation,alinment, interval=100)
+    robot.animate_ik(target,orientation,alinment, interval=50)
         
-    robot.animate_fk([[ 0.00000000e+00,  2.35449960e-02,  8.50596010e-01,  0.00000000e+00,2.29225520e+00,  2.35453414e-02,  0.00000000e+00, -1.57205453e+00,2.96303678e-05]])
-
+    
     
 
 if __name__ == "__main__":

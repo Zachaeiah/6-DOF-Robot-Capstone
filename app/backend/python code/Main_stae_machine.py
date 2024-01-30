@@ -97,7 +97,7 @@ ERRORmsg = [
 
 def state0():
     """Retrieve the list of parts to fetch."""
-    part_names_to_fetch = ['Part1']
+    part_names_to_fetch = ['Part0','Part1', 'Part2']
     return part_names_to_fetch
 
 def state1(part_names_to_fetch, parts_db):
@@ -130,7 +130,7 @@ def state2(part_info_dict):
         orientations[part_name] = orientation
     return locations, orientations
 
-def state3(locations, orientations, drop_off_zone, planner):
+def state3(pickip_dropoff,locations, orientations, drop_off_zone, planner):
     """Generate paths and velocity profiles for each part."""
     travle_paths = []
     travle_orientation = []
@@ -256,7 +256,7 @@ def state4(travle_paths, travle_orientation, travle_alinements, urdf_file_path, 
     plt.scatter(deg, np.arange(0, len(deg), 1))
     plt.show()
 
-    robot.animate_ik(travle_paths, travle_orientation, travle_alinements, interval=100)
+    robot.animate_ik(travle_paths, travle_orientation, travle_alinements, interval=1)
 
 def init_setup(parts_db, planner):
     pass
@@ -274,8 +274,8 @@ def main():
         parts_db = PartsDatabase()
        
 
-        urdf_file_path = "E:\\Capstone\\app\\backend\\python code\\urdf_tes2.urdf"
-        #urdf_file_path = "C:\\Users\\zachl\\Capstone2024\\app\\backend\\python code\\urdf_tes2.urdf"
+        #urdf_file_path = "E:\\Capstone\\app\\backend\\python code\\urdf_tes2.urdf"
+        urdf_file_path = "C:\\Users\\zachl\\Capstone2024\\app\\backend\\python code\\urdf_tes2.urdf"
 
         max_acc = 50
         max_vel = 50
@@ -296,7 +296,7 @@ def main():
                     travle_paths, travle_orientation, travle_alinements = state3(locations, orientations, DROP_OFF_ZONE, planner)
                     state = 4
                 elif state == 4:
-                    state4(travle_paths, travle_orientation, travle_alinements, urdf_file_path, IDLE_AGLE_POSITION)
+                    state4(True, travle_paths, travle_orientation, travle_alinements, urdf_file_path, IDLE_AGLE_POSITION)
                     state = 5
                 elif state == 5:
                     run = False
