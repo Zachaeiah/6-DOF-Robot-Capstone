@@ -1,8 +1,8 @@
 """A script to manage the robotic arm and control its movements."""
 import numpy as np
-import timeit
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
+import ast
 from DP_parts import *
 from ik_solver import *
 from intrerpolation import *
@@ -12,7 +12,15 @@ from VelocityPFP import *
 
 
 def rotate_x(matrix, angle_x):
-    """Rotate a 3x3 matrix around the X-axis."""
+    """_summary_
+
+    Args:
+        matrix (_type_): _description_
+        angle_x (_type_): _description_
+
+    Returns:
+        _type_: _description_
+    """
     rotation_matrix_x = np.array([
         [1, 0, 0],
         [0, np.cos(angle_x), -np.sin(angle_x)],
@@ -22,7 +30,15 @@ def rotate_x(matrix, angle_x):
     return rotated_matrix
 
 def rotate_y(matrix, angle_y):
-    """Rotate a 3x3 matrix around the Y-axis."""
+    """_summary_
+
+    Args:
+        matrix (_type_): _description_
+        angle_y (_type_): _description_
+
+    Returns:
+        _type_: _description_
+    """
     rotation_matrix_y = np.array([
         [np.cos(angle_y), 0, np.sin(angle_y)],
         [0, 1, 0],
@@ -32,7 +48,15 @@ def rotate_y(matrix, angle_y):
     return rotated_matrix
 
 def rotate_z(matrix, angle_z):
-    """Rotate a 3x3 matrix around the Z-axis."""
+    """_summary_
+
+    Args:
+        matrix (_type_): _description_
+        angle_z (_type_): _description_
+
+    Returns:
+        _type_: _description_
+    """
     rotation_matrix_z = np.array([
         [np.cos(angle_z), -np.sin(angle_z), 0],
         [np.sin(angle_z), np.cos(angle_z), 0],
@@ -41,12 +65,103 @@ def rotate_z(matrix, angle_z):
     rotated_matrix = np.dot(rotation_matrix_z, matrix)
     return rotated_matrix
 
+def Hrotate_x(matrix, angle_x):
+    """Rotate the given matrix around the x-axis by the specified angle.
+
+    Args:
+        matrix (np.array): The matrix to rotate.
+        angle_x (float): The angle of rotation in radians.
+
+    Returns:
+        np.array: The rotated matrix.
+    """
+    rotation_matrix_x = np.array([
+        [1, 0, 0, 0],
+        [0, np.cos(angle_x), -np.sin(angle_x), 0],
+        [0, np.sin(angle_x), np.cos(angle_x), 0],
+        [0, 0, 0, 1]
+    ])
+    return np.dot(rotation_matrix_x, matrix)
+
+def Hrotate_y(matrix, angle_y):
+    """Rotate the given matrix around the y-axis by the specified angle.
+
+    Args:
+        matrix (np.array): The matrix to rotate.
+        angle_y (float): The angle of rotation in radians.
+
+    Returns:
+        np.array: The rotated matrix.
+    """
+    rotation_matrix_y = np.array([
+        [np.cos(angle_y), 0, np.sin(angle_y), 0],
+        [0, 1, 0, 0],
+        [-np.sin(angle_y), 0, np.cos(angle_y), 0],
+        [0, 0, 0, 1]
+    ])
+    return np.dot(rotation_matrix_y, matrix)
+
+def Hrotate_z(matrix, angle_z):
+    """Rotate the given matrix around the z-axis by the specified angle.
+
+    Args:
+        matrix (np.array): The matrix to rotate.
+        angle_z (float): The angle of rotation in radians.
+
+    Returns:
+        np.array: The rotated matrix.
+    """
+    rotation_matrix_z = np.array([
+        [np.cos(angle_z), -np.sin(angle_z), 0, 0],
+        [np.sin(angle_z), np.cos(angle_z), 0, 0],
+        [0, 0, 1, 0],
+        [0, 0, 0, 1]
+    ])
+    return np.dot(rotation_matrix_z, matrix)
+
+def Htranslation(matrix, translation_vector):
+    """
+    Create a 4x4 homogeneous translation matrix.
+
+    Args:
+        translation_vector (array-like): The translation vector, e.g., [x, y, z].
+
+    Returns:
+        numpy.ndarray: The 4x4 homogeneous translation matrix.
+    """
+
+    if len(translation_vector) != 3:
+        raise ValueError("Translation vector must have three elements (x, y, z).")
+    
+    translation_matrix = np.eye(4)
+    translation_matrix[:3, 3] = translation_vector
+    return np.dot(translation_matrix, np.transpose(matrix))
+
 def translate_point_along_z(point, orientation_matrix, translation_distance):
+    """_summary_
+
+    Args:
+        point (_type_): _description_
+        orientation_matrix (_type_): _description_
+        translation_distance (_type_): _description_
+
+    Returns:
+        _type_: _description_
+    """
     final_coordinates = np.dot(orientation_matrix, [0, 0, translation_distance]) + point
 
     return final_coordinates
 
 def XY_angle(vector1, vector2):
+    """_summary_
+
+    Args:
+        vector1 (_type_): _description_
+        vector2 (_type_): _description_
+
+    Returns:
+        _type_: _description_
+    """
     # Calculate the dot product
     dot_product = np.dot(vector1[:-1], vector2[:-1])
 
@@ -84,7 +199,13 @@ GRAB_DISTANCE_Z = (0, 0, 0.1)
 NORTH_WALL = (0.0, 1.0, 0.0)
 EAST_WALL = (1.0, 0.0, 0.0)
 WEST_WALL = (-1.0, 0.0, 0.0)
-SOUNTH_WALL = (0.0, -1.0, 0.0)
+SOUTH_WALL = (0.0, -1.0, 0.0)
+
+NORTH_WALL_TRANFORM = Htranslation(np.eye(4), [0.7, 0.7, -0.3])
+SOUTH_WALL_TRANFORM = Hrotate_x(Hrotate_z(Htranslation(np.eye(4), [0.7, -0.7, -0.3]), -np.pi), -np.pi/2)
+EAST_WALL_TRANFORM = Hrotate_x(Hrotate_z(Htranslation(np.eye(4), [0.7, 0.7, -0.3]), -np.pi/2), -np.pi/2)
+WEST_WALL_TRANFORM = Hrotate_x(Hrotate_z(Htranslation(np.eye(4), [-0.7, -0.7, -0.3]), np.pi/2), -np.pi/2)
+
 
 AllMotorNames = ["Bace Motor", "Sholder Motor", "Elbow Motor", "Elbow revolut Motor", "Wirist Motor", "Wirist revolut Motor"]
 
@@ -97,8 +218,9 @@ ERRORmsg = [
 
 def state0():
     """Retrieve the list of parts to fetch."""
-    part_names_to_fetch = ['Part0','Part1', 'Part2']
-    return part_names_to_fetch
+    part_names_to_fetch = [f'Box {i+1}' for i in range(6, 16)]
+    pickip_dropoff = True
+    return part_names_to_fetch, pickip_dropoff
 
 def state1(part_names_to_fetch, parts_db):
     """Retrieve and store part information from the database."""
@@ -106,32 +228,45 @@ def state1(part_names_to_fetch, parts_db):
     for part_name_to_find in part_names_to_fetch:
         part = parts_db.get_part_by_name(part_name_to_find)
         if part:
+
             part_info_dict[part_name_to_find] = {
-                'PartName': part[1],
-                'LocationX': part[2],
-                'LocationY': part[3],
-                'LocationZ': part[4],
-                'Orientation': [part[5], part[6], part[7]],
-                'FullWeight': part[8],
-                'HalfWeight': part[9],
-                'EmptyWeight': part[10],
-                'InService': part[11]
+                'PartName': part.name,
+                'LocationX': ast.literal_eval(part.position)[0],
+                'LocationY': ast.literal_eval(part.position)[1],
+                'LocationZ': 0,
+                'Orientation': ast.literal_eval(part.orientation),
+                'FullWeight': part.FullWeight,
+                'HalfWeight': part.HalfWeight,
+                'EmptyWeight': part.EmptyWeight,
+                'InService': part.InService
             }
     return part_info_dict
 
 def state2(part_info_dict):
-    """Retrieve and store locations of all parts."""
+    """Extract locations and orientations from the part information."""
     locations = {}
     orientations = {}
     for part_name, part_info in part_info_dict.items():
         location = (part_info['LocationX'], part_info['LocationY'], part_info['LocationZ'])
-        orientation = (part_info['Orientation'][0], part_info['Orientation'][1], part_info['Orientation'][2])
+        orientation = tuple(part_info['Orientation'])
         locations[part_name] = location
         orientations[part_name] = orientation
     return locations, orientations
 
 def state3(pickip_dropoff,locations, orientations, drop_off_zone, planner):
-    """Generate paths and velocity profiles for each part."""
+    """_summary_
+
+    Args:
+        pickip_dropoff (_type_): _description_
+        locations (_type_): _description_
+        orientations (_type_): _description_
+        drop_off_zone (_type_): _description_
+        planner (_type_): _description_
+
+    Returns:
+        _type_: _description_
+    """
+    
     travle_paths = []
     travle_orientation = []
     travle_alinements = []
@@ -154,36 +289,60 @@ def state3(pickip_dropoff,locations, orientations, drop_off_zone, planner):
     travle_orientation.extend(T0_orientation)
 
     for index, (location, orientation) in enumerate(zip(locations.values(), orientations.values())):
+        location = np.array(location)
+        location = np.append(location, [0])
         
+        if (orientation == EAST_WALL):
+            location = [0.7, 0.7 - location[0], location[1]-0.3]
+
+        elif (orientation == NORTH_WALL):
+            location = [location[0]-0.7, 0.7, location[1]-0.3]
+            
+        elif (orientation == WEST_WALL):
+            location = [-0.7, location[0]-0.7, location[1]-0.3]
+            
+        elif (orientation == SOUTH_WALL):
+            location = [0.7-location[0], -0.7, location[1]-0.3]
+        else:
+            print("No angle")
+
+        delta_angle = XY_angle(drop_off_zone, location)
+
+        Linear = False
+        # if (abs(delta_angle) <= (19/24)*np.pi):
+        #     Linear = True
+            
+        T1 = planner.generate_path(drop_off_zone, location, linear=Linear)
         
-        T1 = planner.generate_path(drop_off_zone, location, linear=False)
 
         if (orientation == EAST_WALL):
-            if (XY_angle(drop_off_zone, location) >= 0):
+            if (delta_angle >= 0):
                 delta_angles = np.linspace(0, np.pi/2, len(T1))
             else:
                 delta_angles = np.linspace(0, -np.pi/2, len(T1))
         
         elif (orientation == NORTH_WALL):
-            if (XY_angle(drop_off_zone, location) >= 0):
+            if (delta_angle >= 0):
                 delta_angles = np.linspace(0, np.pi, len(T1))
             else:
                 delta_angles = np.linspace(0, -np.pi, len(T1))
 
         elif (orientation == WEST_WALL):
-            if (XY_angle(drop_off_zone, location) >= 0):
+            if (delta_angle >= 0):
                 delta_angles = np.linspace(0, np.pi/2, len(T1))
             else:
                 delta_angles = np.linspace(0, -np.pi/2, len(T1))
 
-        elif (orientation == SOUNTH_WALL):
-            if (XY_angle(drop_off_zone, location) <= np.pi):
+        elif (orientation == SOUTH_WALL):
+            if (delta_angle <= np.pi):
                 delta_angles = np.linspace(0, 0, len(T1))
             else:
                 delta_angles = np.linspace(0, 0, len(T1))
         else:
             print("No angle")
             delta_angles = np.linspace(0, 0, len(T1))
+
+
 
 
         T1_orientation = [rotate_z(T0_orientation[-1], rad) for rad in delta_angles]
@@ -197,7 +356,7 @@ def state3(pickip_dropoff,locations, orientations, drop_off_zone, planner):
         T3_orientation = [T2_orientation[-1] for _ in range(len(T3))]
 
 
-        T4 = planner.generate_path(location, drop_off_zone, linear=False)
+        T4 = planner.generate_path(location, drop_off_zone, linear=Linear)
         delta_angles = np.linspace(delta_angles[0], delta_angles[-1], len(T4))
         T4_orientation = [rotate_z(T3_orientation[-1], -rad) for rad in delta_angles]
 
@@ -236,25 +395,22 @@ def state3(pickip_dropoff,locations, orientations, drop_off_zone, planner):
     T3_orientation= np.array([])
     T4_orientation= np.array([])
     T56_orientation= np.array([])
-    # planner.plot_3d_path()
+    planner.plot_3d_path()
     
     return travle_paths, travle_orientation, travle_alinements
 
-def state4(travle_paths, travle_orientation, travle_alinements, urdf_file_path, IDLE_POSITION):
-    """Perform inverse kinematics for the generated paths and visualize the motion using RobotArm."""
+def state4(travle_paths, travle_orientation, travle_alinements, urdf_file_path):
+    """_summary_
+
+    Args:
+        travle_paths (_type_): _description_
+        travle_orientation (_type_): _description_
+        travle_alinements (_type_): _description_
+        urdf_file_path (_type_): _description_
+        IDLE_POSITION (_type_): _description_
+    """
     # Initialize the RobotArm with the URDF file path
     robot = RobotArm(urdf_file_path, IDLE_AGLE_POSITION)
-
-    print(len(travle_paths), len(travle_orientation), len(travle_alinements))
-
-    # Perform inverse kinematics and visualization
-    IK = robot.calculate_ik(travle_paths, travle_orientation, travle_alinements)
-    deg = []
-    for ik in IK:
-        deg.append(np.degrees(ik[0][-1]))
-    
-    plt.scatter(deg, np.arange(0, len(deg), 1))
-    plt.show()
 
     robot.animate_ik(travle_paths, travle_orientation, travle_alinements, interval=1)
 
@@ -271,9 +427,13 @@ def main():
         state = 0
         run = True
 
-        parts_db = PartsDatabase()
-       
+        box_w = 0.2
+        box_h = 0.25
+        grid_size = (1.40, 1.40)
 
+        parts_db = PartsDatabase("parts_db", grid_size = grid_size, shelf_height=0.015, margin=0.015, offset_x=(box_w / 2), offset_y=(box_h / 2))
+        parts_db.create_parts_table()
+       
         #urdf_file_path = "E:\\Capstone\\app\\backend\\python code\\urdf_tes2.urdf"
         urdf_file_path = "C:\\Users\\zachl\\Capstone2024\\app\\backend\\python code\\urdf_tes2.urdf"
 
@@ -284,20 +444,25 @@ def main():
         while run:
             try:
                 if state == 0:
-                    part_names_to_fetch = state0()
+                    part_names_to_fetch, pickip_dropoff = state0()
                     state = 1
+
                 elif state == 1:
                     part_info_dict = state1(part_names_to_fetch, parts_db)
                     state = 2
+
                 elif state == 2:
                     locations, orientations = state2(part_info_dict)
                     state = 3
+
                 elif state == 3:
-                    travle_paths, travle_orientation, travle_alinements = state3(locations, orientations, DROP_OFF_ZONE, planner)
+                    travle_paths, travle_orientation, travle_alinements = state3(pickip_dropoff, locations, orientations, DROP_OFF_ZONE, planner)
                     state = 4
+
                 elif state == 4:
-                    state4(True, travle_paths, travle_orientation, travle_alinements, urdf_file_path, IDLE_AGLE_POSITION)
+                    state4(travle_paths, travle_orientation, travle_alinements, urdf_file_path)
                     state = 5
+
                 elif state == 5:
                     run = False
             except Exception as e:

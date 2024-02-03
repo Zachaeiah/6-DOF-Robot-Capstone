@@ -59,7 +59,15 @@ def error_handling_wrapper(func):
     return wrapper
 
 def rotate_x(matrix, angle_x):
-    """Rotate a 3x3 matrix around the X-axis."""
+    """_summary_
+
+    Args:
+        matrix (_type_): _description_
+        angle_x (_type_): _description_
+
+    Returns:
+        _type_: _description_
+    """
     rotation_matrix_x = np.array([
         [1, 0, 0],
         [0, np.cos(angle_x), -np.sin(angle_x)],
@@ -69,7 +77,15 @@ def rotate_x(matrix, angle_x):
     return rotated_matrix
 
 def rotate_y(matrix, angle_y):
-    """Rotate a 3x3 matrix around the Y-axis."""
+    """_summary_
+
+    Args:
+        matrix (_type_): _description_
+        angle_y (_type_): _description_
+
+    Returns:
+        _type_: _description_
+    """
     rotation_matrix_y = np.array([
         [np.cos(angle_y), 0, np.sin(angle_y)],
         [0, 1, 0],
@@ -79,7 +95,15 @@ def rotate_y(matrix, angle_y):
     return rotated_matrix
 
 def rotate_z(matrix, angle_z):
-    """Rotate a 3x3 matrix around the Z-axis."""
+    """_summary_
+
+    Args:
+        matrix (_type_): _description_
+        angle_z (_type_): _description_
+
+    Returns:
+        _type_: _description_
+    """
     rotation_matrix_z = np.array([
         [np.cos(angle_z), -np.sin(angle_z), 0],
         [np.sin(angle_z), np.cos(angle_z), 0],
@@ -89,6 +113,16 @@ def rotate_z(matrix, angle_z):
     return rotated_matrix
 
 def translate_point_along_z(point, orientation_matrix, translation_distance):
+    """_summary_
+
+    Args:
+        point (_type_): _description_
+        orientation_matrix (_type_): _description_
+        translation_distance (_type_): _description_
+
+    Returns:
+        _type_: _description_
+    """
     final_coordinates = np.dot(orientation_matrix, [0, 0, translation_distance]) + point
 
     return final_coordinates

@@ -156,6 +156,16 @@ class RobotArm:
         save_as_gif: bool = False,
         file_name: str = "robot_animation.gif"
     ) -> None:
+        """_summary_
+
+        Args:
+            target_positions (list): _description_
+            target_orientations (list): _description_
+            orientation_modes (list): _description_
+            interval (int, optional): _description_. Defaults to 1.
+            save_as_gif (bool, optional): _description_. Defaults to False.
+            file_name (str, optional): _description_. Defaults to "robot_animation.gif".
+        """
         fig, ax = plt.subplots(subplot_kw={'projection': '3d'}, figsize=(12, 8))
 
         # Initialize a line for the trailing plot
@@ -204,7 +214,15 @@ class RobotArm:
         plt.show()
 
 def rotate_x(matrix, angle_x):
-    """Rotate a 3x3 matrix around the X-axis."""
+    """_summary_
+
+    Args:
+        matrix (_type_): _description_
+        angle_x (_type_): _description_
+
+    Returns:
+        _type_: _description_
+    """
     rotation_matrix_x = np.array([
         [1, 0, 0],
         [0, np.cos(angle_x), -np.sin(angle_x)],
@@ -214,7 +232,15 @@ def rotate_x(matrix, angle_x):
     return rotated_matrix
 
 def rotate_y(matrix, angle_y):
-    """Rotate a 3x3 matrix around the Y-axis."""
+    """_summary_
+
+    Args:
+        matrix (_type_): _description_
+        angle_y (_type_): _description_
+
+    Returns:
+        _type_: _description_
+    """
     rotation_matrix_y = np.array([
         [np.cos(angle_y), 0, np.sin(angle_y)],
         [0, 1, 0],
@@ -224,7 +250,15 @@ def rotate_y(matrix, angle_y):
     return rotated_matrix
 
 def rotate_z(matrix, angle_z):
-    """Rotate a 3x3 matrix around the Z-axis."""
+    """_summary_
+
+    Args:
+        matrix (_type_): _description_
+        angle_z (_type_): _description_
+
+    Returns:
+        _type_: _description_
+    """
     rotation_matrix_z = np.array([
         [np.cos(angle_z), -np.sin(angle_z), 0],
         [np.sin(angle_z), np.cos(angle_z), 0],
