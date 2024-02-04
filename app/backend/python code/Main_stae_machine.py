@@ -436,6 +436,8 @@ def main():
        
         #urdf_file_path = "E:\\Capstone\\app\\backend\\python code\\urdf_tes2.urdf"
         urdf_file_path = "C:\\Users\\zachl\\Capstone2024\\app\\backend\\python code\\urdf_tes2.urdf"
+        urdf_file_path = "//home//zachl//Capstone//app/backend//python code//urdf_tes2.urdf"
+        
 
         max_acc = 50
         max_vel = 50
