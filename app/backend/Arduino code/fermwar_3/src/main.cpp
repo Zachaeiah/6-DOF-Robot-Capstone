@@ -51,43 +51,42 @@ const double ERROR_VALUE = -1;  // Error value
 
 // structure to map command keyword string to a command index
 typedef struct COMMAND {
-  const int paramaterCnumber = 2;
-  const int index;
+  int index;
   const char* strCommand;
 } COMMAND;
 
 // structure to hold a moshion point
 typedef struct JOINT_INTERP {
   int paramaterCnumber = 2;
-  const int STEP_CNT;
-  const int STEP_FR;
+  int STEP_CNT;
+  int STEP_FR;
 } JOINT_INTERP;
 
 // structure to hold a moshion point
 typedef struct POINT_INTERP {
   int paramaterCnumber = 2;
-  const JOINT_INTERP INTEPR[6] = {0};
-  const int INDEX;
+  JOINT_INTERP INTEPR[6] = {0};
+ int INDEX;
 } POINT_INTERP;
 
 // structure to hold a moshion path
 typedef struct MOSHION_PLAN {
   int paramaterCnumber = 2;
-  const POINT_INTERP* moshion;
-  const int moshion_len;
+  POINT_INTERP* moshion;
+  int moshion_len;
 } MOSHION_PLAN;
 
 
 //----------------------------- Globals -------------------------------------------------------------------------------
 // Global array of command keyword strings to command index associations
 const COMMAND m_Commands[NUM_COMMANDS] = {
-  {2, R_MOVES, "R_MOVES" },
-  {2, R_DELAY, "R_DELAY" },
-  {2, R_MOSHION, "R_MOSHION" },
-  {2, R_POOR_ACT, "R_POOR_ACT" },
-  {2, R_POOR_COM, "R_POOR_COM" },
-  {2, R_HAND, "R_HAND" },
-  {2, L_HAND, "L_HAND" }
+  {R_MOVES, "R_MOVES" },
+  {R_DELAY, "R_DELAY" },
+  {R_MOSHION, "R_MOSHION" },
+  {R_POOR_ACT, "R_POOR_ACT" },
+  {R_POOR_COM, "R_POOR_COM" },
+  {R_HAND, "R_HAND" },
+  {L_HAND, "L_HAND" }
 };
 
 //----------------------------- Function Prototypes -------------------------------------------------------------------
@@ -113,66 +112,70 @@ void setup() {
 
 void loop() {
 
-  switch (STATE)
-  {
-  case IFIS:
-    STATE = INIT;
-    break;
+  Serial.println("hellow world");
+
+  // switch (STATE)
+  // {
+  // case IFIS:
+  //   STATE = INIT;
+  //   break;
   
-  case INIT:
-    INITuC();
-    break;
+  // case INIT:
+  //   INITuC();
+  //   break;
   
-  case RESEVING_COMMAND:
-    if (Serial.available() > 0) {
+  // case RESEVING_COMMAND:
+  //   Serial.println("waiting to resec command");
+  //   if (Serial.available() > 0) {
       
-      readSerialData(receivedString, sizeof(receivedString));
-      Serial.print("Received: ");
-      Serial.println(receivedString);
-    }
-    break;
+  //     readSerialData(receivedString, sizeof(receivedString));
+  //     Serial.print("Received: ");
+  //     Serial.println(receivedString);
+  //   }
+  //   break;
   
-  case COMMAND_PREP:
-    break;
+  // case COMMAND_PREP:
+  //   break;
 
-  case DATA_DUMP:
-    break;
+  // case DATA_DUMP:
+  //   break;
 
-  case EXECUTING_COMMAND:
-    break;
+  // case EXECUTING_COMMAND:
+  //   break;
   
-  case LOADING_PART:
-    break;
+  // case LOADING_PART:
+  //   break;
   
-  case WEIGHING_DIPARCHER:
-    break;
+  // case WEIGHING_DIPARCHER:
+  //   break;
 
-  case DIPARTING:
-    break;
+  // case DIPARTING:
+  //   break;
   
-  case ARIVING:
-    break;
+  // case ARIVING:
+  //   break;
 
-  case DUMPING_ARIVLE:
-    break;
+  // case DUMPING_ARIVLE:
+  //   break;
 
-  case WEIGHING_ARIVLE:
-    break;
+  // case WEIGHING_ARIVLE:
+  //   break;
 
-  case ESTOP:
-    break;
+  // case ESTOP:
+  //   break;
 
-  case IDLE:
-    break;
+  // case IDLE:
+  //   break;
   
-  default:
-    break;
-  }
+  // default:
+  //   break;
+  // }
 }
 //---------------------------------------------------------------------------------------------------------------------
 
 void INITuC(){
   Serial.begin(baudRate); // Initialize serial communication
+  Serial.println("setting up");
   STATE = RESEVING_COMMAND;
 }
 
