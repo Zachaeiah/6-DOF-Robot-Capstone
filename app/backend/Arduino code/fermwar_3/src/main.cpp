@@ -17,7 +17,7 @@ const int COMMAND_INDEX_NOT_FOUND = -1;  // Index value indicating command not f
 enum States {
   IFIS,               // ON BOOT UP 
   IDLE,               // IDLE STATE
-  INIT,               // INITSHLE SETUP
+  INIT,               // INITSHLE SETUPardu
   RESEVING_COMMAND,   // A COMMAND IT COMMING IN ON SERIAL
   COMMAND_PREP,       // PREPARING FOR THE DATAT SUM WILL PROVIDE THE LENGHTH OF THE COMMING MOSHION
   DATA_DUMP,          // THE DATA DUM OF THE MOSHION
@@ -107,7 +107,9 @@ int STATE = IFIS;
 char receivedString[maxBufferSize]; // Static array to hold input
 
 void setup() {
-  // Initialization code here
+  Serial.begin(baudRate); // Initialize serial communication
+  Serial.println("setting up");
+  STATE = RESEVING_COMMAND;
 }
 
 void loop() {
@@ -174,9 +176,7 @@ void loop() {
 //---------------------------------------------------------------------------------------------------------------------
 
 void INITuC(){
-  Serial.begin(baudRate); // Initialize serial communication
-  Serial.println("setting up");
-  STATE = RESEVING_COMMAND;
+  
 }
 
 void readSerialData(char* buffer, size_t bufferSize) {

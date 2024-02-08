@@ -450,10 +450,10 @@ SOUTH_WALL = (0.0, -1.0, 0.0)
 def main():
     box_w = 0.2
     box_h = 0.25
-    num_boxes = 10
+    num_boxes = 60
 
     # Initialize the PartsDatabase instance
-    db = PartsDatabase("parts_db", shelf_height=0.015, margin=0.015, offset_x=(box_w / 2), offset_y=(box_h / 2))
+    db = PartsDatabase("parts_db", shelf_height=0.04, margin=0.015, offset_x=(box_w / 2), offset_y=(box_h / 2))
     
     # Create the Parts table
     db.create_parts_table()
