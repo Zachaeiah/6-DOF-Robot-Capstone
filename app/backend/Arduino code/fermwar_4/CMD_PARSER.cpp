@@ -6,19 +6,26 @@
 // DESCRIPTION: Get the index of a command from a string
 // ARGUMENTS:   strLine - The input string containing the command
 // RETURN VALUE: The index of the command if found, -1 otherwise
-int getCommandIndex(char* strLine) {
+int getCommandIndex(const char* strLine) {
+  // Find the number of commands
+  const int numCommands = sizeof(RECIEVABLE_COMMAND) / sizeof(RECIEVABLE_COMMAND[0]);
+
+  // Ensure strLine is not NULL
+  if (strLine == nullptr)
+    return COMMAND_INDEX_NOT_FOUND;
+
+  // Convert strLine to uppercase
   char strLine2[MAX_LINE_SIZE];
   strcpy(strLine2, strLine);
 
   // Find which command matches the known commands
-  for (int n = 0; n < RECELABLE_NUM_COMMANDS; n++) {
-    if (strstr(strLine2, RECIEVABLE_COMMAND[n].strCommand) != NULL) {
+  for (int n = 0; n < numCommands; n++) {
+    if (strcmp(RECIEVABLE_COMMAND[n].strCommand, strLine2) == 0)
       return RECIEVABLE_COMMAND[n].index;
-    }
   }
 
   // If the command was not found
-  return -1;
+  return COMMAND_INDEX_NOT_FOUND;
 }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -27,16 +34,23 @@ int getCommandIndex(char* strLine) {
 //              commandString - String representation of the command
 // RETURN VALUE: None
 void processCommand(int commandIndex, char* commandString) {
-  bool bSuccess = true;
+  // Check if the command index is valid
+  if (commandIndex < 0 || commandIndex >= RECELABLE_NUM_COMMANDS) {
+    dsprintf("Invalid command index\n");
+    return;
+  }
 
-  dsprintString(RECIEVABLE_COMMAND[commandIndex].strCommand);
-  dsprintString("Parsing data: ");
-  dsprintString(commandString);
+  // Execute the command function associated with the given index
+  bool success = RECIEVABLE_COMMAND[commandIndex].executeFunction(commandString);
 
-  bSuccess = RECIEVABLE_COMMAND[commandIndex].executeFunction(commandString);
-  
-  if (bSuccess) {
-    dsprintString("Command siccessfull\n\n");
+  // Output the result
+  if (success) {
+    dsprintf("Command successful\n\n");
+  } else {
+    dsprintf("Command execution failed\n\n");
+    print_error(EXECUTEFUNCTION_FAILD, commandIndex);  // Set the error index
+    ErrorState = STATE;
+    STATE = ERROR;
   }
 }
 
@@ -46,20 +60,8 @@ void processCommand(int commandIndex, char* commandString) {
 // RETURN VALUE: None
 void makeStringUpperCase(char* str) {
   if (str == NULL) return;
-
   for (size_t i = 0; i < strlen(str); i++) {
     str[i] = (char)toupper(str[i]);
   }
 }
 
-//---------------------------------------------------------------------------------------------------------------------
-// DESCRIPTION: Calculate the length of a string up to a maximum length
-// ARGUMENTS:   s - The input string
-//              len - The maximum length to consider
-// RETURN VALUE: The length of the string up to a maximum length
-int strnlen(const char* s, int len) {
-  int i = 0;
-  for (; i < len && s[i] != '\0'; ++i)
-    ;
-  return i;
-}

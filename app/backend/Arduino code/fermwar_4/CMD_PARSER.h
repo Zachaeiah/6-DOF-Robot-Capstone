@@ -29,7 +29,7 @@ enum commands {
 };
 
 // Global array of command keyword strings to command index associations
-const COMMAND RECIEVABLE_COMMAND[RECELABLE_NUM_COMMANDS] = {
+const COMMAND RECIEVABLE_COMMAND[] = {
   { R_MOVES, "R_MOVES", allocateMoveData},
   { R_DELAY, "R_DELAY", setMoveDelay},
   { R_MOSHION, "R_MOSHION", executPlanedMove},
@@ -37,7 +37,7 @@ const COMMAND RECIEVABLE_COMMAND[RECELABLE_NUM_COMMANDS] = {
   { L_HAND, "L_HAND", ReaduC}
 };
 
-#define MAX_LINE_SIZE 1002  // Size of array to store a line from a file.
+#define MAX_LINE_SIZE 128  // Size of array to store a line from a file.
                             // NOTE: 2 elements must be reserved for trailing '\n' and '\0'
 
 // Function to convert a string to all uppercase characters
@@ -47,9 +47,6 @@ void makeStringUpperCase(char* str);
 void processCommand(int commandIndex, char* commandString);
 
 // Function to get the command index from a string
-int getCommandIndex(char* strLine);
-
-// Function to calculate the length of a string up to a maximum length
-int strnlen(const char* s, int len);
+int getCommandIndex(const char* strLine) ;
 
 #endif

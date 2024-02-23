@@ -1,61 +1,6 @@
-#include "Gloabls.h"
+#include "Gloabls.h"  // Include header file containing global declarations
 
-void dsprintString(const char *message) {
-  // Serial print the message
-  Serial.println(message);
-
-  // Save the message to the SD card
-  File dataFile = SD.open("log.txt", FILE_WRITE);
-  if (dataFile) {
-    dataFile.println(message);
-    dataFile.close();
-  } else {
-    Serial.println("Error opening file for writing!");
-  }
-}
-
-void dsprintInt(int value) {
-  // Serial print the value
-  Serial.println(value);
-
-  // Save the value to the SD card
-  File dataFile = SD.open("log.txt", FILE_WRITE);
-  if (dataFile) {
-    dataFile.println(value);
-    dataFile.close();
-  } else {
-    Serial.println("Error opening file for writing!");
-  }
-}
-
-void dsprintLong(long value) {
-  // Serial print the value
-  Serial.println(value);
-
-  // Save the value to the SD card
-  File dataFile = SD.open("log.txt", FILE_WRITE);
-  if (dataFile) {
-    dataFile.println(value);
-    dataFile.close();
-  } else {
-    Serial.println("Error opening file for writing!");
-  }
-}
-
-void dsprintDouble(double value) {
-  // Serial print the value
-  Serial.println(value);
-
-  // Save the value to the SD card
-  File dataFile = SD.open("log.txt", FILE_WRITE);
-  if (dataFile) {
-    dataFile.println(value);
-    dataFile.close();
-  } else {
-    Serial.println("Error opening file for writing!");
-  }
-}
-
+File dataFile;  // Define a global File object named dataFile
 
 //---------------------------------------------------------------------------------------------------------------------
 // DESCRIPTION: Map a float value from one range to another
@@ -66,7 +11,48 @@ void dsprintDouble(double value) {
 //              out_max - Upper bound of the output range
 // RETURN VALUE: Mapped value
 float mapf(float x, float in_min, float in_max, float out_min, float out_max) {
-  float result = 0;
-  result = (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
-  return result;
+  float result = 0;  // Variable to hold the mapped value
+  result = (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;  // Map the value
+  return result;  // Return the mapped value
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+// DESCRIPTION: Print an error message
+// ARGUMENTS:   error_index - Index of the error message in SYSTEM_ERROR array
+//              ... - Additional arguments if error message format string requires
+// RETURN VALUE: None
+void print_error(int error_index, ...) {
+  va_list args;  // Variable argument list
+  error_index = abs(error_index);  // Ensure a positive error index
+  va_start(args, error_index);  // Initialize variable argument list
+
+  const ERROR_COMMAND* error = &SYSTEM_ERROR[error_index];  // Get the error command based on index
+
+  dsprintf("Error in state %d: ", STATE);  // Print error state
+  char buffer[256];  // Buffer to hold the formatted error message
+  vsnprintf(buffer, sizeof(buffer), error->strError, args);  // Format the error message
+  dsprintf(buffer);  // Print the formatted error message
+  dsprintf("putting systems back into RESEVING_COMMAND state\n");  // Print additional message
+
+  va_end(args);  // End variable argument list
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+// DESCRIPTION: Print a formatted string to Serial console and, if dataFile is valid, to the file
+// ARGUMENTS:   fmt - Format string
+// RETURN VALUE: Length of the formatted string
+int dsprintf(const char* fmt, ...) {
+  char buf[256];  // Buffer to hold formatted string, adjust size as needed
+  va_list args;  // Variable argument list
+  va_start(args, fmt);  // Initialize variable argument list
+  int len = vsnprintf(buf, sizeof(buf), fmt, args);  // Format the string
+  va_end(args);  // End variable argument list
+
+  if (dataFile) {
+    dataFile.print(buf);  // Print to file if file handle is valid
+  }
+
+  Serial.print(buf);  // Print to Serial console
+
+  return len;  // Return the length of the formatted string
 }

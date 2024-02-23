@@ -3,38 +3,38 @@
 #include "CMD_PARSER.h"
 
 // Constants for communication
-const int baudRate = 115200;             // Serial communication baud rate
-const int maxBufferSize = 128;           // Maximum buffer size for incoming data
-const int COMMAND_INDEX_NOT_FOUND = -1;   // Index value indicating command not found
-const char* seps = "\t,\n ;:";            // Delimiters for tokenizing the line string
-const double ERROR_VALUE = -1;            // Error value
-const int chipSelect = BUILTIN_SDCARD;
-bool connected = false; // Define connected
-int STATE = 0;          // Define STATE
+const int baudRate = 115200;            // Serial communication baud rate
+const int maxBufferSize = 128;          // Maximum buffer size for incoming data
+const double ERROR_VALUE = -1;          // Error value
+const int chipSelect = BUILTIN_SDCARD;  // where to stor the log file
+const char* seps = "\t,\n ;:";          // Declare seps as an external constant
+int error_index = NO_ERROR;             // the indx of witch error to handle
+bool ReadDataDump = false;              // has the memory bean allowcated for a moshion
+int STATE = 0;                          // Current state of the system
+int ErrorState = 0;                     // the state an error happend
 
 // Structure to hold a motion path
 typedef struct MOTION_PLAN {
-  POINT_INTERP* motion;   // Pointer to motion plan
-  int motion_len;         // Length of the motion plan
+  POINT_INTERP* motion;  // Pointer to motion plan
+  int motion_len;        // Length of the motion plan
 } MOTION_PLAN;
 
 //----------------------------- Function Prototypes -------------------------------------------------------------------
-void INITuC();                                  // Initialize microcontroller
-void readSerialData(char*);                     // Read serial data
-
+void INITuC();               // Initialize microcontroller
+void readSerialData(char*);  // Read serial data
 
 //---------------------------------------------------------------------------------------------------------------------
 // DESCRIPTION: Setup function called once on boot-up
 // ARGUMENTS:   None
 // RETURN VALUE: None
 void setup() {
-  Serial.begin(baudRate);   // Initialize serial communication
-  Serial.println("setting up");
+  Serial.begin(baudRate);        // Initialize serial communication
+  Serial.println("setting up");  // send a mesage telling it uP its geting ready
   if (!SD.begin(chipSelect)) {
     Serial.println("SD card initialization failed!");
     return;
   }
-  STATE = IFIS;             // Set initial state to IFIS (ON BOOT UP)
+  STATE = IFIS;  // Set initial state to IFIS (ON BOOT UP)
 }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -43,84 +43,67 @@ void setup() {
 // RETURN VALUE: None
 void loop() {
 
-  char inputBuffer[maxBufferSize];          // Static array to hold input
+  char inputBuffer[maxBufferSize];  // Static array to hold input
   char* token;
-  int commandIndex = -1;
-
+  int commandIndex = COMMAND_INDEX_NOT_FOUND;
 
   switch (STATE) {
     case IFIS:
-      STATE = INIT;   // Transition to INIT state
+      STATE = INIT;  // Transition to INIT state
       break;
 
     case INIT:
-      INITuC();   // Initialize microcontroller
+      INITuC();  // Initialize microcontroller
       break;
 
     case RESEVING_COMMAND:
       if (Serial.available() > 0) {
         readSerialData(inputBuffer);  // Get what's on the serial line
+
         STATE = PROCESSING_COMMAND;
       }
       break;
 
     case PROCESSING_COMMAND:
-      makeStringUpperCase(inputBuffer);  // Make the input string uppercase
-      commandIndex = getCommandIndex(inputBuffer);  // Get the command index
-      token = strtok(inputBuffer, seps);   // Tokenize the input buffer
-      token = strtok(NULL, "");            // Get the rest of the line as the next token
-      processCommand(commandIndex, token); // Process the command
-      break;
+      makeStringUpperCase(inputBuffer);       // Make the input string uppercase
+      token = strtok(inputBuffer, seps);      // get the command string first
+      commandIndex = getCommandIndex(token);  // Get the command index
 
-    case DATA_DUMP:
-      // Add data dump logic here
-      break;
+      // Handle case when no command is provided
+      if (commandIndex == COMMAND_INDEX_NOT_FOUND) {
+        print_error(COMMAND_INDEX_NOT_FOUND);
+        ErrorState = STATE;
+        STATE = ERROR;  // Transition to the ERROR state
+        break;
+      }
 
-    case EXECUTING_COMMAND:
-      // Add executing command logic here
-      break;
+      // Get the rest of the line as the next token
+      token = strtok(NULL, seps);  
 
-    case LOADING_PART:
-      // Add loading part logic here
-      break;
+      // Handle case when no command arguments are provided
+      if (token == NULL) {
+        print_error(INVALID_COMMAND_ARGUMENTS);
+        ErrorState = STATE;
+        STATE = ERROR;  // Transition to the ERROR state
+        break;
+      }
 
-    case WEIGHING_DIPARCHER:
-      // Add weighing dispatcher logic here
-      break;
-
-    case DEPARTING:
-      // Add departing logic here
-      break;
-
-    case ARRIVING:
-      // Add arriving logic here
-      break;
-
-    case DUMPING_ARRIVAL:
-      // Add dumping arrival logic here
-      break;
-
-    case WEIGHING_ARRIVAL:
-      // Add weighing arrival logic here
-      break;
-
-    case ESTOP:
-      // Add emergency stop logic here
-      break;
-
-    case IDLE:
-      // Add idle logic here
+      // Process the command
+      processCommand(commandIndex, token);  
+      STATE = RESEVING_COMMAND;
       break;
 
     case ERROR:
-      // Add ERROR logic here
+      STATE = RESEVING_COMMAND;
+      ErrorState = 0;
       break;
 
     default:
-      dsprintString("unknown command!\n");
+      dsprintf("unknown command!\n");
       break;
   }
 }
+
 
 //---------------------------------------------------------------------------------------------------------------------
 // DESCRIPTION: Read serial data into inputBuffer
@@ -139,7 +122,10 @@ void readSerialData(char* inputBuffer) {
       if (bufferIndex < maxBufferSize - 2) {
         inputBuffer[bufferIndex++] = inChar;
       } else {
-        dsprintString("Input buffer full, command ignored.");
+        dsprintf("Input buffer full, command ignored.");
+        error_index = INPUT_BUFFER_FULL;
+        ErrorState = STATE;
+        STATE = ERROR;
       }
     }
   }
@@ -156,11 +142,8 @@ void INITuC() {
     // Check if the received message matches the expected connection message
     if (receivedMessage == "leftHand") {
       // Send a confirmation message back to Python
-      dsprintString("rightHand");
-      connected = true;          // Set the connection flag to true
+      dsprintf("rightHand\n");
       STATE = RESEVING_COMMAND;  // Transition to RECEIVING COMMAND state
     }
   }
 }
-
-
