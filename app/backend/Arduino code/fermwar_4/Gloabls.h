@@ -16,17 +16,20 @@ extern int ErrorState;     // State at which an error occurred
 extern File dataFile;      // File for error logging
 extern const char* seps;   // String delimiter for tokenization
 
+const int maxBufferSize = 1024;          // Maximum buffer size for incoming data
+
 // Error codes
-#define NO_ERROR 0                    // No error
-#define COMMAND_INDEX_NOT_FOUND -1    // Command index does not exist
-#define INPUT_BUFFER_FULL -2          // Input buffer is full, command was too big
-#define MISSING_COMMAND -3            // No command provided
-#define INVALID_COMMAND_ARGUMENTS -4  // No command arguments provided
-#define EXECUTEFUNCTION_FAILD -5      // Command execution failed
-#define MEMORY_ALLOCATION_FAILD -6    // Memory allocation failed
-#define MISSING_DATA -7               // Missing data for a command argument
-#define MOSHION_PLAN_OVERRIGHTING -8  // Attempting to override a motion plan
-#define ERROR_NUM_C 9                 // Total number of errors
+#define NO_ERROR 0                      // No error
+#define COMMAND_INDEX_NOT_FOUND -1      // Command index does not exist
+#define INPUT_BUFFER_FULL -2            // Input buffer is full, command was too big
+#define MISSING_COMMAND -3              // No command provided
+#define INVALID_COMMAND_ARGUMENTS -4    // No command arguments provided
+#define EXECUTEFUNCTION_FAILD -5        // Command execution failed
+#define MEMORY_ALLOCATION_FAILD -6      // Memory allocation failed
+#define MISSING_DATA -7                 // Missing data for a command argument
+#define MOSHION_PLAN_OVERRIGHTING -8    // Attempting to override a motion plan
+#define MOSHION_PLAN_NOT_ALLOCATIED -9  // The moshion plan has not bean setup to stor the points
+#define ERROR_NUM_C 9                   // Total number of errors
 
 // Structure to hold error information
 typedef struct ERROR_COMMAND {
@@ -54,7 +57,7 @@ enum States {
 };
 
 // Array of error messages
-const ERROR_COMMAND SYSTEM_ERROR[ERROR_NUM_C] = {
+const ERROR_COMMAND SYSTEM_ERROR[] = {
   { NO_ERROR, "NO ERROR\n" },
   { COMMAND_INDEX_NOT_FOUND, "Command with index %d was not found in RECEIVABLE_COMMAND list\n" },
   { INPUT_BUFFER_FULL, "The input buffer is full, the command sent may be too big\n" },
@@ -66,9 +69,10 @@ const ERROR_COMMAND SYSTEM_ERROR[ERROR_NUM_C] = {
   { MOSHION_PLAN_OVERRIGHTING, "A motion has already been allocated and executed\n" }
 };
 
-// Function prototypes
+//----------------------------- Function Prototypes -------------------------------------------------------------------
 void print_error(int error_index, ...);  // Print error message
 int dsprintf(const char* fmt, ...);      // Print formatted string
+void readSerialData(char*);  // Read serial data
 
 float mapf(float, float, float, float, float);  // Map a float value from one range to another
 

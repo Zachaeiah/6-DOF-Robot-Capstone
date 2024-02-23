@@ -4,7 +4,8 @@
 #include "Gloabls.h"
 #include "EXECUTION.h"
 
-#define MAX_ARGS 5 // the max number of arguments a command can have
+#define MAX_LINE_SIZE 128  // Size of array to store a line from a file.
+                            // NOTE: 2 elements must be reserved for trailing '\n' and '\0'
 
 // Function pointer type definition for command execution
 typedef bool (*CommandFunction)(char* strCommandLine);
@@ -21,6 +22,7 @@ enum commands {
   R_MOVES,       // The number of moves to be in the coming data dump
   R_DELAY,       // The delay between each point
   R_MOSHION,     // A motion interpolation point
+  R_EXECUTE,     // exacute the stored moshion 
   R_POOR_ACT,    // Starting unloading the part into the basket
   R_POOR_COM,    // The pour has been done
   R_HAND,        // uP is ready to transmit
@@ -32,13 +34,13 @@ enum commands {
 const COMMAND RECIEVABLE_COMMAND[] = {
   { R_MOVES, "R_MOVES", allocateMoveData},
   { R_DELAY, "R_DELAY", setMoveDelay},
-  { R_MOSHION, "R_MOSHION", executPlanedMove},
+  { R_MOSHION, "R_MOSHION", storeMoshioin},
+  { R_EXECUTE, "R_EXECUTE", executPlanedMove},
   { R_POOR_ACT, "R_POOR_ACT", PorOutWight},
   { L_HAND, "L_HAND", ReaduC}
 };
 
-#define MAX_LINE_SIZE 128  // Size of array to store a line from a file.
-                            // NOTE: 2 elements must be reserved for trailing '\n' and '\0'
+//----------------------------- Function Prototypes -------------------------------------------------------------------
 
 // Function to convert a string to all uppercase characters
 void makeStringUpperCase(char* str);

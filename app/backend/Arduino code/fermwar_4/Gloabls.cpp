@@ -56,3 +56,28 @@ int dsprintf(const char* fmt, ...) {
 
   return len;  // Return the length of the formatted string
 }
+
+//---------------------------------------------------------------------------------------------------------------------
+// DESCRIPTION: Read serial data into inputBuffer
+// ARGUMENTS:   inputBuffer - Buffer to store incoming serial data
+// RETURN VALUE: None
+void readSerialData(char* inputBuffer) {
+  unsigned int bufferIndex = 0;
+  char inChar;
+
+  while (Serial.available() > 0) {
+    inChar = Serial.read();
+    if (inChar == '\n') {
+      inputBuffer[bufferIndex] = '\0';  // Terminate the input string
+    } else {
+      // If the buffer is not full, add the incoming character
+      if (bufferIndex < maxBufferSize - 2) {
+        inputBuffer[bufferIndex++] = inChar;
+      } else {
+        print_error(INPUT_BUFFER_FULL);
+        ErrorState = STATE;
+        STATE = ERROR;  // Transition to the ERROR state
+      }
+    }
+  }
+}

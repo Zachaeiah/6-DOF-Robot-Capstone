@@ -19,15 +19,18 @@ typedef struct MOSHION {
   int MOVECNT;           // Total number of motion points
 } MOSHION;
 
-extern MOSHION RobotMoshionPlan;  // Global variable to store motion plan
+// extern MOSHION RobotMoshionPlan;  // Global variable to store motion plan
 
-// Function prototypes
+//----------------------------- Function Prototypes -------------------------------------------------------------------
 
 // Allocate move data for robot motion
 bool allocateMoveData(char* strCommandLine);
 
 // Set the delay for a planned move
 bool setMoveDelay(char* strCommandLine);
+
+// store the data dump of the moshion
+bool storeMoshioin(char* strCommandLine);
 
 // Execute a planned move
 bool executPlanedMove(char* strCommandLine);

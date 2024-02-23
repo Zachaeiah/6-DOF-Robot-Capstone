@@ -4,8 +4,6 @@
 
 // Constants for communication
 const int baudRate = 115200;            // Serial communication baud rate
-const int maxBufferSize = 128;          // Maximum buffer size for incoming data
-const double ERROR_VALUE = -1;          // Error value
 const int chipSelect = BUILTIN_SDCARD;  // where to stor the log file
 const char* seps = "\t,\n ;:";          // Declare seps as an external constant
 int error_index = NO_ERROR;             // the indx of witch error to handle
@@ -21,7 +19,7 @@ typedef struct MOTION_PLAN {
 
 //----------------------------- Function Prototypes -------------------------------------------------------------------
 void INITuC();               // Initialize microcontroller
-void readSerialData(char*);  // Read serial data
+
 
 //---------------------------------------------------------------------------------------------------------------------
 // DESCRIPTION: Setup function called once on boot-up
@@ -101,33 +99,6 @@ void loop() {
     default:
       dsprintf("unknown command!\n");
       break;
-  }
-}
-
-
-//---------------------------------------------------------------------------------------------------------------------
-// DESCRIPTION: Read serial data into inputBuffer
-// ARGUMENTS:   inputBuffer - Buffer to store incoming serial data
-// RETURN VALUE: None
-void readSerialData(char* inputBuffer) {
-  unsigned int bufferIndex = 0;
-  char inChar;
-
-  while (Serial.available() > 0) {
-    inChar = Serial.read();
-    if (inChar == '\n') {
-      inputBuffer[bufferIndex] = '\0';  // Terminate the input string
-    } else {
-      // If the buffer is not full, add the incoming character
-      if (bufferIndex < maxBufferSize - 2) {
-        inputBuffer[bufferIndex++] = inChar;
-      } else {
-        dsprintf("Input buffer full, command ignored.");
-        error_index = INPUT_BUFFER_FULL;
-        ErrorState = STATE;
-        STATE = ERROR;
-      }
-    }
   }
 }
 
