@@ -107,6 +107,12 @@ void loop() {
 // ARGUMENTS:   None
 // RETURN VALUE: None
 void INITuC() {
+
+  // Set the pins in the list as outputs
+  for (int i = 0; i < 6; ++i) {
+    pinMode(MotorEnablePins[i], OUTPUT);
+  }
+
   while (Serial.available() > 0) {
     String receivedMessage = Serial.readStringUntil('\n');
 

@@ -2,6 +2,7 @@
 #define GLOABKS_H
 
 #include <math.h>     // math functions
+#include <stdlib.h>
 #include <string.h>   // string functions
 #include <stdarg.h>   // Include for variable argument lists
 #include <ctype.h>    // character functions
@@ -15,7 +16,7 @@ extern int STATE;          // Current state of the state machine
 extern int ErrorState;     // State at which an error occurred
 extern File dataFile;      // File for error logging
 extern const char* seps;   // String delimiter for tokenization
-
+const  char MotorEnablePins[6] = {0, 1, 2, 3, 4, 5};
 const int maxBufferSize = 1024;          // Maximum buffer size for incoming data
 
 // Error codes
