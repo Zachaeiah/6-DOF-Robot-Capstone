@@ -1,6 +1,7 @@
 #ifndef GLOABKS_H  // Header guard to prevent multiple inclusion
 #define GLOABKS_H
 
+
 #include <math.h>     // math functions
 #include <stdlib.h>
 #include <string.h>   // string functions

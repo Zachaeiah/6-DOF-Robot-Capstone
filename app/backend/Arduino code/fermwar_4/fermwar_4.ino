@@ -1,5 +1,6 @@
 
 #include "Gloabls.h"
+#include "ENABLE_SHIFT_REG.h"
 #include "CMD_PARSER.h"
 
 // Constants for communication
@@ -27,6 +28,10 @@ void INITuC();               // Initialize microcontroller
 // RETURN VALUE: None
 void setup() {
   Serial.begin(baudRate);        // Initialize serial communication
+
+  //  flush Serial input
+  while (Serial.available()) Serial.read();
+
   Serial.println("setting up");  // send a mesage telling it uP its geting ready
   if (!SD.begin(chipSelect)) {
     Serial.println("SD card initialization failed!");
@@ -97,7 +102,7 @@ void loop() {
       break;
 
     default:
-      dsprintf("unknown command!\n");
+      dsprintf("unknown STATE!\n");
       break;
   }
 }
@@ -123,4 +128,6 @@ void INITuC() {
       STATE = RESEVING_COMMAND;  // Transition to RECEIVING COMMAND state
     }
   }
+  //  flush Serial input
+  while (Serial.available()) Serial.read();
 }

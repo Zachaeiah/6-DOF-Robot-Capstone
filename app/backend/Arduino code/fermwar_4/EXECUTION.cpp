@@ -1,5 +1,5 @@
 #include "EXECUTION.h"
-#include "Gloabls.h"
+
 
 static MOSHION RobotMoshionPlan = { NULL, 0 };  // Structure to hold motion plan data
 
@@ -107,6 +107,8 @@ bool storeMoshioin(char* strCommandLine) {
 
   // Loop through each motion point
   for (; pointCNT < RobotMoshionPlan.MOVECNT; pointCNT++) {
+    //  flush Serial input
+    while (Serial.available()) Serial.read();
     memset(inputBuffer, '\0', sizeof(inputBuffer));  // Clear the input buffer
 
     // Wait until data is available on the serial line
