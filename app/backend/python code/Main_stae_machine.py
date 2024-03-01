@@ -217,23 +217,49 @@ ERRORmsg = [
 ]
 
 def state0():
-    """Retrieve the list of parts to fetch."""
+    """
+    Initialize the state machine to fetch part names and determine whether to pick up or drop off.
+
+    Returns:
+        tuple: A tuple containing part names to fetch and a flag indicating pickup/dropoff.
+    """
     part_names_to_fetch = [f'Box {i+1}' for i in range(6, 16)]
     pickip_dropoff = True
     return part_names_to_fetch, pickip_dropoff
 
 def state1(part_names_to_fetch, parts_db):
-    """Retrieve and store part information from the database."""
+    """
+    Fetch information about parts from the parts database.
+
+    Args:
+        part_names_to_fetch (list): A list of part names to fetch information for.
+        parts_db (PartsDatabase): An instance of the PartsDatabase class containing part information.
+
+    Returns:
+        dict: A dictionary containing information about the fetched parts.
+            Keys: Part names
+            Values: Dictionary containing part information
+                - 'PartName': Name of the part
+                - 'LocationX': X-coordinate of the part's location
+                - 'LocationY': Y-coordinate of the part's location
+                - 'LocationZ': Z-coordinate of the part's location (assumed to be 0)
+                - 'Orientation': Orientation of the part
+                - 'FullWeight': Weight of the part when full
+                - 'HalfWeight': Weight of the part when half full
+                - 'EmptyWeight': Weight of the part when empty
+                - 'InService': Flag indicating if the part is in service
+    """
     part_info_dict = {}
     for part_name_to_find in part_names_to_fetch:
+        # Get part information from the parts database
         part = parts_db.get_part_by_name(part_name_to_find)
         if part:
-
+            # Construct a dictionary with part information
             part_info_dict[part_name_to_find] = {
                 'PartName': part.name,
                 'LocationX': ast.literal_eval(part.position)[0],
                 'LocationY': ast.literal_eval(part.position)[1],
-                'LocationZ': 0,
+                'LocationZ': 0,  # Assuming Z-coordinate is 0
                 'Orientation': ast.literal_eval(part.orientation),
                 'FullWeight': part.FullWeight,
                 'HalfWeight': part.HalfWeight,
@@ -243,30 +269,51 @@ def state1(part_names_to_fetch, parts_db):
     return part_info_dict
 
 def state2(part_info_dict):
-    """Extract locations and orientations from the part information."""
+    """
+    Extract locations and orientations of parts from the part information dictionary.
+
+    Args:
+        part_info_dict (dict): A dictionary containing information about parts.
+
+    Returns:
+        tuple: A tuple containing dictionaries of part locations and orientations.
+            - locations (dict): Dictionary containing part names as keys and their respective locations as values.
+            - orientations (dict): Dictionary containing part names as keys and their respective orientations as values.
+    """
+    # Initialize dictionaries to store locations and orientations
     locations = {}
     orientations = {}
+
+    # Iterate over each part in the part information dictionary
     for part_name, part_info in part_info_dict.items():
+        # Extract location and orientation information from part info
         location = (part_info['LocationX'], part_info['LocationY'], part_info['LocationZ'])
         orientation = tuple(part_info['Orientation'])
+
+        # Store location and orientation information in respective dictionaries
         locations[part_name] = location
         orientations[part_name] = orientation
+
+    # Return dictionaries containing locations and orientations
     return locations, orientations
 
 def state3(pickip_dropoff,locations, orientations, drop_off_zone, planner):
-    """_summary_
+    """
+    Generate travel paths for the robotic arm to pick up and drop off parts.
 
     Args:
-        pickip_dropoff (_type_): _description_
-        locations (_type_): _description_
-        orientations (_type_): _description_
-        drop_off_zone (_type_): _description_
-        planner (_type_): _description_
+        pickip_dropoff (bool): A flag indicating whether the robot is picking up or dropping off parts.
+        locations (dict): Dictionary containing part names as keys and their respective locations as values.
+        orientations (dict): Dictionary containing part names as keys and their respective orientations as values.
+        drop_off_zone (tuple): The drop-off zone coordinates (x, y, z).
+        planner (PathPlanner): An instance of the PathPlanner class for path generation.
 
     Returns:
-        _type_: _description_
+        tuple: A tuple containing lists of travel paths, orientations, and alignment flags for the robotic arm.
+            - travle_paths (list): List of travel paths for the robotic arm.
+            - travle_orientation (list): List of orientations corresponding to the travel paths.
+            - travle_alinements (list): List of alignment flags for the robotic arm.
     """
-    
     travle_paths = []
     travle_orientation = []
     travle_alinements = []
@@ -400,15 +447,16 @@ def state3(pickip_dropoff,locations, orientations, drop_off_zone, planner):
     return travle_paths, travle_orientation, travle_alinements
 
 def state4(travle_paths, travle_orientation, travle_alinements, urdf_file_path):
-    """_summary_
+    """
+    Execute the robotic arm's travel paths and orientations using inverse kinematics.
 
     Args:
-        travle_paths (_type_): _description_
-        travle_orientation (_type_): _description_
-        travle_alinements (_type_): _description_
-        urdf_file_path (_type_): _description_
-        IDLE_POSITION (_type_): _description_
+        travle_paths (list): List of travel paths for the robotic arm.
+        travle_orientation (list): List of orientations corresponding to the travel paths.
+        travle_alinements (list): List of alignment flags for the robotic arm.
+        urdf_file_path (str): The file path of the URDF file defining the robotic arm.
     """
+    print(len(travle_paths), len(travle_orientation), len(travle_alinements))
     # Initialize the RobotArm with the URDF file path
     robot = RobotArm(urdf_file_path, IDLE_AGLE_POSITION)
 
