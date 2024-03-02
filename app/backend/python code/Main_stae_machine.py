@@ -442,7 +442,7 @@ def state3(pickip_dropoff,locations, orientations, drop_off_zone, planner):
     T3_orientation= np.array([])
     T4_orientation= np.array([])
     T56_orientation= np.array([])
-    planner.plot_3d_path()
+    #planner.plot_3d_path()
     
     return travle_paths, travle_orientation, travle_alinements
 
@@ -460,7 +460,7 @@ def state4(travle_paths, travle_orientation, travle_alinements, urdf_file_path):
     # Initialize the RobotArm with the URDF file path
     robot = RobotArm(urdf_file_path, IDLE_AGLE_POSITION)
 
-    robot.animate_ik(travle_paths, travle_orientation, travle_alinements, interval=1)
+    robot.animate_ik(travle_paths, travle_orientation, travle_alinements, interval=1000)
 
 def init_setup(parts_db, planner):
     pass
@@ -484,7 +484,7 @@ def main():
        
         #urdf_file_path = "E:\\Capstone\\app\\backend\\python code\\urdf_tes2.urdf"
         urdf_file_path = "C:\\Users\\zachl\\Capstone2024\\app\\backend\\python code\\urdf_tes2.urdf"
-        urdf_file_path = "//home//zachl//Capstone//app/backend//python code//urdf_tes2.urdf"
+        #urdf_file_path = "//home//zachl//Capstone//app/backend//python code//urdf_tes2.urdf"
         
 
         max_acc = 50

@@ -1,6 +1,5 @@
 
 #include "Gloabls.h"
-#include "ENABLE_SHIFT_REG.h"
 #include "CMD_PARSER.h"
 
 // Constants for communication
@@ -113,9 +112,9 @@ void loop() {
 // RETURN VALUE: None
 void INITuC() {
 
-  // Set the pins in the list as outputs
+  // Initialize PWM pins
   for (int i = 0; i < 6; ++i) {
-    pinMode(MotorEnablePins[i], OUTPUT);
+    pinMode(StepperPins[i], OUTPUT);
   }
 
   while (Serial.available() > 0) {

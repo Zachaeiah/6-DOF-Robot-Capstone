@@ -2,7 +2,6 @@
 
 
 static MOSHION RobotMoshionPlan = { NULL, 0 };  // Structure to hold motion plan data
-
 //---------------------------------------------------------------------------------------------------------------------
 // DESCRIPTION: Allocate move data for robot motion
 // ARGUMENTS:   strCommandLine - Command line containing parameters
@@ -61,16 +60,12 @@ bool allocateMoveData(char* strCommandLine) {
 // ARGUMENTS:   strCommandLine - Not used in this function.
 // RETURN VALUE: True if the motion data is successfully stored, False otherwise.
 bool storeMoshioin(char* strCommandLine) {
-  POINT_INTERP pointMoshion;      // Structure to hold motion point data
-  JOINT_INTERP motorMoshion;      // Structure to hold motor motion data
-  char paramaterNnumber = 6;      // Number of parameters expected
-  char* STEP_CNT_token = NULL;    // Current token to analyze for STEP_CNT
-  char* STEP_FR_token = NULL;     // Current token to analyze for STEP_FR
-  char* MotorEnable_token = NULL; // Token to analyze for motor enable hex value
-  char inputBuffer[maxBufferSize];// Array to hold input received over serial
-  char motorACTS = 0;             // Motor activation hex value
-  int bufferIndex = 0;            // Initialize buffer index
-  volatile int pointCNT = 0;      // Counter for motion points
+  POINT_INTERP pointMoshion;        // Structure to hold motion point data
+  int paramaterNnumber = 7;        // Number of parameters expected
+  char* token = NULL;               // Current token to analyze for STEP_CNT
+  char inputBuffer[maxBufferSize];  // Array to hold input received over serial
+  int bufferIndex = 0;              // Initialize buffer index
+  volatile int pointCNT = 0;        // Counter for motion points
 
   // Check if data dump is in progress or if a motion plan is already allocated
   if (ReadDataDump == false || RobotMoshionPlan.Points == NULL || RobotMoshionPlan.MOVECNT <= 0) {
@@ -78,29 +73,6 @@ bool storeMoshioin(char* strCommandLine) {
     ErrorState = STATE;
     STATE = ERROR;  // Transition to the ERROR state
     return false;
-  }
-
-  // Get the hex value to set the motor activation pins
-  MotorEnable_token = strtok(strCommandLine, seps);
-
-  if (MotorEnable_token == NULL) {
-    print_error(MISSING_DATA, 1);
-    ErrorState = STATE;
-    STATE = ERROR;  // Transition to the ERROR state
-    return false;
-  }
-
-  // Convert the hexadecimal string to a char
-  motorACTS = (char)strtol(MotorEnable_token, NULL, 16);
-
-  // Set the motor activation pins according to the motor activation hex value
-  for (int i = 0; i < 6; ++i) {
-    // Check if the corresponding bit in the binary representation is set
-    if (motorACTS & (1 << i)) {
-      digitalWrite(MotorEnablePins[i], HIGH);  // Set the pin HIGH
-    } else {
-      digitalWrite(MotorEnablePins[i], LOW);   // Set the pin LOW
-    }
   }
 
   Serial.printf("storing %d\n", RobotMoshionPlan.MOVECNT);
@@ -148,25 +120,21 @@ bool storeMoshioin(char* strCommandLine) {
     }
 
     // Iterate through and extract all the parameters
-    for (int i = 0; i < paramaterNnumber; i++) {
+    for (int paramater = 0; paramater < paramaterNnumber; paramater++) {
       // Get the current token or continue from the last position
-      STEP_CNT_token = strtok((i == 0) ? inputBuffer : NULL, seps);
-      // Get the current token
-      STEP_FR_token = strtok(NULL, seps);
+      token = strtok((paramater == 0) ? inputBuffer : NULL, seps);
+
+      Serial.printf("paramater %d: %s\n", paramater, token);
 
       // Check if any data is missing
-      if (STEP_CNT_token == NULL || STEP_FR_token == NULL) {
-        print_error(MISSING_DATA, i);
+      if (token == NULL) {
+        print_error(MISSING_DATA, paramater);
         ErrorState = STATE;
         STATE = ERROR;  // Transition to the ERROR state
         return false;
       }
-
-      // Convert strings to integers and store in motorMoshion struct
-      motorMoshion.STEP_CNT = (int)atoi(STEP_CNT_token);
-      motorMoshion.STEP_FR = (int)atoi(STEP_FR_token);
-      // Store motorMoshion struct in pointMoshion struct
-      pointMoshion.INTEPR[i] = motorMoshion;
+      if (paramater == paramaterNnumber - 1) pointMoshion.TIME = (int)atoi(token);
+      else pointMoshion.Frequency[paramater] = (int)atoi(token);
     }
     // Store pointMoshion struct in RobotMoshionPlan.Points array
     pointMoshion.INDEX = pointCNT;
@@ -175,9 +143,9 @@ bool storeMoshioin(char* strCommandLine) {
 
   // Print stored motion data for debugging purposes
   for (int j = 0; j < RobotMoshionPlan.MOVECNT; j++) {
-    Serial.printf("\nMoshion %d\n", j);
+    Serial.printf("\nMoshion: %d,\tTIME: %d\n", j, RobotMoshionPlan.Points[j].TIME);
     for (int i = 0; i < 6; i++) {
-      Serial.printf("index %d: STEP_CNT %d\tSTEP_FR %d\n", i, RobotMoshionPlan.Points[j].INTEPR[i].STEP_CNT, RobotMoshionPlan.Points[j].INTEPR[i].STEP_FR);
+      Serial.printf("index %d: STEP_FR %d\n", i, RobotMoshionPlan.Points[j].Frequency[i]);
     }
   }
 
@@ -191,6 +159,11 @@ bool storeMoshioin(char* strCommandLine) {
 // ARGUMENTS:
 // RETURN VALUE:
 bool executPlanedMove(char* strCommandLine) {
+  volatile int CurrentPoint;
+  IntervalTimer PointTimer;
+  
+  PointTimer.begin(newPointISR, 0);
+
   dsprintf("executPlanedMove");
   return false;
 }
@@ -221,3 +194,27 @@ bool ReaduC(char* strCommandLine) {
   dsprintf("ReaduC");
   return false;
 }
+
+
+
+// Define the ISR function
+void newPointISR() {
+  // Check if CurrentPoint exceeds the total number of motion points
+  if (CurrentPoint >= RobotMoshionPlan.MOVECNT) {
+    // End the timer if all motion points have been executed
+    PointTimer.end();
+    return;
+  }
+
+  // Set PWM frequency for all channels simultaneously
+  for (size_t i = 0; i < 6; i++) {
+    analogWriteFrequency(StepperPins[i], RobotMoshionPlan.Points[CurrentPoint].Frequency[i]);
+  }
+
+  // Update the time for the joint interpolated move
+  PointTimer.update(RobotMoshionPlan.Points[CurrentPoint].TIME);
+
+  // Move to the next motion point
+  CurrentPoint++;
+}
+

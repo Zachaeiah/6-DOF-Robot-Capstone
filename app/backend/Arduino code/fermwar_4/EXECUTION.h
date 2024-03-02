@@ -2,15 +2,10 @@
 #define EXECUTION_H
 #include "Gloabls.h"
 
-// Structure to hold interpolation data for a joint
-typedef struct JOINT_INTERP {
-  int STEP_CNT;  // Step count
-  int STEP_FR;   // Step frequency
-} JOINT_INTERP;
-
 // Structure to hold a motion point with joint interpolations
 typedef struct POINT_INTERP {
-  JOINT_INTERP INTEPR[6] = { 0 };  // Array of joint interpolations (assuming 6 joints)
+  int Frequency[6] = { 0 };  // Array of frequensy (assuming 6 joints)
+  int TIME; // the time at witch the frequensy are
   int INDEX;                       // Index
 } POINT_INTERP;
 
@@ -20,7 +15,10 @@ typedef struct MOSHION {
   int MOVECNT;           // Total number of motion points
 } MOSHION;
 
-// extern MOSHION RobotMoshionPlan;  // Global variable to store motion plan
+extern volatile int CurrentPoint;;
+
+// Declare the timer object globally
+extern IntervalTimer PointTimer;
 
 //----------------------------- Function Prototypes -------------------------------------------------------------------
 
@@ -41,5 +39,8 @@ bool PorOutWight(char* strCommandLine);
 
 // Read microcontroller data
 bool ReaduC(char* strCommandLine);
+
+// Define the ISR function
+void newPointISR();
 
 #endif  // End of header guard
