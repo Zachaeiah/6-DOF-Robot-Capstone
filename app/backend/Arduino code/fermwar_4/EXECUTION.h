@@ -15,7 +15,8 @@ typedef struct MOSHION {
   int MOVECNT;           // Total number of motion points
 } MOSHION;
 
-extern volatile int CurrentPoint;;
+extern volatile int CurrentPoint;
+extern volatile int CurrentFrequency;
 
 // Declare the timer object globally
 extern IntervalTimer PointTimer;

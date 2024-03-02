@@ -114,7 +114,11 @@ void INITuC() {
 
   // Initialize PWM pins
   for (int i = 0; i < 6; ++i) {
-    pinMode(StepperPins[i], OUTPUT);
+    pinMode(StepperStepsPins[i], OUTPUT);
+    pinMode(SepperDirPins[i], OUTPUT);
+
+    digitalWrite(StepperStepsPins[i], LOW);
+    digitalWrite(SepperDirPins[i], LOW);
   }
 
   while (Serial.available() > 0) {

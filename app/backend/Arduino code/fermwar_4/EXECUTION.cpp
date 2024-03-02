@@ -159,9 +159,11 @@ bool storeMoshioin(char* strCommandLine) {
 // ARGUMENTS:
 // RETURN VALUE:
 bool executPlanedMove(char* strCommandLine) {
-  volatile int CurrentPoint;
+  volatile int CurrentPoint = 0;
+  volatile int CurrentFrequency = 0;
+
   IntervalTimer PointTimer;
-  
+
   PointTimer.begin(newPointISR, 0);
 
   dsprintf("executPlanedMove");
@@ -197,24 +199,41 @@ bool ReaduC(char* strCommandLine) {
 
 
 
-// Define the ISR function
 void newPointISR() {
+  // Cache frequently accessed values
+  const int moveCnt = RobotMoshionPlan.MOVECNT;
+  const int* frequencies = RobotMoshionPlan.Points[CurrentPoint].Frequency;
+  const int currentTime = RobotMoshionPlan.Points[CurrentPoint].TIME;
+  int i = 0;
+
   // Check if CurrentPoint exceeds the total number of motion points
-  if (CurrentPoint >= RobotMoshionPlan.MOVECNT) {
-    // End the timer if all motion points have been executed
-    PointTimer.end();
+  if (CurrentPoint >= moveCnt) {
+    PointTimer.end(); // End the timer if all motion points have been executed
     return;
   }
 
-  // Set PWM frequency for all channels simultaneously
-  for (size_t i = 0; i < 6; i++) {
-    analogWriteFrequency(StepperPins[i], RobotMoshionPlan.Points[CurrentPoint].Frequency[i]);
+  // Unroll the loop manually for better performance
+  while (i < 6) {
+    // Process two channels simultaneously
+    int frequency0 = frequencies[i];
+    int frequency1 = frequencies[i + 1];
+
+    // Update output pins and frequencies
+    digitalWrite(SepperDirPins[i], frequency0 < 0 ? HIGH : LOW);
+    analogWriteFrequency(StepperStepsPins[i], frequency0);
+    digitalWrite(SepperDirPins[i + 1], frequency1 < 0 ? HIGH : LOW);
+    analogWriteFrequency(StepperStepsPins[i + 1], frequency1);
+
+    // Move to the next pair of channels
+    i += 2;
   }
 
   // Update the time for the joint interpolated move
-  PointTimer.update(RobotMoshionPlan.Points[CurrentPoint].TIME);
+  PointTimer.update(currentTime);
 
   // Move to the next motion point
   CurrentPoint++;
 }
+
+
 
