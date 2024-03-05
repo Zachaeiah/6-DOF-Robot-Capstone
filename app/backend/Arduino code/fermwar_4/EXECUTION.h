@@ -4,7 +4,7 @@
 
 // Structure to hold a motion point with joint interpolations
 typedef struct POINT_INTERP {
-  int Frequency[6] = { 0 };  // Array of frequensy (assuming 6 joints)
+  int Frequency[6];  // Array of frequensy (assuming 6 joints)
   int TIME; // the time at witch the frequensy are
   int INDEX;                       // Index
 } POINT_INTERP;
@@ -15,8 +15,8 @@ typedef struct MOSHION {
   int MOVECNT;           // Total number of motion points
 } MOSHION;
 
-extern volatile int CurrentPoint;
-extern volatile int CurrentFrequency;
+extern volatile int CurrentPoint; // Current motion point index
+const int dutyCycle = 127; // 24% duty cycle
 
 // Declare the timer object globally
 extern IntervalTimer PointTimer;

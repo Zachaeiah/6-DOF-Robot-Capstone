@@ -45,9 +45,9 @@ void processCommand(int commandIndex, char* commandString) {
 
   // Output the result
   if (success) {
-    dsprintf("Command successful\n\n");
+    dsprintf(" Command successful\n\n");
   } else {
-    dsprintf("Command execution failed\n\n");
+    dsprintf(" Command execution failed\n\n");
     print_error(EXECUTEFUNCTION_FAILD, commandIndex);  // Set the error index
     ErrorState = STATE;
     STATE = ERROR;

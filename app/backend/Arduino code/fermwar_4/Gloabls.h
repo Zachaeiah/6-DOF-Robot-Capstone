@@ -10,6 +10,7 @@
 #include <stdbool.h>  // bool definitions
 #include <SD.h>       // SD card library
 #include <Arduino.h>  // Arduino core library
+#include <eFlexPwm.h>
 
 extern bool ReadDataDump;  // Declare connected as an external variable
 extern int error_index;    // Index of the current error
@@ -18,8 +19,8 @@ extern int ErrorState;     // State at which an error occurred
 extern File dataFile;      // File for error logging
 extern const char* seps;   // String delimiter for tokenization
 const int maxBufferSize = 1024;          // Maximum buffer size for incoming data
-const char StepperStepsPins[] = {0, 1, 2, 3, 4, 5};
-const char SepperDirPins[] = {6, 7, 8, 9, 10, 11};
+const char StepperStepsPins[] = {0, 1, 2, 4,  5,  6};
+const char SepperDirPins[] =    {3, 7, 8, 9, 24, 25};
 
 // Error codes
 #define NO_ERROR 0                      // No error
@@ -32,7 +33,8 @@ const char SepperDirPins[] = {6, 7, 8, 9, 10, 11};
 #define MISSING_DATA -7                 // Missing data for a command argument
 #define MOSHION_PLAN_OVERRIGHTING -8    // Attempting to override a motion plan
 #define MOSHION_PLAN_NOT_ALLOCATIED -9  // The moshion plan has not bean setup to stor the points
-#define ERROR_NUM_C 9                   // Total number of errors
+#define TIMER_INIT_FAILURE -10        // when the moshion timer fasils to intit
+
 
 // Structure to hold error information
 typedef struct ERROR_COMMAND {

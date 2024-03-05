@@ -1,69 +1,79 @@
 from MotorManager import *
 from Motors import *
 
-def format_time_with_prefix(time_micros):
-    prefixes = ['n', 'u', 'm']  # nano, micro, milli
-    index = 0
-    
-    if time_micros >= 1:
-        return f"{time_micros:.5f} s"  # Return seconds directly
+class MoshionController:
+    def __init__(self):
+        """
+        Initialize the MoshionController.
 
-    while time_micros < 1 and index < len(prefixes) - 1:
-        time_micros *= 1000
-        index += 1
+        This method creates a MotorManager instance and reads motor configurations
+        from a JSON file.
+        """
+        # Create a MotorManager instance
+        self.manager = motorManager({})
+        # Read motor configurations from the JSON file
+        self.manager.read_motor_config("motors_config.json")
 
-    return f"{time_micros:.5f} {prefixes[index]}s"
+    def move_motors(self, angles):
+        """
+        Move motors based on the provided angles.
 
+        Args:
+            angles (list of tuples): A list of tuples where each tuple represents
+                                     the angles for each motor.
 
-def main():
-    # Create a MotorManager instance
-    manager = motorManager({})
+        Returns:
+            str: A string containing all six frequencies and the maximum time.
+        """
+        frequencies = []  # List to store frequencies of all motors
+        times = []        # List to store times of all motors
+        for point in range(1, len(angles)):
+            Times = []
+            new_times = []
 
-    # Read motor configurations from the JSON file
-    manager.read_motor_config("motors_config.json")
+            # Calculate motor times for the current movement
+            for index, (motor_name, motor) in enumerate(self.manager.motors.items()):
+                motor_time = (angles[point][index] - angles[point-1][index])*(60.0/(360.0*motor.max_speed))
+                Times.append(motor_time)
 
-    # Define a list of angles for each motor
-    angles = [(0, 0, 0, 0, 0, 0), (10, 90, 90, 10, 10, 10)]
+            # Calculate motor frequencies and new times for the current movement
+            for index, (motor_name, motor) in enumerate(self.manager.motors.items()):
+                delta_theta = (angles[point][index] - angles[point-1][index])
 
-    for point in range(1, len(angles)):
-        Times = []
-        new_times = []
+                if delta_theta == 0:
+                    new_motor_speed = 0
+                    motor_time = 0
+                else:
+                    new_motor_speed = (delta_theta*(60/(360*max(Times))))
+                    motor_time = delta_theta*(60/(360*new_motor_speed))
 
-        for index, (motor_name, motor) in enumerate(manager.motors.items()):
-             # Calculate the number of steps per degree for the motor
-            steps_per_degree = motor.steps_per_revolution / 360
+                motor_frequensy = (new_motor_speed * motor.steps_per_revolution)/60
+                new_times.append(motor_time)
 
-            # Calculate the time for one step (in seconds)
-            seconds_per_step = (60 / (360 * motor.max_speed *  motor.steps_per_revolution))
+                # Append frequencies and times to respective lists
+                frequencies.append(f"{motor_frequensy}")
+                times.append(motor_time)
 
-            # Calculate the total time for the motor movement in seconds
-            number_of_steps = abs(angles[point][index] - angles[point-1][index]) * steps_per_degree
+        # Convert times to string and find maximum time
+        max_time = max(times)
+        max_time_index = times.index(max_time)
+        max_time_str = f"{max_time*1e6}"
 
-            motor_time_seconds = (60*abs(angles[point][index] - angles[point-1][index]))/(360)
+        # Concatenate frequencies and max time into a single string
+        result_str = ", ".join(frequencies) + ", " + max_time_str +"\n\n\n"
 
-            print(f"motor: {index} steps_per_degree: {steps_per_degree:.5f} seconds_per_step: {seconds_per_step} number_of_steps: {number_of_steps:.5f} motor_time_seconds: {motor_time_seconds:.5f}")
-
-            Times.append(motor_time_seconds)
-
-        print("\n")
-    
-        for index, (motor_name, motor) in enumerate(manager.motors.items()):
-            # Calculate the number of steps per degree for the motor
-            steps_per_degree = motor.steps_per_revolution / 360
-
-            # Calculate the time for one step (in seconds)
-            seconds_per_step =  max(Times)/(abs(angles[point-1][index] - angles[point][index]) * steps_per_degree)
-
-            # Calculate the total time for the motor movement, they should all be the same
-            motor_time = abs(angles[point-1][index] - angles[point][index]) * seconds_per_step * steps_per_degree
-
-            new_times.append(motor_time)
-
-            print(1/motor_time)
-
-            #print(f"motor: {index} steps_per_degree: {steps_per_degree:.5f} seconds_per_step: {seconds_per_step} number_of_steps: {number_of_steps:.5f} motor_time_seconds: {motor_time:.5f}")
-
-
+        return result_str
 
 if __name__ == "__main__":
-    main()
+    # Create an instance of MoshionController
+    controller = MoshionController()
+
+    # Define the angles for motor movements
+    angles = [(0,0,0,0,0,0), (22.5, 22.5, 22.5, 22.5, 22.5, 22.5), (30, 30, 30, 30, 30, 30)]
+
+    # Move motors based on the defined angles and get the results
+    movement_results = controller.move_motors(angles)
+
+    # Print the concatenated string containing frequencies and max time
+    print("Motor Frequencies and Max Time:")
+    print(movement_results)

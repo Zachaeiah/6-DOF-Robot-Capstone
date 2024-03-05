@@ -1,7 +1,15 @@
 #include "EXECUTION.h"
+#include <TeensyTimerTool.h>
 
 
 static MOSHION RobotMoshionPlan = { NULL, 0 };  // Structure to hold motion plan data
+volatile int CurrentPoint = 0;
+
+//
+IntervalTimer PointTimer;
+// Create an array of timers
+IntervalTimer pwmTimers[6];
+
 //---------------------------------------------------------------------------------------------------------------------
 // DESCRIPTION: Allocate move data for robot motion
 // ARGUMENTS:   strCommandLine - Command line containing parameters
@@ -61,7 +69,7 @@ bool allocateMoveData(char* strCommandLine) {
 // RETURN VALUE: True if the motion data is successfully stored, False otherwise.
 bool storeMoshioin(char* strCommandLine) {
   POINT_INTERP pointMoshion;        // Structure to hold motion point data
-  int paramaterNnumber = 7;        // Number of parameters expected
+  int paramaterNnumber = 7;         // Number of parameters expected
   char* token = NULL;               // Current token to analyze for STEP_CNT
   char inputBuffer[maxBufferSize];  // Array to hold input received over serial
   int bufferIndex = 0;              // Initialize buffer index
@@ -124,7 +132,7 @@ bool storeMoshioin(char* strCommandLine) {
       // Get the current token or continue from the last position
       token = strtok((paramater == 0) ? inputBuffer : NULL, seps);
 
-      Serial.printf("paramater %d: %s\n", paramater, token);
+      Serial.printf("Par%d: %s ", paramater, token);
 
       // Check if any data is missing
       if (token == NULL) {
@@ -136,6 +144,7 @@ bool storeMoshioin(char* strCommandLine) {
       if (paramater == paramaterNnumber - 1) pointMoshion.TIME = (int)atoi(token);
       else pointMoshion.Frequency[paramater] = (int)atoi(token);
     }
+    Serial.println();
     // Store pointMoshion struct in RobotMoshionPlan.Points array
     pointMoshion.INDEX = pointCNT;
     RobotMoshionPlan.Points[pointCNT] = pointMoshion;
@@ -143,32 +152,44 @@ bool storeMoshioin(char* strCommandLine) {
 
   // Print stored motion data for debugging purposes
   for (int j = 0; j < RobotMoshionPlan.MOVECNT; j++) {
-    Serial.printf("\nMoshion: %d,\tTIME: %d\n", j, RobotMoshionPlan.Points[j].TIME);
+    Serial.printf("\nMoshion: %d,\tTIME: %d uS\n", j, RobotMoshionPlan.Points[j].TIME);
     for (int i = 0; i < 6; i++) {
       Serial.printf("index %d: STEP_FR %d\n", i, RobotMoshionPlan.Points[j].Frequency[i]);
     }
   }
 
   // Print debug message
-  dsprintf("executPlanedMove\n");
+  dsprintf("storeMoshioin\n");
   return true;
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-// DESCRIPTION:
-// ARGUMENTS:
-// RETURN VALUE:
+// DESCRIPTION: Executes a planned motion by setting up an IntervalTimer to call the newPointISR function.
+// ARGUMENTS:   strCommandLine - Not used in this function.
+// RETURN VALUE: Always returns false.
 bool executPlanedMove(char* strCommandLine) {
-  volatile int CurrentPoint = 0;
-  volatile int CurrentFrequency = 0;
+  // Remove the local declaration of CurrentPoint
+  // volatile int CurrentPoint = 0;
+  CurrentPoint = 0;
 
-  IntervalTimer PointTimer;
+  // Initialize an IntervalTimer to call the newPointISR function
+  // IntervalTimer PointTimer; // No need to declare it here since it's already declared globally
 
-  PointTimer.begin(newPointISR, 0);
+  // Begin the IntervalTimer with newPointISR as the callback function and the specified interval
+  if (!PointTimer.begin(newPointISR, 1)) {
+    Serial.println("Timer did not work");
+    // Handle error condition if timer initialization fails
+    return false;
+  } else {
+    Serial.println("Timer started");
+  }
 
+  // Debug message indicating the start of executing a planned move
   dsprintf("executPlanedMove");
-  return false;
+
+  return true;  // Indicate that the function always returns false
 }
+
 
 //---------------------------------------------------------------------------------------------------------------------
 // DESCRIPTION:
@@ -199,41 +220,48 @@ bool ReaduC(char* strCommandLine) {
 
 
 
+//---------------------------------------------------------------------------------------------------------------------
+// DESCRIPTION: Interrupt Service Routine for processing motion points.
+//              This function updates the output pins and frequencies for stepper motors based on motion points.
+// ARGUMENTS:   None
+// RETURN VALUE: None
 void newPointISR() {
   // Cache frequently accessed values
-  const int moveCnt = RobotMoshionPlan.MOVECNT;
-  const int* frequencies = RobotMoshionPlan.Points[CurrentPoint].Frequency;
-  const int currentTime = RobotMoshionPlan.Points[CurrentPoint].TIME;
-  int i = 0;
+  volatile int moveCnt = RobotMoshionPlan.MOVECNT;
+  volatile int* frequencies = RobotMoshionPlan.Points[CurrentPoint].Frequency;
+  volatile int currentTime = RobotMoshionPlan.Points[CurrentPoint].TIME;
 
   // Check if CurrentPoint exceeds the total number of motion points
   if (CurrentPoint >= moveCnt) {
-    PointTimer.end(); // End the timer if all motion points have been executed
+    PointTimer.end();  // End the timer if all motion points have been executed
+
+    // Unroll the loop manually for better performance
+    for (volatile int i = 0; i < 6; i += 2) {
+      // Set duty cycle for both channels
+      analogWrite(StepperStepsPins[i], 0);
+      analogWrite(StepperStepsPins[i + 1], 0);
+    }
     return;
   }
 
   // Unroll the loop manually for better performance
-  while (i < 6) {
+  for (volatile int i = 0; i < 6; i += 2) {
     // Process two channels simultaneously
-    int frequency0 = frequencies[i];
-    int frequency1 = frequencies[i + 1];
+    volatile int frequency0 = frequencies[i];
+    volatile int frequency1 = frequencies[i + 1];
+    volatile int pin0 = StepperStepsPins[i];
+    volatile int pin1 = StepperStepsPins[i+1];
 
-    // Update output pins and frequencies
-    digitalWrite(SepperDirPins[i], frequency0 < 0 ? HIGH : LOW);
-    analogWriteFrequency(StepperStepsPins[i], frequency0);
-    digitalWrite(SepperDirPins[i + 1], frequency1 < 0 ? HIGH : LOW);
-    analogWriteFrequency(StepperStepsPins[i + 1], frequency1);
+    digitalWriteFast(SepperDirPins[i], frequency0 < 0 ? HIGH : LOW);
+    analogWriteFrequency(pin0, frequency0);
+    analogWriteFrequency(pin1, frequency1);
 
-    // Move to the next pair of channels
-    i += 2;
+    analogWrite(pin0, dutyCycle);
+    analogWrite(pin1, dutyCycle);
   }
 
-  // Update the time for the joint interpolated move
-  PointTimer.update(currentTime);
-
+  PointTimer.end();  // Stop the timer
+  PointTimer.begin(newPointISR, currentTime);
   // Move to the next motion point
   CurrentPoint++;
 }
-
-
-
