@@ -1,4 +1,6 @@
 # Define a custom Tkinter application class
+import traceback
+import inspect
 import numpy as np
 import tkinter as tk
 from tkinter import ttk
@@ -41,13 +43,15 @@ def error_handling_wrapper(func):
         
         except tk.TclError as tcl_error:
             # Handle TclError, which might occur for Tkinter-related issues
-            error_msg = f"TclError in {func.__name__}: {str(tcl_error)}"
+            error_msg = f"TclError in {func.__name__} at line {inspect.currentframe().f_lineno}: {str(tcl_error)}\n"
+            error_msg += traceback.format_exc()
             print(error_msg)
             self.popup_error(error_msg)
 
         except Exception as e:
             # Handle other unexpected errors 
-            error_msg = f"Error in {func.__name__}: {str(e)}"
+            error_msg = f"Error in {func.__name__} at line {inspect.currentframe().f_lineno}: {str(e)}\n"
+            error_msg += traceback.format_exc()
             print(error_msg)
             self.popup_error(error_msg)
 
@@ -57,6 +61,7 @@ def error_handling_wrapper(func):
     wrapper.__module__ = func.__module__
 
     return wrapper
+
 
 def rotate_x(matrix, angle_x):
     """_summary_
@@ -112,6 +117,78 @@ def rotate_z(matrix, angle_z):
     rotated_matrix = np.dot(rotation_matrix_z, matrix)
     return rotated_matrix
 
+def Hrotate_x(matrix, angle_x):
+    """Rotate the given matrix around the x-axis by the specified angle.
+
+    Args:
+        matrix (np.array): The matrix to rotate.
+        angle_x (float): The angle of rotation in radians.
+
+    Returns:
+        np.array: The rotated matrix.
+    """
+    rotation_matrix_x = np.array([
+        [1, 0, 0, 0],
+        [0, np.cos(angle_x), -np.sin(angle_x), 0],
+        [0, np.sin(angle_x), np.cos(angle_x), 0],
+        [0, 0, 0, 1]
+    ])
+    return np.dot(rotation_matrix_x, matrix)
+
+def Hrotate_y(matrix, angle_y):
+    """Rotate the given matrix around the y-axis by the specified angle.
+
+    Args:
+        matrix (np.array): The matrix to rotate.
+        angle_y (float): The angle of rotation in radians.
+
+    Returns:
+        np.array: The rotated matrix.
+    """
+    rotation_matrix_y = np.array([
+        [np.cos(angle_y), 0, np.sin(angle_y), 0],
+        [0, 1, 0, 0],
+        [-np.sin(angle_y), 0, np.cos(angle_y), 0],
+        [0, 0, 0, 1]
+    ])
+    return np.dot(rotation_matrix_y, matrix)
+
+def Hrotate_z(matrix, angle_z):
+    """Rotate the given matrix around the z-axis by the specified angle.
+
+    Args:
+        matrix (np.array): The matrix to rotate.
+        angle_z (float): The angle of rotation in radians.
+
+    Returns:
+        np.array: The rotated matrix.
+    """
+    rotation_matrix_z = np.array([
+        [np.cos(angle_z), -np.sin(angle_z), 0, 0],
+        [np.sin(angle_z), np.cos(angle_z), 0, 0],
+        [0, 0, 1, 0],
+        [0, 0, 0, 1]
+    ])
+    return np.dot(rotation_matrix_z, matrix)
+
+def Htranslation(matrix, translation_vector):
+    """
+    Create a 4x4 homogeneous translation matrix.
+
+    Args:
+        translation_vector (array-like): The translation vector, e.g., [x, y, z].
+
+    Returns:
+        numpy.ndarray: The 4x4 homogeneous translation matrix.
+    """
+
+    if len(translation_vector) != 3:
+        raise ValueError("Translation vector must have three elements (x, y, z).")
+    
+    translation_matrix = np.eye(4)
+    translation_matrix[:3, 3] = translation_vector
+    return np.dot(translation_matrix, np.transpose(matrix))
+
 def translate_point_along_z(point, orientation_matrix, translation_distance):
     """_summary_
 
@@ -128,6 +205,15 @@ def translate_point_along_z(point, orientation_matrix, translation_distance):
     return final_coordinates
 
 def XY_angle(vector1, vector2):
+    """_summary_
+
+    Args:
+        vector1 (_type_): _description_
+        vector2 (_type_): _description_
+
+    Returns:
+        _type_: _description_
+    """
     # Calculate the dot product
     dot_product = np.dot(vector1[:-1], vector2[:-1])
 
@@ -181,7 +267,7 @@ class RobotCart(tk.Tk):
         self.frames = {}
 
         # Create and add pages to the application
-        for F in (MainUserPage, SecurityPage, MotorSetUpPage, MoshionPlanningPage, DataBacePannle):
+        for F in (MainUserPage, SecurityPage):
             frame = F(container, self)
             self.frames[F] = frame
             frame.grid(row=0, column=0, sticky="nsew")
@@ -490,8 +576,13 @@ class MainUserPage(PageBase):
         # Call the constructor of the base class (PageBase)
         super().__init__(parent, controller, "Part Selection Page")
 
+        box_w = 0.2
+        box_h = 0.25
+        grid_size = (1.40, 1.40)
+
         # Create a PartsDatabase instance for handling parts data
-        self.parts_db = PartsDatabase()
+        self.parts_db = PartsDatabase("parts_db", grid_size = grid_size, shelf_height=0.015, margin=0.015, offset_x=(box_w / 2), offset_y=(box_h / 2))
+        self.parts_db.create_parts_table()
 
         # List to store selected parts in the cart
         self.cart: list[str] = []
@@ -577,7 +668,7 @@ class MainUserPage(PageBase):
             self.parts_db.connect()
 
             # Execute a SQL query to select all records from the Parts table and order by the second column (index 1)
-            self.parts_db.cursor.execute("SELECT * FROM Parts ORDER BY PartName")  # Replace 'column_name' with the actual column name you want to sort by
+            self.parts_db.cursor.execute("SELECT * FROM parts_db ORDER BY PartName")  
 
             # Fetch all the data from the executed query
             data = self.parts_db.cursor.fetchall()
@@ -798,7 +889,7 @@ class MainUserPage(PageBase):
             self.parts_db.connect()
 
             # Execute a SQL query to select records from the Parts table with a matching part name or part ID
-            query = "SELECT * FROM Parts WHERE PartName LIKE ? OR PartID LIKE ?"
+            query = "SELECT * FROM parts_db WHERE PartName LIKE ? OR PartID LIKE ?"
             self.parts_db.cursor.execute(query, ('%' + prefix + '%', '%' + prefix + '%'))
 
             # Fetch all the data from the executed query
@@ -868,7 +959,7 @@ class MainUserPage(PageBase):
             self.parts_db.connect()
 
             # Execute a SQL query to select records from the Parts table with a matching part name
-            query = "SELECT * FROM Parts WHERE PartName LIKE ?"
+            query = "SELECT * FROM parts_db WHERE PartName LIKE ?"
             self.parts_db.cursor.execute(query, ('%' + partName + '%',))
 
             # Fetch all the data from the executed query

@@ -44,14 +44,9 @@ void processCommand(int commandIndex, char* commandString) {
   bool success = RECIEVABLE_COMMAND[commandIndex].executeFunction(commandString);
 
   // Output the result
-  if (success) {
-    dsprintf(" Command successful\n\n");
-  } else {
-    dsprintf(" Command execution failed\n\n");
-    print_error(EXECUTEFUNCTION_FAILD, commandIndex);  // Set the error index
-    ErrorState = STATE;
-    STATE = ERROR;
-  }
+  if (!success) {
+    dsprintf("cmd command with index %d was unsuccessful in its execution\n", commandIndex);  // Set the error index
+  } 
 }
 
 //---------------------------------------------------------------------------------------------------------------------

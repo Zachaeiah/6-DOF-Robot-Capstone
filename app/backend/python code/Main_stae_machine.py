@@ -223,7 +223,7 @@ def state0():
     Returns:
         tuple: A tuple containing part names to fetch and a flag indicating pickup/dropoff.
     """
-    part_names_to_fetch = [f'Box {i+1}' for i in range(6, 16)]
+    part_names_to_fetch = [f'Box {i+1}' for i in range(18, 22)]
     pickip_dropoff = True
     return part_names_to_fetch, pickip_dropoff
 
@@ -442,7 +442,7 @@ def state3(pickip_dropoff,locations, orientations, drop_off_zone, planner):
     T3_orientation= np.array([])
     T4_orientation= np.array([])
     T56_orientation= np.array([])
-    #planner.plot_3d_path()
+    planner.plot_3d_path()
     
     return travle_paths, travle_orientation, travle_alinements
 
@@ -456,11 +456,10 @@ def state4(travle_paths, travle_orientation, travle_alinements, urdf_file_path):
         travle_alinements (list): List of alignment flags for the robotic arm.
         urdf_file_path (str): The file path of the URDF file defining the robotic arm.
     """
-    print(len(travle_paths), len(travle_orientation), len(travle_alinements))
     # Initialize the RobotArm with the URDF file path
     robot = RobotArm(urdf_file_path, IDLE_AGLE_POSITION)
 
-    robot.animate_ik(travle_paths, travle_orientation, travle_alinements, interval=1000)
+    robot.animate_ik(travle_paths, travle_orientation, travle_alinements, interval=1)
 
 def init_setup(parts_db, planner):
     pass

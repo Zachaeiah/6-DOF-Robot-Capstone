@@ -2,11 +2,18 @@
 #define EXECUTION_H
 #include "Gloabls.h"
 
+// Constants
+const int dutyCycle = 127;  // 50% duty cycle
+
+// External variables
+extern volatile int CurrentPoint;  // Current motion point index
+extern IntervalTimer PointTimer;   // Declare the timer object globally
+
 // Structure to hold a motion point with joint interpolations
 typedef struct POINT_INTERP {
-  int Frequency[6];  // Array of frequensy (assuming 6 joints)
-  int TIME; // the time at witch the frequensy are
-  int INDEX;                       // Index
+  int Frequency[6];  // Array of frequencies (assuming 6 joints)
+  int TIME;          // Time at which the frequencies are applied
+  int INDEX;         // Index
 } POINT_INTERP;
 
 // Structure to hold a motion plan
@@ -15,11 +22,8 @@ typedef struct MOSHION {
   int MOVECNT;           // Total number of motion points
 } MOSHION;
 
-extern volatile int CurrentPoint; // Current motion point index
-const int dutyCycle = 127; // 24% duty cycle
-
-// Declare the timer object globally
-extern IntervalTimer PointTimer;
+// Enumeration for Moshion States machine
+enum MoshionStates {SETTINGUP, SETUP, READY, INMOSHION, MOSHIONERROR};
 
 //----------------------------- Function Prototypes -------------------------------------------------------------------
 
@@ -36,12 +40,15 @@ bool storeMoshioin(char* strCommandLine);
 bool executPlanedMove(char* strCommandLine);
 
 // Perform output weight operation
-bool PorOutWight(char* strCommandLine);
+bool getWight(char* strCommandLine);
 
 // Read microcontroller data
 bool ReaduC(char* strCommandLine);
 
 // Define the ISR function
 void newPointISR();
+
+// check with sate is goint to run
+bool isState(int CurrentState, int dState);
 
 #endif  // End of header guard

@@ -20,11 +20,9 @@ typedef struct COMMAND {
 // Enumerated type listing all command indexes
 enum commands {
   R_MOVES,       // The number of moves to be in the coming data dump
-  R_DELAY,       // The delay between each point
   R_MOSHION,     // A motion interpolation point
   R_EXECUTE,     // exacute the stored moshion 
-  R_POOR_ACT,    // Starting unloading the part into the basket
-  R_POOR_COM,    // The pour has been done
+  R_GET_WIGHT,    // Starting unloading the part into the basket
   R_HAND,        // uP is ready to transmit
   L_HAND,        // uC is ready to receive
   RECELABLE_NUM_COMMANDS   // The number of commands
@@ -33,10 +31,9 @@ enum commands {
 // Global array of command keyword strings to command index associations
 const COMMAND RECIEVABLE_COMMAND[] = {
   { R_MOVES, "R_MOVES", allocateMoveData},
-  { R_DELAY, "R_DELAY", setMoveDelay},
   { R_MOSHION, "R_MOSHION", storeMoshioin},
   { R_EXECUTE, "R_EXECUTE", executPlanedMove},
-  { R_POOR_ACT, "R_POOR_ACT", PorOutWight},
+  { R_GET_WIGHT, "R_GET_WIGHT", getWight},
   { L_HAND, "L_HAND", ReaduC}
 };
 

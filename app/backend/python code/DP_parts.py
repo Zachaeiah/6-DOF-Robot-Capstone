@@ -55,7 +55,7 @@ class stack_pointer:
         self.NumBoxes = NumBoxes
 
 class PartsDatabase:
-    def __init__(self, db_name="parts.db", grid_size: tuple = (1.40, 1.40), shelf_height: float = 0.01, margin: float = 0.01, offset_x: float = 0.01, offset_y: float = 0.01):
+    def __init__(self, db_name="parts_db", grid_size: tuple = (1.40, 1.40), shelf_height: float = 0.01, margin: float = 0.01, offset_x: float = 0.01, offset_y: float = 0.01):
         """Initialize the PartsDatabase.
 
         Args:
@@ -450,7 +450,7 @@ SOUTH_WALL = (0.0, -1.0, 0.0)
 def main():
     box_w = 0.2
     box_h = 0.25
-    num_boxes = 60
+    num_boxes = 20
 
     # Initialize the PartsDatabase instance
     db = PartsDatabase("parts_db", shelf_height=0.04, margin=0.015, offset_x=(box_w / 2), offset_y=(box_h / 2))
@@ -458,7 +458,7 @@ def main():
     # Create the Parts table
     db.create_parts_table()
 
-    orientations = [NORTH_WALL, EAST_WALL, WEST_WALL, SOUTH_WALL]
+    orientations = [NORTH_WALL, EAST_WALL, WEST_WALL]
 
     Box_n = 0
 

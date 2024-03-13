@@ -17,6 +17,8 @@ typedef struct MOTION_PLAN {
   int motion_len;        // Length of the motion plan
 } MOTION_PLAN;
 
+
+
 //----------------------------- Function Prototypes -------------------------------------------------------------------
 void INITuC();               // Initialize microcontroller
 
@@ -28,15 +30,21 @@ void INITuC();               // Initialize microcontroller
 void setup() {
   Serial.begin(baudRate);        // Initialize serial communication
 
+  for(int pin = 0; pin < 6; pin++){
+    pinMode(SepperDirPins[pin], OUTPUT);
+    pinMode(StepperStepsPins[pin], OUTPUT);
+  }
+
   //  flush Serial input
   while (Serial.available()) Serial.read();
 
-  Serial.println("setting up");  // send a mesage telling it uP its geting ready
   if (!SD.begin(chipSelect)) {
     Serial.println("SD card initialization failed!");
     return;
   }
   STATE = IFIS;  // Set initial state to IFIS (ON BOOT UP)
+
+  Serial.println("setting up\n");  // send a mesage telling it uP its geting ready
 }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -73,7 +81,7 @@ void loop() {
 
       // Handle case when no command is provided
       if (commandIndex == COMMAND_INDEX_NOT_FOUND) {
-        print_error(COMMAND_INDEX_NOT_FOUND);
+        print_error(COMMAND_INDEX_NOT_FOUND, "PROCESSING_COMMAND STATE");
         ErrorState = STATE;
         STATE = ERROR;  // Transition to the ERROR state
         break;
@@ -84,7 +92,7 @@ void loop() {
 
       // Handle case when no command arguments are provided
       if (token == NULL) {
-        print_error(INVALID_COMMAND_ARGUMENTS);
+        print_error(INVALID_COMMAND_ARGUMENTS, "PROCESSING_COMMAND STATE");
         ErrorState = STATE;
         STATE = ERROR;  // Transition to the ERROR state
         break;
@@ -112,16 +120,8 @@ void loop() {
 // RETURN VALUE: None
 void INITuC() {
 
-  // Initialize PWM pins
-  for (int i = 0; i < 6; ++i) {
-    pinMode(StepperStepsPins[i], OUTPUT);
-    pinMode(SepperDirPins[i], OUTPUT);
-
-    digitalWrite(StepperStepsPins[i], LOW);
-    digitalWrite(SepperDirPins[i], LOW);
-  }
-
   while (Serial.available() > 0) {
+    
     String receivedMessage = Serial.readStringUntil('\n');
 
     // Check if the received message matches the expected connection message

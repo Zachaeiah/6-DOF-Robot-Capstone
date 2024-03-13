@@ -1,14 +1,17 @@
 #include "EXECUTION.h"
 #include <TeensyTimerTool.h>
 
-
+// Declare the global motion plan variable
 static MOSHION RobotMoshionPlan = { NULL, 0 };  // Structure to hold motion plan data
+
+int MOSHIOSTATE = SETTINGUP;
+
+// Declare and initialize the current point index
 volatile int CurrentPoint = 0;
 
-//
+// Declare the timer objects
 IntervalTimer PointTimer;
-// Create an array of timers
-IntervalTimer pwmTimers[6];
+IntervalTimer pwmTimers[6];  // Array of timers for PWM signals (assuming 6 joints)
 
 //---------------------------------------------------------------------------------------------------------------------
 // DESCRIPTION: Allocate move data for robot motion
@@ -19,47 +22,41 @@ bool allocateMoveData(char* strCommandLine) {
   char* token = NULL;         // Current token to analyze
   int NP = 0;                 // Number of points for motion plan
 
+  if (isState(MOSHIOSTATE, SETTINGUP)) {
 
-  // Check if data dump is in progress or if a motion plan is already allocated
-  if (ReadDataDump == true || RobotMoshionPlan.Points != NULL) {
-    print_error(MOSHION_PLAN_OVERRIGHTING);
-    ErrorState = STATE;
-    STATE = ERROR;  // Transition to the ERROR state
-    return false;
-  }
+    // Iterate through and extract all the parameters
+    for (char i = 0; i < paramaterNnumber; i++) {
+      token = strtok(strCommandLine, seps);  // Get the current token
 
-  // Iterate through and extract all the parameters
-  for (char i = 0; i < paramaterNnumber; i++) {
-    token = strtok(strCommandLine, seps);  // Get the current token
+      if (token == NULL) {
+        print_error(MISSING_DATA, "allocateMoveData", i);
+        ErrorState = STATE;
+        STATE = ERROR;  // Transition to the ERROR state
+        return false;
+      }
 
-    if (token == NULL) {
-      print_error(MISSING_DATA);
+      // Set the number of points in the motion plan
+      if (i == 0) {
+        NP = (int)atoi(token);
+      }
+    }
+
+    // Allocate memory for the moshion
+    RobotMoshionPlan.Points = (POINT_INTERP*)calloc(NP, sizeof(POINT_INTERP));
+    RobotMoshionPlan.MOVECNT = NP;
+
+    // If memory allocation fails, print an error message and transition to the ERROR state
+    if (RobotMoshionPlan.Points == NULL) {
+      print_error(MEMORY_ALLOCATION_FAILD, "allocateMoveData");
       ErrorState = STATE;
       STATE = ERROR;  // Transition to the ERROR state
       return false;
     }
-
-    // Set the number of points in the motion plan
-    if (i == 0) {
-      NP = (int)atoi(token);
-    }
+    MOSHIOSTATE = SETUP;                                          // update the Moshion States machine that the moshion is setup
+    Serial.printf("MoshionState changed to: %d\n", MOSHIOSTATE);  // tell the uP that the MoshionState has changed
+    return true;                                                   // Return true to indicate successful allocation
   }
-
-  // Allocate memory for the moshion
-  RobotMoshionPlan.Points = (POINT_INTERP*)calloc(NP, sizeof(POINT_INTERP));
-  RobotMoshionPlan.MOVECNT = NP;
-
-  // If memory allocation fails, print an error message and transition to the ERROR state
-  if (RobotMoshionPlan.Points == NULL) {
-    print_error(MEMORY_ALLOCATION_FAILD);
-    ErrorState = STATE;
-    STATE = ERROR;  // Transition to the ERROR state
-    return false;
-  }
-  ReadDataDump = true;  // Set data dump flag to true
-
-  dsprintf("allocateMoveData");  // Debug message
-  return true;                   // Return true to indicate successful allocation
+  return false;
 }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -76,91 +73,80 @@ bool storeMoshioin(char* strCommandLine) {
   volatile int pointCNT = 0;        // Counter for motion points
 
   // Check if data dump is in progress or if a motion plan is already allocated
-  if (ReadDataDump == false || RobotMoshionPlan.Points == NULL || RobotMoshionPlan.MOVECNT <= 0) {
-    print_error(MOSHION_PLAN_NOT_ALLOCATIED);
-    ErrorState = STATE;
-    STATE = ERROR;  // Transition to the ERROR state
-    return false;
-  }
+  if (isState(MOSHIOSTATE, SETUP)) {
 
-  Serial.printf("storing %d\n", RobotMoshionPlan.MOVECNT);
+    Serial.printf("storing %d\n", RobotMoshionPlan.MOVECNT);
 
-  // Loop through each motion point
-  for (; pointCNT < RobotMoshionPlan.MOVECNT; pointCNT++) {
-    //  flush Serial input
-    while (Serial.available()) Serial.read();
-    memset(inputBuffer, '\0', sizeof(inputBuffer));  // Clear the input buffer
+    // Loop through each motion point
+    for (; pointCNT < RobotMoshionPlan.MOVECNT; pointCNT++) {
+      //  flush Serial input
+      while (Serial.available()) Serial.read();
+      memset(inputBuffer, '\0', sizeof(inputBuffer));  // Clear the input buffer
 
-    // Wait until data is available on the serial line
-    while (!Serial.available()) {
-      // Do nothing
-    }
-
-    memset(inputBuffer, '\0', sizeof(inputBuffer));  // Clear the input buffer
-    bufferIndex = 0;
-
-    // Loop to read data until a newline character is encountered
-    while (true) {
       // Wait until data is available on the serial line
       while (!Serial.available()) {
         // Do nothing
       }
 
-      // Read the next character
-      char inChar = Serial.read();
+      memset(inputBuffer, '\0', sizeof(inputBuffer));  // Clear the input buffer
+      bufferIndex = 0;
 
-      // Check for newline character
-      if (inChar == '\n') {
-        inputBuffer[bufferIndex] = '\0';  // Terminate the input string
-        break;                            // Exit the loop if newline character is encountered
-      } else {
-        // Add the character to the input buffer if it's not a newline
-        if (bufferIndex < maxBufferSize - 2) {
-          inputBuffer[bufferIndex++] = inChar;
+      // Loop to read data until a newline character is encountered
+      while (true) {
+        // Wait until data is available on the serial line
+        while (!Serial.available()) {
+          // Do nothing
+        }
+
+        // Read the next character
+        char inChar = Serial.read();
+
+        // Check for newline character
+        if (inChar == '\n') {
+          inputBuffer[bufferIndex] = '\0';  // Terminate the input string
+          break;                            // Exit the loop if newline character is encountered
         } else {
-          // Print an error if the buffer is full
-          print_error(INPUT_BUFFER_FULL);
+          // Add the character to the input buffer if it's not a newline
+          if (bufferIndex < maxBufferSize - 2) {
+            inputBuffer[bufferIndex++] = inChar;
+          } else {
+            // Print an error if the buffer is full
+            print_error(INPUT_BUFFER_FULL, "storeMoshioin");
+            ErrorState = STATE;
+            STATE = ERROR;  // Transition to the ERROR state
+            return false;
+          }
+        }
+      }
+
+      // Iterate through and extract all the parameters
+      for (int paramater = 0; paramater < paramaterNnumber; paramater++) {
+        // Get the current token or continue from the last position
+        token = strtok((paramater == 0) ? inputBuffer : NULL, seps);
+
+        Serial.printf("Par%d: %s ", paramater, token);
+
+        // Check if any data is missing
+        if (token == NULL) {
+          print_error(MISSING_DATA, "storeMoshioin", paramater);
           ErrorState = STATE;
           STATE = ERROR;  // Transition to the ERROR state
           return false;
         }
+        if (paramater == paramaterNnumber - 1) pointMoshion.TIME = (int)atoi(token);
+        else pointMoshion.Frequency[paramater] = (int)atoi(token);
       }
+      Serial.println();
+      // Store pointMoshion struct in RobotMoshionPlan.Points array
+      pointMoshion.INDEX = pointCNT;
+      RobotMoshionPlan.Points[pointCNT] = pointMoshion;
     }
-
-    // Iterate through and extract all the parameters
-    for (int paramater = 0; paramater < paramaterNnumber; paramater++) {
-      // Get the current token or continue from the last position
-      token = strtok((paramater == 0) ? inputBuffer : NULL, seps);
-
-      Serial.printf("Par%d: %s ", paramater, token);
-
-      // Check if any data is missing
-      if (token == NULL) {
-        print_error(MISSING_DATA, paramater);
-        ErrorState = STATE;
-        STATE = ERROR;  // Transition to the ERROR state
-        return false;
-      }
-      if (paramater == paramaterNnumber - 1) pointMoshion.TIME = (int)atoi(token);
-      else pointMoshion.Frequency[paramater] = (int)atoi(token);
-    }
-    Serial.println();
-    // Store pointMoshion struct in RobotMoshionPlan.Points array
-    pointMoshion.INDEX = pointCNT;
-    RobotMoshionPlan.Points[pointCNT] = pointMoshion;
+    // update the Moshion States machine that the moshion READY to run
+    MOSHIOSTATE = READY;
+    Serial.printf("MoshionState changed to: %d\n", MOSHIOSTATE);  // tell the uP that the MoshionState has changed
+    return true;                                                   // Return true to indicate successful allocation
   }
-
-  // Print stored motion data for debugging purposes
-  for (int j = 0; j < RobotMoshionPlan.MOVECNT; j++) {
-    Serial.printf("\nMoshion: %d,\tTIME: %d uS\n", j, RobotMoshionPlan.Points[j].TIME);
-    for (int i = 0; i < 6; i++) {
-      Serial.printf("index %d: STEP_FR %d\n", i, RobotMoshionPlan.Points[j].Frequency[i]);
-    }
-  }
-
-  // Print debug message
-  dsprintf("storeMoshioin\n");
-  return true;
+  return false;
 }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -168,35 +154,21 @@ bool storeMoshioin(char* strCommandLine) {
 // ARGUMENTS:   strCommandLine - Not used in this function.
 // RETURN VALUE: Always returns false.
 bool executPlanedMove(char* strCommandLine) {
-  // Remove the local declaration of CurrentPoint
-  // volatile int CurrentPoint = 0;
-  CurrentPoint = 0;
 
-  // Initialize an IntervalTimer to call the newPointISR function
-  // IntervalTimer PointTimer; // No need to declare it here since it's already declared globally
 
-  // Begin the IntervalTimer with newPointISR as the callback function and the specified interval
-  if (!PointTimer.begin(newPointISR, 1)) {
-    Serial.println("Timer did not work");
-    // Handle error condition if timer initialization fails
-    return false;
-  } else {
-    Serial.println("Timer started");
+  if (isState(MOSHIOSTATE, READY)) {
+    CurrentPoint = 0;
+    // Begin the IntervalTimer with newPointISR
+    if (!PointTimer.begin(newPointISR, 1)) {
+      // Handle error condition if timer initialization fails
+      print_error(BAD_TIMMER_SETUP, "executPlanedMove");
+      return false;  // return faild
+    } else {
+      MOSHIOSTATE = INMOSHION;
+      Serial.printf("MoshionState changed to: %d\n", MOSHIOSTATE);  // tell the uP that the MoshionState has changed
+      return true;                                                   // Indicate that the function always returns false
+    }
   }
-
-  // Debug message indicating the start of executing a planned move
-  dsprintf("executPlanedMove");
-
-  return true;  // Indicate that the function always returns false
-}
-
-
-//---------------------------------------------------------------------------------------------------------------------
-// DESCRIPTION:
-// ARGUMENTS:
-// RETURN VALUE:
-bool setMoveDelay(char* strCommandLine) {
-  dsprintf("setMoveDelay");
   return false;
 }
 
@@ -204,7 +176,7 @@ bool setMoveDelay(char* strCommandLine) {
 // DESCRIPTION:
 // ARGUMENTS:
 // RETURN VALUE:
-bool PorOutWight(char* strCommandLine) {
+bool getWight(char* strCommandLine) {
   dsprintf("PorOutWight");
   return false;
 }
@@ -218,6 +190,27 @@ bool ReaduC(char* strCommandLine) {
   return false;
 }
 
+//---------------------------------------------------------------------------------------------------------------------
+// DESCRIPTION: Check if the current state matches the desired state and print relevant messages if not.
+// ARGUMENTS:
+//   - CurrentState: The current state of the motion system.
+//   - dState: The desired state to check against.
+// RETURN VALUE: True if the current state matches the desired state, false otherwise.
+bool isState(int CurrentState, int dState) {
+  // Check if the current state matches the desired state
+  if (CurrentState == dState) {
+    return true;  // Return true if the states match
+  } else if (CurrentState == SETTINGUP) {
+    Serial.print("Motion needs to be prepared\n");  // Print message if motion is not prepared
+  } else if (CurrentState == SETUP) {
+    Serial.print("Motion needs to be set up\n");  // Print message if motion is not set up
+  } else if (CurrentState == READY) {
+    Serial.print("Motion needs to be executed\n");  // Print message if motion is not ready
+  } else if (CurrentState == INMOSHION) {
+    Serial.print("Motion is running\n");  // Print message if motion is running
+  }
+  return false;  // Return false as states do not match
+}
 
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -227,41 +220,40 @@ bool ReaduC(char* strCommandLine) {
 // RETURN VALUE: None
 void newPointISR() {
   // Cache frequently accessed values
-  volatile int moveCnt = RobotMoshionPlan.MOVECNT;
-  volatile int* frequencies = RobotMoshionPlan.Points[CurrentPoint].Frequency;
-  volatile int currentTime = RobotMoshionPlan.Points[CurrentPoint].TIME;
+  volatile int moveCnt = RobotMoshionPlan.MOVECNT;                              // Total number of motion points
+  volatile int* frequencies = RobotMoshionPlan.Points[CurrentPoint].Frequency;  // Pointer to frequencies array
+  volatile int currentTime = RobotMoshionPlan.Points[CurrentPoint].TIME;        // Current time
 
   // Check if CurrentPoint exceeds the total number of motion points
   if (CurrentPoint >= moveCnt) {
     PointTimer.end();  // End the timer if all motion points have been executed
 
     // Unroll the loop manually for better performance
-    for (volatile int i = 0; i < 6; i += 2) {
+    for (volatile int i = 0; i < 6; i++) {
       // Set duty cycle for both channels
       analogWrite(StepperStepsPins[i], 0);
-      analogWrite(StepperStepsPins[i + 1], 0);
+      digitalWriteFast(SepperDirPins[i], 0);
     }
+    // update the Moshion States machine that the moshion has finished and ready for the nest one
+    MOSHIOSTATE = SETTINGUP;
+    Serial.printf("MoshionState changed to: %d\n", MOSHIOSTATE);  // tell the uP that the MoshionState has changed
     return;
   }
 
   // Unroll the loop manually for better performance
-  for (volatile int i = 0; i < 6; i += 2) {
+  for (volatile int i = 0; i < 6; i++) {
     // Process two channels simultaneously
-    volatile int frequency0 = frequencies[i];
-    volatile int frequency1 = frequencies[i + 1];
-    volatile int pin0 = StepperStepsPins[i];
-    volatile int pin1 = StepperStepsPins[i+1];
+    volatile int frequency = frequencies[i];  // FrequeR_EXECUTE 2ncy for current channel
+    volatile int step = StepperStepsPins[i];  // Pin for current channel
+    volatile int dir = SepperDirPins[i];      // Direction pin for current channel
 
-    digitalWriteFast(SepperDirPins[i], frequency0 < 0 ? HIGH : LOW);
-    analogWriteFrequency(pin0, frequency0);
-    analogWriteFrequency(pin1, frequency1);
-
-    analogWrite(pin0, dutyCycle);
-    analogWrite(pin1, dutyCycle);
+    digitalWriteFast(dir, frequency <= 0 ? HIGH : LOW);                                                         // Set direction based on frequency sign
+    analogWriteFrequency(step, abs(frequency));                                                                 // Set frequency
+    analogWrite(step, abs(frequency) <= 0 ? 0 : dutyCycle);                                                     // Set duty cycle (if frequency is greater than 0)
   }
 
-  PointTimer.end();  // Stop the timer
-  PointTimer.begin(newPointISR, currentTime);
+  PointTimer.end();                            // Stop the timer
+  PointTimer.begin(newPointISR, currentTime);  // Begin the timer for the next motion point
   // Move to the next motion point
   CurrentPoint++;
 }

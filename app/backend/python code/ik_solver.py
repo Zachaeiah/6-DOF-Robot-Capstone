@@ -73,20 +73,20 @@ class RobotArm:
 
     def calculate_fk(
         self,
-        joint_angles: list,
+        joint_angles: list[list[0, float, float, 0, float, float, 0, float, float]],
         batch_size: int = 5
     ) -> iter:
-        """_summary_
+        """Calculate forward kinematics for a given set of joint angles.
 
         Args:
-            joint_angles (list): _description_
-            batch_size (int, optional): _description_. Defaults to 5.
+            joint_angles (List[List[float]]): List of joint angles. Each inner list represents a set of joint angles.
+            batch_size (int, optional): Size of the batch for processing joint angles. Defaults to 5.
 
         Returns:
-            iter: _description_
+            Iterator: An iterator yielding positions, orientation, and homogeneous transformation matrices for each set of joint angles.
 
         Yields:
-            Iterator[iter]: _description_
+            Iterator: Tuple containing positions, orientation, and homogeneous transformation matrices for each set of joint angles.
         """
         for i in range(0, len(joint_angles), batch_size):
             joint_batch = joint_angles[i:i + batch_size]
@@ -271,34 +271,56 @@ def main():
     urdf_file_path = "app\\backend\\python code\\urdf_tes2.urdf"
     initial_position = [ 0.00000000e+00,  2.35449960e-02,  8.50596010e-01,  0.00000000e+00,2.29225520e+00,  2.35453414e-02,  0.00000000e+00, -1.57205453e+00,2.96303678e-05]
     robot = RobotArm(urdf_file_path, initial_position)
-    num_positions = 140
+    num_positions = 1
 
 
-    #X and Y max are 0.7m
-    #Z min -0.3m Z max 0.75m
-    # work surface aria is 5.88m^2
-    target = [[-0.7+0.01*i, -0.615, 0.15] for i in range(0, num_positions)]
+    # #X and Y max are 0.7m
+    # #Z min -0.3m Z max 0.75m
+    # # work surface aria is 5.88m^2
+    #target = [[-0.7+0.01*i, -0.615, 0.15] for i in range(0, num_positions)]
 
-    orientation = [rotate_y(rotate_x(np.eye(3), np.pi/2), np.pi/2)  for i in range(0, num_positions)]
+    # orientation = [rotate_y(rotate_x(np.eye(3), np.pi/2), np.pi/2)  for i in range(0, num_positions)]
 
-    alinment = ["all" for _ in range(0, num_positions)]
+    # alinment = ["all" for _ in range(0, num_positions)]
 
-    # Set self.last_angles to initial_position
-    robot.last_angles = initial_position
+    # # Set self.last_angles to initial_position
+    # robot.last_angles = initial_position
 
-    IK = robot.calculate_ik(target,orientation,alinment)
+    # IK = robot.calculate_ik(target,orientation,alinment)
     
-    #the error must be cmaller then 0.001
-    deg = []
-    for ik in IK:
-        deg.append(np.degrees(ik[0][-1]))
+    # #the error must be cmaller then 0.001
+    # deg = []
+    # for ik in IK:
+    #     print(ik[1])
     
-    # plt.scatter(deg, np.arange(0, len(deg), 1))
-    # plt.show()
+    # # plt.scatter(deg, np.arange(0, len(deg), 1))
+    # # plt.show()
         
         
 
-    robot.animate_ik(target,orientation,alinment, interval=50)
+    # robot.animate_ik(target,orientation,alinment, interval=50)
+    target = [[-0.86385609,  0.44276524,  0.28019077]]
+    orientation = [rotate_y(rotate_x(np.eye(3), np.pi/2), np.pi/2)]
+    alinment = ["all"]
+
+
+    FK = robot.calculate_fk([[0, 1.03604527 , 1.50779719,  0.0, -0.21657808, -1.410219730, 0.0,-2.07921403,  1.89215534], 
+                             [0, 1.03604527 +((np.pi*2)/(91944*360)), 1.50779719+((np.pi*2*5)/(9071*360)),  0.0, -0.21657808+((np.pi*2)/(91944*360)), -1.410219730+((np.pi*2*90)/(149299*360)), 0.0,-2.07921403+((np.pi*2*90)/(149299*360)),  1.89215534+((np.pi*2*90)/(149299*360))]], 1)
+    # IK = robot.calculate_ik(target,orientation,alinment)
+
+    # Store the first FK
+    first_fk = None
+    for idx, fk in enumerate(FK):
+        if idx == 0:
+            first_fk = fk[-1]
+        print("\nhomogeneous of FK", idx+1)
+        print(fk[-1])
+        print("\n")
+        if first_fk is not None:
+            # Calculate difference
+            difference = fk[-1] - first_fk
+            print("Difference:")
+            print(difference)
         
     
     
