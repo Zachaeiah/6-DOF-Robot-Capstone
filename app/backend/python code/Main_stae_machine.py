@@ -1,7 +1,8 @@
 """A script to manage the robotic arm and control its movements."""
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib.animation as animation
+import tkinter as tk
+from queue import LifoQueue
 import ast
 from DP_parts import *
 from ik_solver import *
@@ -9,6 +10,8 @@ from intrerpolation import *
 from MotorManager import *
 from Motors import *
 from VelocityPFP import *
+from moshionPlanning import *
+from Messager import *
 
 
 def rotate_x(matrix, angle_x):
@@ -182,6 +185,63 @@ def XY_angle(vector1, vector2):
     else:
         # Vector2 is clockwise (CW) with respect to vector1
         return -angle_radians
+    
+def handle_response(expected_r: str = None, expected_prefix: str = None, dataWrite: list = [], message_stack: LifoQueue = None):
+    """Handle response based on expected response or prefix.
+
+    Args:
+        expected_r (str, optional): Expected response. Defaults to None.
+        expected_prefix (str, optional): Expected prefix. Defaults to None.
+        dataWrite (list, optional): List to write data when expected_prefix is found. Defaults to [].
+        message_stack (LifoQueue, optional): Stack of messages. Defaults to None.
+    """
+    while True:
+        response = message_stack.get()  # Get the latest response from the message stack
+        if response is None:  # If response is None, continue to wait for the next response
+            continue
+
+        if expected_r is not None and expected_prefix is None:  # If expected_r is provided but expected_prefix is not
+            if response == expected_r:  # Check if the response matches the expected response
+                print(response)  # Print the response
+                return  # Exit the function since the expected response is received
+            else:
+                print(f">>> {response}")
+
+        elif expected_r is None and expected_prefix is not None:  # If expected_r is not provided but expected_prefix is
+            if response.startswith(expected_prefix):  # Check if the response starts with the expected prefix
+                dataWrite.extend(response.split())  # Split the response and add it to the dataWrite list
+                return  # Exit the function since the response with the expected prefix is received
+            else:
+                print(f">>> {response}")
+
+def quaternion_to_euler(q):
+    """
+    Convert quaternion (w, x, y, z) to Euler angles (roll, pitch, yaw).
+    """
+    # Extract components
+    w, x, y, z = q
+    
+    # Roll (x-axis rotation)
+    roll = np.arctan2(2 * (w * x + y * z), 1 - 2 * (x**2 + y**2))
+    
+    # Pitch (y-axis rotation)
+    sinp = 2 * (w * y - z * x)
+    if np.abs(sinp) >= 1:
+        pitch = np.pi / 2 if sinp > 0 else -np.pi / 2  # Use ±π/2 if out of range
+    else:
+        pitch = np.arcsin(sinp)
+    
+    # Yaw (z-axis rotation)
+    yaw = np.arctan2(2 * (w * z + x * y), 1 - 2 * (y**2 + z**2))
+    
+    # Convert angles to degrees
+    roll = np.degrees(roll)
+    pitch = np.degrees(pitch)
+    yaw = np.degrees(yaw)
+    
+    return yaw, pitch, roll 
+
+
 
 
 LARGE_FONT = ("Verdana", 12)
@@ -189,7 +249,7 @@ DROP_OFF_ZONE = (-0.35, -0.70, 0.0)
 DROP_OFF_ORIENTATION = rotate_y(rotate_x(np.eye(3), np.pi/2), np.pi/2)
 IDLE_POSITION = (0.01, -0.615, 0.15)
 IDLE_ORIENTATION  = rotate_y(rotate_x(np.eye(3), np.pi/2), np.pi/2)
-IDLE_AGLE_POSITION = [ 0.00000000e+00,  2.35449960e-02,  8.50596010e-01,  0.00000000e+00,2.29225520e+00,  2.35453414e-02,  0.00000000e+00, -1.57205453e+00,2.96303678e-05]
+IDLE_AGLE_POSITION = np.array([ 0.00000000e+00,  2.34698997e-03,  -8.50613920e-01,  0.00000000e+00, -2.28573529e+00,  2.34669544e-03,  0.00000000e+00, 1.56555290e+00,3.14158035e+00])
 WORKING_HIGHT = 0.1
 WORKING_POSITION = (*IDLE_POSITION[:-1], IDLE_POSITION[-1] + 0.1)
 
@@ -461,8 +521,59 @@ def state4(travle_paths, travle_orientation, travle_alinements, urdf_file_path):
 
     robot.animate_ik(travle_paths, travle_orientation, travle_alinements, interval=1)
 
-def init_setup(parts_db, planner):
-    pass
+
+
+def joggingAngles():
+
+    # Create an instance of MoshionController
+    controller = MoshionController()
+
+    MSG = Mesageer("COM12")
+    MSG.connect()
+
+    # Create the Tkinter window
+    root = tk.Tk()
+    root.title("Enter Angles")
+
+    # Create entry fields for entering angles
+    angle_entries = []
+    default_values = ["0"] * 6  # Default values set to 0
+    for i, label in enumerate(['Shoulder Rotate Motor', 'Shoulder Lift Motor', 'Elbow Motor', 'Forearm Rotate Motor', 'Wrist Motor', 'Wrist Rotate Motor']):
+        tk.Label(root, text=label).grid(row=i, column=0)
+        entry = tk.Entry(root)
+        entry.insert(tk.END, default_values[i])  # Set default value
+        entry.grid(row=i, column=1)
+        angle_entries.append(entry)
+    
+    def send_angles():
+        angles = tuple(float(entry.get()) for entry in angle_entries)
+        
+        # Move motors based on the defined angles and get the results
+        movement_results = controller.move_motors([(0,0,0,0,0,0), angles])
+        print(movement_results)
+
+        expected_response = "MoshionState changed to: 1"
+        MSG.send_message("R_MOVES 1")
+        handle_response(expected_response, None, None,MSG.message_stack) # weight until i get the my response
+
+        expected_response = "storing 1"
+        MSG.send_message("R_MOSHION 1")
+        handle_response(expected_response, None, None,MSG.message_stack) # weight until i get the my response
+
+        expected_response = "MoshionState changed to: 2"
+        MSG.send_message(movement_results)
+        handle_response(expected_response, None, None, MSG.message_stack) # weight until i get the my response
+
+        expected_response = "MoshionState changed to: 0"
+        MSG.send_message("R_EXECUTE 1")
+        handle_response(expected_response, None, None, MSG.message_stack) # weight until i get the my response
+        
+    # Create a button to send the entered angles
+    send_button = tk.Button(root, text="Send Angles", command=send_angles)
+    send_button.grid(row=len(angle_entries), columnspan=2)
+    
+    # Run the Tkinter event loop
+    root.mainloop()
 
 
 def main():
@@ -490,33 +601,39 @@ def main():
         max_vel = 50
         planner = PathPlanner(max_acc, max_vel)
 
-        while run:
-            try:
-                if state == 0:
-                    part_names_to_fetch, pickip_dropoff = state0()
-                    state = 1
+        Mode = False
 
-                elif state == 1:
-                    part_info_dict = state1(part_names_to_fetch, parts_db)
-                    state = 2
+        if Mode:
 
-                elif state == 2:
-                    locations, orientations = state2(part_info_dict)
-                    state = 3
+            while run:
+                try:
+                    if state == 0:
+                        part_names_to_fetch, pickip_dropoff = state0()
+                        state = 1
 
-                elif state == 3:
-                    travle_paths, travle_orientation, travle_alinements = state3(pickip_dropoff, locations, orientations, DROP_OFF_ZONE, planner)
-                    state = 4
+                    elif state == 1:
+                        part_info_dict = state1(part_names_to_fetch, parts_db)
+                        state = 2
 
-                elif state == 4:
-                    state4(travle_paths, travle_orientation, travle_alinements, urdf_file_path)
-                    state = 5
+                    elif state == 2:
+                        locations, orientations = state2(part_info_dict)
+                        state = 3
 
-                elif state == 5:
+                    elif state == 3:
+                        travle_paths, travle_orientation, travle_alinements = state3(pickip_dropoff, locations, orientations, DROP_OFF_ZONE, planner)
+                        state = 4
+
+                    elif state == 4:
+                        state4(travle_paths, travle_orientation, travle_alinements, urdf_file_path)
+                        state = 5
+
+                    elif state == 5:
+                        run = False
+                except Exception as e:
+                    print(f"An error occurred at state {state}\n{ERRORmsg[state]}:", e)
                     run = False
-            except Exception as e:
-                print(f"An error occurred at state {state}\n{ERRORmsg[state]}:", e)
-                run = False
+        else:
+            pass
 
     except Exception as e:
         print(f"Error: {e}")
@@ -524,7 +641,15 @@ def main():
 
 if __name__ == "__main__":
     """Entry point of the script."""
-    main()
+    
+    #joggingAngles()
+
+    # Example usage
+    print(quaternion_to_euler((-0.0262, -0.9362, -0.0785, 0.3416)))
+    print(quaternion_to_euler((0.9902, 0.0302, -0.1365, 0.0001)))
+    print(quaternion_to_euler((0.7023, -0.06951, -0.01500, 0.0329)))
+    print(quaternion_to_euler((0.9866, 0.0035, -0.0667, 0.1486)))
+
 
 
     

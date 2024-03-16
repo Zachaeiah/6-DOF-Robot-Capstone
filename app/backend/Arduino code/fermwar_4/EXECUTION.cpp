@@ -157,6 +157,11 @@ bool executPlanedMove(char* strCommandLine) {
 
 
   if (isState(MOSHIOSTATE, READY)) {
+    if(RobotMoshionPlan.Points[0].TIME == 0){
+      MOSHIOSTATE = SETTINGUP;
+      Serial.printf("MoshionState changed to: %d\n", MOSHIOSTATE);
+      return true;
+    }
     CurrentPoint = 0;
     // Begin the IntervalTimer with newPointISR
     if (!PointTimer.begin(newPointISR, 1)) {

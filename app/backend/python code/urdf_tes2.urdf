@@ -159,7 +159,7 @@
         <parent link="wrist_link"/>
         <child link="wrist_revolute_link"/>
         <axis xyz="0 0 1"/>
-        <limit lower="-3.141692" upper="3.141692" effort="60.0" velocity="100.0"/>
+        <limit lower="-314.1692" upper="314.1692" effort="60.0" velocity="100.0"/>
     </joint>
 
     <!-- Define the "wrist_revolute_link" -->

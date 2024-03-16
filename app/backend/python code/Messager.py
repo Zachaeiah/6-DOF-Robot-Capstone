@@ -79,9 +79,6 @@ class Mesageer:
 
         Args:
             message (str): Message to send.
-
-        Returns:
-            str: Response from the robot.
         """
         try:
             if self.serial and self.serial.is_open:
@@ -106,6 +103,7 @@ class Mesageer:
                     response_buffer += data
                     if data.endswith("\n"):
                         self.message_stack.put(response_buffer.strip())
+                            
                         response_buffer = ""
         except Exception as e:
             print(f"An error occurred while reading data: {e}")
@@ -144,10 +142,14 @@ def handle_response(expected_r: str = None, expected_prefix: str = None, dataWri
         dataWrite (list, optional): List to write data when expected_prefix is found. Defaults to [].
         message_stack (LifoQueue, optional): Stack of messages. Defaults to None.
     """
+    if expected_r is None and expected_prefix is None:
+        raise print("must give an Expected response or Expected prefix")
+    
     while True:
         response = message_stack.get()  # Get the latest response from the message stack
         if response is None:  # If response is None, continue to wait for the next response
             continue
+
 
         if expected_r is not None and expected_prefix is None:  # If expected_r is provided but expected_prefix is not
             if response == expected_r:  # Check if the response matches the expected response
@@ -163,6 +165,8 @@ def handle_response(expected_r: str = None, expected_prefix: str = None, dataWri
             else:
                 print(f">>> {response}")
 
+        
+
 
 def main():
     MSG = Mesageer("COM12")
@@ -170,24 +174,44 @@ def main():
     MSG.connect()
 
     expected_response = "MoshionState changed to: 1"
-    MSG.send_message("R_MOVES 2")
+    MSG.send_message("R_MOVES 1")
     handle_response(expected_response, None, None,MSG.message_stack) # weight until i get the my response
 
-    expected_response = "storing 2"
-    MSG.send_message("R_MOSHION 2")
+    expected_response = "storing 1"
+    MSG.send_message("R_MOSHION 1")
     handle_response(expected_response, None, None,MSG.message_stack) # weight until i get the my response
-
-    MSG.send_message("15000, 0, 0, 0, 0, 0, 3000000.0")
 
     expected_response = "MoshionState changed to: 2"
-    MSG.send_message("-15000, 0, 0, 0, 0, 0, 3000000.0")
+    MSG.send_message("-29859, 0, 0, 0, 0, 0, 277777")
     handle_response(expected_response, None, None,MSG.message_stack) # weight until i get the my response
 
     expected_response = "MoshionState changed to: 0"
     MSG.send_message("R_EXECUTE 2")
-    threading.Thread(target=handle_response, args=(expected_response, None, None, MSG.message_stack)).start() # go and do other things untill the response is sent
+    handle_response(expected_response, None, None,MSG.message_stack) # weight until i get the my response
+
+    
 
 
+
+
+
+    expected_response = "MoshionState changed to: 1"
+    MSG.send_message("R_MOVES 1")
+    handle_response(expected_response, None, None,MSG.message_stack) # weight until i get the my response
+
+    expected_response = "storing 1"
+    MSG.send_message("R_MOSHION 1")
+    handle_response(expected_response, None, None,MSG.message_stack) # weight until i get the my response
+
+    expected_response = "MoshionState changed to: 2"
+    MSG.send_message("29859, 0, 0, 0, 0, 0, 277777")
+    handle_response(expected_response, None, None,MSG.message_stack) # weight until i get the my response
+
+    expected_response = "MoshionState changed to: 0"
+    MSG.send_message("R_EXECUTE 1")
+    handle_response(expected_response, None, None,MSG.message_stack) # weight until i get the my response
+
+ 
 
     # MSG.close_connection()
 

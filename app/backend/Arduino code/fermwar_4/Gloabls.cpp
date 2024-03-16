@@ -28,11 +28,9 @@ void print_error(int error_index, ...) {
 
   const ERROR_COMMAND* error = &SYSTEM_ERROR[error_index];  // Get the error command based on index
 
-  dsprintf("Error in state %d: ", STATE);  // Print error state
   char buffer[256];  // Buffer to hold the formatted error message
   vsnprintf(buffer, sizeof(buffer), error->strError, args);  // Format the error message
-  dsprintf(buffer);  // Print the formatted error message
-  dsprintf("putting systems back into RESEVING_COMMAND state\n");  // Print additional message
+  dsprintf("Error `%d`: `%s` `Putting systems back into RESEVING_COMMAND state`\n", error_index, buffer);  // Print the error message
 
   va_end(args);  // End variable argument list
 }

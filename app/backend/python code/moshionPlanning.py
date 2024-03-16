@@ -1,5 +1,4 @@
 from MotorManager import *
-from Motors import *
 
 class MoshionController:
     def __init__(self):
@@ -29,42 +28,36 @@ class MoshionController:
         times = []        # List to store times of all motors
         for point in range(1, len(angles)):
             Times = []
-            new_times = []
 
             # Calculate motor times for the current movement
-            for index, (motor_name, motor) in enumerate(reversed(list(self.manager.motors.items()))):
+            for index, (motor_name, motor) in enumerate(list(self.manager.motors.items())):
                 motor_time = (angles[point][index] - angles[point-1][index])*(60.0/(360.0*motor.max_speed))
                 Times.append(motor_time)
 
             # Calculate motor frequencies and new times for the current movement
-            for index, (motor_name, motor) in enumerate(reversed(list(self.manager.motors.items()))):
+            for index, (motor_name, motor) in enumerate(list(self.manager.motors.items())):
                 delta_theta = (angles[point][index] - angles[point-1][index])
 
                 if delta_theta == 0:
                     new_motor_speed = 0
                     motor_time = 0
                 else:
-                    new_motor_speed = (delta_theta*(60/(360*max(Times, key=abs))))
-                    motor_time = delta_theta*(60/(360*new_motor_speed))
+                    new_motor_speed = (delta_theta*60)/(360*abs((max(Times, key=abs))))
 
-                motor_frequensy = round((new_motor_speed * motor.steps_per_revolution)/60,3)
+                motor_frequensy = (new_motor_speed * motor.steps_per_revolution)/60
 
-                if (delta_theta < 0):
-                    motor_frequensy = -motor_frequensy
                     
 
-                new_times.append(motor_time)
-
                 # Append frequencies and times to respective lists
-                frequencies.append(f"{motor_frequensy}")
-                times.append(motor_time)
+                frequencies.append(f"{int(motor_frequensy)}")
+                
 
         # Convert times to string and find maximum time
         max_time = abs(max(Times, key=abs))
-        max_time_str = f"{max_time*1e6}"
+        max_time_str = f"{int(max_time*1e6)}"
 
         # Concatenate frequencies and max time into a single string
-        result_str = ", ".join(frequencies) + ", " + max_time_str +"\n"
+        result_str = ", ".join(reversed(frequencies)) + ", " + max_time_str +"\n"
 
         return result_str
 
@@ -73,7 +66,7 @@ if __name__ == "__main__":
     controller = MoshionController()
 
     # Define the angles for motor movements
-    angles = [(360,0,0,0,0,0), (0,0,0,0,0,0)]
+    angles = [(0,0,0,0,0,0), (0,0,0,0,-20,20)]
 
     # Move motors based on the defined angles and get the results
     movement_results = controller.move_motors(angles)
