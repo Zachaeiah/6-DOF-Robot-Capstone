@@ -192,7 +192,7 @@ class PathPlanner:
         return np.column_stack((x_coordinates, y_coordinates, z_coordinates))
 
 
-    def generate_path(self, start_point: np.array, end_point: np.array, linear: bool) -> np.ndarray:
+    def generate_path(self, start_point: np.array, end_point: np.array, linear: bool, tolerance: float = 1e-4) -> np.ndarray:
         """
         Generate a 3D path between two points and store it.
 
@@ -207,7 +207,10 @@ class PathPlanner:
         self.start_point = start_point
         self.end_point = end_point
 
-        if linear:
+        distance = np.linalg.norm(np.array(start_point) - np.array(end_point))
+        if distance <= tolerance:
+            self.points = np.array([start_point])
+        elif linear:
             self.points = self.points_on_linear_path_3d(start_point, end_point)
         else:
             self.points = self.points_on_circular_path_3d(start_point, end_point)
@@ -215,33 +218,6 @@ class PathPlanner:
         self.saved_paths.append(self.points.copy())
 
         return self.points
-
-    def generate_path(self, start_point: np.array, end_point: np.array, linear: bool) -> np.ndarray:
-        """
-        Generate a 3D path between two points and store it.
-
-        Args:
-            start_point (tuple): The starting point (x, y, z).
-            end_point (tuple): The ending point (x, y, z).
-            linear (bool): If True, generate a linear path; otherwise, generate a circular path.
-
-        Returns:
-            np.ndarray: An array of interpolated points along the path.
-        """
-        self.start_point = start_point
-        self.end_point = end_point
-        self.linear = linear
-
-        if self.linear:
-            self.points = self.points_on_linear_path_3d(self.start_point, self.end_point)
-        else:
-            self.points = self.points_on_circular_path_3d(self.start_point, self.end_point)
-
-        # Convert points to a NumPy array before storing
-        self.saved_paths.append(self.points.copy())
-
-        return self.points
-
 
     
     def plot_3d_path(self) -> None:

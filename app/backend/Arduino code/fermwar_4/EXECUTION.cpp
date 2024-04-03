@@ -54,7 +54,7 @@ bool allocateMoveData(char* strCommandLine) {
     }
     MOSHIOSTATE = SETUP;                                          // update the Moshion States machine that the moshion is setup
     Serial.printf("MoshionState changed to: %d\n", MOSHIOSTATE);  // tell the uP that the MoshionState has changed
-    return true;                                                   // Return true to indicate successful allocation
+    return true;                                                  // Return true to indicate successful allocation
   }
   return false;
 }
@@ -144,7 +144,7 @@ bool storeMoshioin(char* strCommandLine) {
     // update the Moshion States machine that the moshion READY to run
     MOSHIOSTATE = READY;
     Serial.printf("MoshionState changed to: %d\n", MOSHIOSTATE);  // tell the uP that the MoshionState has changed
-    return true;                                                   // Return true to indicate successful allocation
+    return true;                                                  // Return true to indicate successful allocation
   }
   return false;
 }
@@ -157,7 +157,7 @@ bool executPlanedMove(char* strCommandLine) {
 
 
   if (isState(MOSHIOSTATE, READY)) {
-    if(RobotMoshionPlan.Points[0].TIME == 0){
+    if (RobotMoshionPlan.Points[0].TIME == 0) {
       MOSHIOSTATE = SETTINGUP;
       Serial.printf("MoshionState changed to: %d\n", MOSHIOSTATE);
       return true;
@@ -171,7 +171,7 @@ bool executPlanedMove(char* strCommandLine) {
     } else {
       MOSHIOSTATE = INMOSHION;
       Serial.printf("MoshionState changed to: %d\n", MOSHIOSTATE);  // tell the uP that the MoshionState has changed
-      return true;                                                   // Indicate that the function always returns false
+      return true;                                                  // Indicate that the function always returns false
     }
   }
   return false;
@@ -224,6 +224,7 @@ bool isState(int CurrentState, int dState) {
 // ARGUMENTS:   None
 // RETURN VALUE: None
 void newPointISR() {
+  PointTimer.end();  // Stop the timer
   // Cache frequently accessed values
   volatile int moveCnt = RobotMoshionPlan.MOVECNT;                              // Total number of motion points
   volatile int* frequencies = RobotMoshionPlan.Points[CurrentPoint].Frequency;  // Pointer to frequencies array
@@ -252,12 +253,12 @@ void newPointISR() {
     volatile int step = StepperStepsPins[i];  // Pin for current channel
     volatile int dir = SepperDirPins[i];      // Direction pin for current channel
 
-    digitalWriteFast(dir, frequency <= 0 ? HIGH : LOW);                                                         // Set direction based on frequency sign
-    analogWriteFrequency(step, abs(frequency));                                                                 // Set frequency
-    analogWrite(step, abs(frequency) <= 0 ? 0 : dutyCycle);                                                     // Set duty cycle (if frequency is greater than 0)
+    digitalWriteFast(dir, frequency <= 0 ? HIGH : LOW);      // Set direction based on frequency sign
+    analogWriteFrequency(step, abs(frequency));              // Set frequency
+    analogWrite(step, abs(frequency) <= 0 ? 0 : dutyCycle);  // Set duty cycle (if frequency is greater than 0)
   }
 
-  PointTimer.end();                            // Stop the timer
+
   PointTimer.begin(newPointISR, currentTime);  // Begin the timer for the next motion point
   // Move to the next motion point
   CurrentPoint++;

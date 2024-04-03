@@ -31,7 +31,7 @@ class RobotArm:
         target_positions: list,
         target_orientations: list,
         orientation_modes: list,
-        batch_size: int = 5
+        batch_size: int = 1
     ) -> iter:
         """Perform inverse kinematics calculations.
 
@@ -39,11 +39,10 @@ class RobotArm:
             target_positions (list): List of target positions.
             target_orientations (list): List of target orientations.
             orientation_modes (list): List of orientation modes.
-            precision (int, optional): Precision of the angles. Defaults to 3.
-            batch_size (int, optional): Batch size for calculations. Defaults to 5.
+            batch_size (int, optional): Batch size for calculations. Defaults to 1.
 
         Yields:
-            list: List of rounded inverse kinematics angles or an empty list if an error occurs.
+            list: List of inverse kinematics angles or an empty list if an error occurs.
         """
         for i in range(0, len(target_positions), batch_size):
             positions_batch = target_positions[i:i + batch_size]
@@ -93,6 +92,9 @@ class RobotArm:
             for joints in joint_batch:
                 try:
 
+                    #stor the last angle
+                    self.last_angles = joints
+
                     # Calculate forward kinematics
                     end_effector = self.my_chain.forward_kinematics(joints)
                     orientation = end_effector[:3, :3]
@@ -105,24 +107,30 @@ class RobotArm:
                     yield np.array([]), np.array([]), np.array([])  # Return empty arrays if an error occurs
 
     def animate_fk(
-        self,
-        joint_angles_trajectory: list,
-        interval: float = 0.1
+    self,
+    joint_angles_trajectory: list,
+    interval: float = 0.1,
+    ax=None,
+    fig=None
     ) -> None:
         """Animate the forward kinematics of the robot arm using ikpy plotting.
 
         Args:
             joint_angles_trajectory (list): List of joint angles over time.
             interval (float, optional): Time interval between updates in seconds. Defaults to 0.1.
+            ax (matplotlib.axes._subplots.Axes3DSubplot, optional): Axes to use for plotting. Defaults to None.
+            fig (matplotlib.figure.Figure, optional): Figure to use for plotting. Defaults to None.
         """
-        fig, ax = plt.subplots(subplot_kw={'projection': '3d'}, figsize=(12, 8))
+        if ax is None and fig is None:
+            fig, ax = plt.subplots(subplot_kw={'projection': '3d'}, figsize=(12, 8))
+
 
         ax.set_xlim3d(-1, 1)
         ax.set_ylim3d(-1, 1)
         ax.set_zlim3d(0, 2)
 
         # Plot the robot arm once for initialization
-        self.my_chain.plot(self.last_angles, ax, target=self.my_chain.forward_kinematics(self.last_angles))
+        self.my_chain.plot(joint_angles_trajectory[0], ax, target=self.my_chain.forward_kinematics(joint_angles_trajectory[0]))
 
         def update(frame):
             ax.clear()  # Clear the previous frame
@@ -130,6 +138,7 @@ class RobotArm:
 
             # Plot the robot arm with the updated joint angles
             self.my_chain.plot(joint_angles, ax, target=self.my_chain.forward_kinematics(joint_angles))
+            self.last_angles = joint_angles
 
             # Add arrows at the origin for the axes
             ax.quiver(0, 0, 0, 1, 0, 0, color=(0.0 , 0.5 , 0.0), arrow_length_ratio=0.05)
@@ -154,7 +163,9 @@ class RobotArm:
         orientation_modes: list,
         interval: int = 1,
         save_as_gif: bool = False,
-        file_name: str = "robot_animation.gif"
+        file_name: str = "robot_animation.gif",
+        ax=None,
+        fig=None
     ) -> None:
         """_summary_
 
@@ -165,14 +176,14 @@ class RobotArm:
             interval (int, optional): _description_. Defaults to 1.
             save_as_gif (bool, optional): _description_. Defaults to False.
             file_name (str, optional): _description_. Defaults to "robot_animation.gif".
+            ax (matplotlib.axes._subplots.Axes3DSubplot, optional): Axes to use for plotting. Defaults to None.
+            fig (matplotlib.figure.Figure, optional): Figure to use for plotting. Defaults to None.
         """
-        fig, ax = plt.subplots(subplot_kw={'projection': '3d'}, figsize=(12, 8))
+        if ax is None and fig is None:
+            fig, ax = plt.subplots(subplot_kw={'projection': '3d'}, figsize=(12, 8))
 
         # Initialize a line for the trailing plot
         line, = ax.plot([], [], [], color='red', marker='o')
-
-        
-
 
         def update(frame: int) -> None:
             """Update the animation frame.
@@ -194,6 +205,7 @@ class RobotArm:
             ik_solution = list(self.calculate_ik([target_position], [target_orientation], [orientation_mode], batch_size=1))[0]
             
             self.my_chain.plot(ik_solution[0], ax, target=np.array(target_position, dtype=np.float32))
+            self.last_angles = ik_solution[0]
 
             # Add arrows at the origin for the axes
             ax.quiver(0, 0, 0, 1, 0, 0, color=(0.0 , 0.5 , 0.0), arrow_length_ratio=0.05)
@@ -269,58 +281,17 @@ def rotate_z(matrix, angle_z):
 
 def main():
     urdf_file_path = "app\\backend\\python code\\urdf_tes2.urdf"
-    initial_position = [ 0.00000000e+00,  2.35449960e-02,  8.50596010e-01,  0.00000000e+00,2.29225520e+00,  2.35453414e-02,  0.00000000e+00, -1.57205453e+00,2.96303678e-05]
+    initial_position = [ 0.00000000e+00,  2.35449960e-02,  8.50596010e-01,  0.00000000e+00, 2.29225520e+00,  2.35453414e-02,  0.00000000e+00, -1.57205453e+00,2.96303678e-05]
     robot = RobotArm(urdf_file_path, initial_position)
     num_positions = 1
 
 
-    # #X and Y max are 0.7m
-    # #Z min -0.3m Z max 0.75m
-    # # work surface aria is 5.88m^2
-    #target = [[-0.7+0.01*i, -0.615, 0.15] for i in range(0, num_positions)]
-
-    # orientation = [rotate_y(rotate_x(np.eye(3), np.pi/2), np.pi/2)  for i in range(0, num_positions)]
-
-    # alinment = ["all" for _ in range(0, num_positions)]
-
-    # # Set self.last_angles to initial_position
-    # robot.last_angles = initial_position
-
-    # IK = robot.calculate_ik(target,orientation,alinment)
+    # robot.animate_fk([[0, 0, 138.6653286, 17.4672121, 0, -14.51805191, -8.8323662, 0, 0]]) 
+    robot.animate_fk([[0, 0.0, np.deg2rad(41.1334671), 0, np.deg2rad(113.7), np.deg2rad(-14.51805191), 0, np.deg2rad(8.6), 0]]) 
     
-    # #the error must be cmaller then 0.001
-    # deg = []
-    # for ik in IK:
-    #     print(ik[1])
+       
+
     
-    # # plt.scatter(deg, np.arange(0, len(deg), 1))
-    # # plt.show()
-        
-        
-
-    # robot.animate_ik(target,orientation,alinment, interval=50)
-    target = [[-0.86385609,  0.44276524,  0.28019077]]
-    orientation = [rotate_y(rotate_x(np.eye(3), np.pi/2), np.pi/2)]
-    alinment = ["all"]
-
-
-    FK = robot.calculate_fk([[0, 1.03604527 , 1.50779719,  0.0, -0.21657808, -1.410219730, 0.0,-2.07921403,  1.89215534], 
-                             [0, 1.03604527 +((np.pi*2)/(91944*360)), 1.50779719+((np.pi*2*5)/(9071*360)),  0.0, -0.21657808+((np.pi*2)/(91944*360)), -1.410219730+((np.pi*2*90)/(149299*360)), 0.0,-2.07921403+((np.pi*2*90)/(149299*360)),  1.89215534+((np.pi*2*90)/(149299*360))]], 1)
-    # IK = robot.calculate_ik(target,orientation,alinment)
-
-    # Store the first FK
-    first_fk = None
-    for idx, fk in enumerate(FK):
-        if idx == 0:
-            first_fk = fk[-1]
-        print("\nhomogeneous of FK", idx+1)
-        print(fk[-1])
-        print("\n")
-        if first_fk is not None:
-            # Calculate difference
-            difference = fk[-1] - first_fk
-            print("Difference:")
-            print(difference)
         
     
     

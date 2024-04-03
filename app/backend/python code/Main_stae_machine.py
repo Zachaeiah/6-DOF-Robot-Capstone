@@ -1,9 +1,11 @@
 """A script to manage the robotic arm and control its movements."""
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
 import tkinter as tk
 from queue import LifoQueue
 import ast
+from scipy.spatial.transform import Rotation
 from DP_parts import *
 from ik_solver import *
 from intrerpolation import *
@@ -12,7 +14,6 @@ from Motors import *
 from VelocityPFP import *
 from moshionPlanning import *
 from Messager import *
-
 
 def rotate_x(matrix, angle_x):
     """_summary_
@@ -214,35 +215,152 @@ def handle_response(expected_r: str = None, expected_prefix: str = None, dataWri
             else:
                 print(f">>> {response}")
 
-def quaternion_to_euler(q):
+def rotation_matrix_to_quaternion(rotation_matrix: np.ndarray) -> np.ndarray:
     """
-    Convert quaternion (w, x, y, z) to Euler angles (roll, pitch, yaw).
+    Convert a 3x3 rotation matrix into a quaternion.
+
+    Args:
+        rotation_matrix (np.array): A 3x3 rotation matrix.
+
+    Returns:
+        np.array: A 4-element array representing the quaternion.
     """
-    # Extract components
-    w, x, y, z = q
+    R = np.array(rotation_matrix, dtype=np.float64)
     
-    # Roll (x-axis rotation)
-    roll = np.arctan2(2 * (w * x + y * z), 1 - 2 * (x**2 + y**2))
+    trace = np.trace(R)
     
-    # Pitch (y-axis rotation)
-    sinp = 2 * (w * y - z * x)
-    if np.abs(sinp) >= 1:
-        pitch = np.pi / 2 if sinp > 0 else -np.pi / 2  # Use ±π/2 if out of range
+    if trace > 0:
+        S = 2.0 * np.sqrt(trace + 1.0)
+        qw = 0.25 * S
+        qx = (R[2, 1] - R[1, 2]) / S
+        qy = (R[0, 2] - R[2, 0]) / S
+        qz = (R[1, 0] - R[0, 1]) / S
+    elif (R[0, 0] > R[1, 1]) and (R[0, 0] > R[2, 2]):
+        S = 2.0 * np.sqrt(1.0 + R[0, 0] - R[1, 1] - R[2, 2])
+        qw = (R[2, 1] - R[1, 2]) / S
+        qx = 0.25 * S
+        qy = (R[0, 1] + R[1, 0]) / S
+        qz = (R[0, 2] + R[2, 0]) / S
+    elif R[1, 1] > R[2, 2]:
+        S = 2.0 * np.sqrt(1.0 + R[1, 1] - R[0, 0] - R[2, 2])
+        qw = (R[0, 2] - R[2, 0]) / S
+        qx = (R[0, 1] + R[1, 0]) / S
+        qy = 0.25 * S
+        qz = (R[1, 2] + R[2, 1]) / S
     else:
-        pitch = np.arcsin(sinp)
+        S = 2.0 * np.sqrt(1.0 + R[2, 2] - R[0, 0] - R[1, 1])
+        qw = (R[1, 0] - R[0, 1]) / S
+        qx = (R[0, 2] + R[2, 0]) / S
+        qy = (R[1, 2] + R[2, 1]) / S
+        qz = 0.25 * S
     
-    # Yaw (z-axis rotation)
-    yaw = np.arctan2(2 * (w * z + x * y), 1 - 2 * (y**2 + z**2))
+    quaternion = np.array([qw, qx, qy, qz])
+
+    return quaternion
+
+def quaternion_to_rotation_matrix(quaternion: np.ndarray) -> np.ndarray:
+    """
+    Convert a quaternion into a 3x3 rotation matrix.
+
+    Args:
+        quaternion (list or np.array): A 4-element list or array representing the quaternion.
+
+    Returns:
+        np.array: A 3x3 rotation matrix.
+    """
+    q = np.array(quaternion, dtype=np.float64)
+    q = q / np.linalg.norm(q)
+
+    w, x, y, z = q
+    rotation_matrix = np.array([[1 - 2*y*y - 2*z*z, 2*x*y - 2*w*z, 2*x*z + 2*w*y],
+                                 [2*x*y + 2*w*z, 1 - 2*x*x - 2*z*z, 2*y*z - 2*w*x],
+                                 [2*x*z - 2*w*y, 2*y*z + 2*w*x, 1 - 2*x*x - 2*y*y]])
+
+    return rotation_matrix
+
+def quaternion_multiply_2q(q1: np.ndarray, q2: np.ndarray) -> np.ndarray :
+    """
+    Multiply two quaternions.
+
+    Args:
+        q1 (np.array): The first quaternion [w, x, y, z].
+        q2 (np.array): The second quaternion [w, x, y, z].
+
+    Returns:
+        np.array: The resulting quaternion.
+    """
+    w1, x1, y1, z1 = q1
+    w2, x2, y2, z2 = q2
+    w = w1 * w2 - x1 * x2 - y1 * y2 - z1 * z2
+    x = w1 * x2 + x1 * w2 + y1 * z2 - z1 * y2
+    y = w1 * y2 - x1 * z2 + y1 * w2 + z1 * x2
+    z = w1 * z2 + x1 * y2 - y1 * x2 + z1 * w2
+    return np.array([w, x, y, z])
+
+def rotate_quaternion(quat: np.ndarray, angle_x:float, angle_y:float, angle_z:float) -> np.ndarray :
+    """
+    Rotate a quaternion around the unit vectors.
+
+    Args:
+        quat (np.array): The original quaternion [w, x, y, z].
+        angle_x (float): Angle to rotate around the x-axis (in radians).
+        angle_y (float): Angle to rotate around the y-axis (in radians).
+        angle_z (float): Angle to rotate around the z-axis (in radians).
+
+    Returns:
+        np.array: The rotated quaternion [w, x, y, z].
+    """
+    # Quaternion representing the rotation around x-axis
+    qx = np.array([np.cos(angle_x / 2), np.sin(angle_x / 2), 0, 0])
     
-    # Convert angles to degrees
-    roll = np.degrees(roll)
-    pitch = np.degrees(pitch)
-    yaw = np.degrees(yaw)
+    # Quaternion representing the rotation around y-axis
+    qy = np.array([np.cos(angle_y / 2), 0, np.sin(angle_y / 2), 0])
     
-    return yaw, pitch, roll 
+    # Quaternion representing the rotation around z-axis
+    qz = np.array([np.cos(angle_z / 2), 0, 0, np.sin(angle_z / 2)])
+    
+    # Combine the rotations by quaternion multiplication
+    rotated_quat = quaternion_multiply_2q(quaternion_multiply_2q(quaternion_multiply_2q(quat, qx), qy), qz)
 
+    return rotated_quat
 
+def quaternion_slerp(q1: np.ndarray, q2: np.ndarray, t: float) -> np.ndarray:
+    """
+    Perform spherical linear interpolation (slerp) between two quaternions.
 
+    Args:
+        q1 (numpy.ndarray): The first quaternion as a 4-element numpy array [w, x, y, z].
+        q2 (numpy.ndarray): The second quaternion as a 4-element numpy array [w, x, y, z].
+        t (float): Interpolation parameter. It ranges from 0 to 1. 
+                   For t=0, the resulting quaternion is equal to q1.
+                   For t=1, the resulting quaternion is equal to q2.
+
+    Returns:
+        numpy.ndarray: The interpolated quaternion as a 4-element numpy array [w, x, y, z].
+    """
+    # Ensure quaternions are normalized
+    q1 = q1 / np.linalg.norm(q1)
+    q2 = q2 / np.linalg.norm(q2)
+
+    dot_product = np.dot(q1, q2)
+    
+    # Determine the sign
+    if dot_product < 0.0:
+        q1 = -q1
+        dot_product = -dot_product
+
+    # Clamp dot product to ensure stability
+    dot_product = min(1.0, max(-1.0, dot_product))
+    
+    # Calculate the angle between the quaternions
+    theta_0 = np.arccos(dot_product)
+    sin_theta_0 = np.sin(theta_0)
+    
+    # Perform interpolation
+    s0 = np.sin((1 - t) * theta_0) / sin_theta_0
+    s1 = np.sin(t * theta_0) / sin_theta_0
+    
+    return (s0 * q1) + (s1 * q2)
 
 LARGE_FONT = ("Verdana", 12)
 DROP_OFF_ZONE = (-0.35, -0.70, 0.0)
@@ -521,7 +639,138 @@ def state4(travle_paths, travle_orientation, travle_alinements, urdf_file_path):
 
     robot.animate_ik(travle_paths, travle_orientation, travle_alinements, interval=1)
 
+def joggingXYZ(init_angles):
+   
+    def create_gui(controll):
+        """
+        Create the GUI for entering joint angles.
 
+        Args:
+            controll (list): Initial joint positions and orientations.
+        """
+        
+        default_values = [str(value) for value in controll]
+        for i, label in enumerate(['X Cor', 'Y Cor', 'Z cor', "X_Rot", "Y_Rot", "Z_Rot"]):
+            tk.Label(root, text=label).grid(row=i, column=0)
+            entry = tk.Entry(root)
+            entry.insert(tk.END, default_values[i])  # Set default value
+            entry.grid(row=i, column=1)
+            angle_entries.append(entry)
+    
+    def Send_orintashion():
+        nonlocal current_ORI_quater
+        _COR_path = []
+        New_ORI = []
+
+        #get the previos anle poshion
+        FK_pre = robot.calculate_fk([robot.last_angles], 1)
+        for fk in FK_pre:
+            Pre_COR = fk[0]
+            Pre_ORI = rotation_matrix_to_quaternion(fk[1])
+
+        # get the y x z rotashion angles in rad
+        inputs = [float(entry.get()) for entry in angle_entries]
+
+        # get the dirsired quaternion
+        end_quaternion = rotate_quaternion([1, 0, 0, 0], inputs[3], inputs[4], inputs[5])
+
+        for t in np.linspace(0, 1, 50):
+            V_rot_theta = quaternion_slerp(Pre_ORI, end_quaternion, t)
+            New_ORI.append(quaternion_to_rotation_matrix(V_rot_theta))
+
+        COR_path = [Pre_COR for _ in range(0, len(New_ORI), 1)]
+        New_ORI_MODE = ["all" for _ in range(0, len(New_ORI), 1)]
+        animationRobot(COR_path, New_ORI, New_ORI_MODE)
+
+
+        
+    def Send_poshion():
+        _COR_path = []
+
+        #get the previos anle poshion
+        FK_pre = robot.calculate_fk([robot.last_angles], 1)
+        for fk in FK_pre:
+            Pre_COR = fk[0]
+            Pre_ORI = fk[1]
+
+        inputs = [float(entry.get()) for entry in angle_entries]
+
+        # get the nect point
+        New_COR = inputs[:3]
+        New_ORI = Pre_ORI
+
+        # will return an array of points to move the robot to
+        COR_path = COR_planner.generate_path(Pre_COR, New_COR, linear=True)
+
+        New_ORI = [Pre_ORI for _ in range(0, len(COR_path), 1)]
+        New_ORI_MODE = ["all" for _ in range(0, len(COR_path), 1)]
+
+        animationRobot(COR_path, New_ORI, New_ORI_MODE)
+
+    def animationRobot(COR_path, New_ORI, New_ORI_MODE):
+
+        IK_SOLUSHIONS = list(robot.calculate_ik(COR_path, New_ORI, New_ORI_MODE, 1))
+        TRANFORM_MASK = np.array([False, True, True, False, True, True, False, True, True])
+
+        new_angles = []
+        for SOLUSHION in IK_SOLUSHIONS:
+            angles = np.rad2deg(SOLUSHION[0])
+            new_angles.append(angles[TRANFORM_MASK])
+
+        movement_results = controller.move_motors(new_angles)
+
+        for move in movement_results:
+            print(move)
+            
+        #robot.animate_ik(COR_path, New_ORI, New_ORI_MODE, ax = ax, fig = fig)
+
+        
+
+    # Create an instance of MoshionController
+    controller = MoshionController()
+    controller.Input_DEGREES()
+
+    # Create the Tkinter window
+    root = tk.Tk()
+    root.title("Enter Angles")
+
+    max_acc = 30
+    max_vel = 30
+
+    max_ang_acc = 1
+    max_ang_vel = 1
+    COR_planner = PathPlanner(max_acc, max_vel)
+
+    urdf_file_path = "app\\backend\\python code\\urdf_tes2.urdf"
+    robot = RobotArm(urdf_file_path, init_angles)
+    FK = robot.calculate_fk([init_angles], 1)
+
+    controll = []
+    for fk in FK:
+        current_COR = fk[0]
+        current_ORI_quater = rotation_matrix_to_quaternion(fk[1])
+        controll.extend(current_COR)
+        controll.extend([0,0,0])
+
+    angle_entries = [] 
+    create_gui(controll)
+
+    # Create a button to send the entered angles
+    send_poshion_button = tk.Button(root, text="Send poshion", command=Send_poshion)
+    send_poshion_button.grid(row=len(angle_entries), columnspan=3)
+
+    # Create a button to send the entered angles
+    send_orintashion_button = tk.Button(root, text="Send Orintashion", command=Send_orintashion)
+    send_orintashion_button.grid(row=len(angle_entries)+1, columnspan=4)
+    
+
+    fig, ax = plt.subplots(subplot_kw={'projection': '3d'}, figsize=(12, 8))
+    ax.set_xlim3d(-1, 1)
+    ax.set_ylim3d(-1, 1)
+    ax.set_zlim3d(-1, 1)
+
+    # Run the Tkinter event loop
+    root.mainloop()
 
 def joggingAngles():
 
@@ -550,7 +799,7 @@ def joggingAngles():
         
         # Move motors based on the defined angles and get the results
         movement_results = controller.move_motors([(0,0,0,0,0,0), angles])
-        print(movement_results)
+        print(movement_results[0])
 
         expected_response = "MoshionState changed to: 1"
         MSG.send_message("R_MOVES 1")
@@ -561,7 +810,7 @@ def joggingAngles():
         handle_response(expected_response, None, None,MSG.message_stack) # weight until i get the my response
 
         expected_response = "MoshionState changed to: 2"
-        MSG.send_message(movement_results)
+        MSG.send_message(movement_results[0])
         handle_response(expected_response, None, None, MSG.message_stack) # weight until i get the my response
 
         expected_response = "MoshionState changed to: 0"
@@ -645,10 +894,16 @@ if __name__ == "__main__":
     #joggingAngles()
 
     # Example usage
-    print(quaternion_to_euler((-0.0262, -0.9362, -0.0785, 0.3416)))
-    print(quaternion_to_euler((0.9902, 0.0302, -0.1365, 0.0001)))
-    print(quaternion_to_euler((0.7023, -0.06951, -0.01500, 0.0329)))
-    print(quaternion_to_euler((0.9866, 0.0035, -0.0667, 0.1486)))
+    # print(quaternion_to_euler((-0.0262, -0.9362, -0.0785, 0.3416)))
+    # print(quaternion_to_euler((0.9902, 0.0302, -0.1365, 0.0001)))
+    # print(quaternion_to_euler((0.7023, -0.06951, -0.01500, 0.0329)))
+    # print(quaternion_to_euler((0.9866, 0.0035, -0.0667, 0.1486)))
+
+    joggingXYZ([0, 0, 0, 0, 0, 0, 0, 0, 0])
+
+    #joggingAngles()
+
+    #init_angles = [0, 138.6653286, 17.4672121, -14.51805191, -8.8323662, 0]
 
 
 

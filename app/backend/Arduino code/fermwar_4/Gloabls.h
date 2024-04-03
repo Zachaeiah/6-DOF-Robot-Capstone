@@ -19,8 +19,8 @@ extern int ErrorState;           // State at which an error occurred
 extern File dataFile;            // File for error logging
 extern const char* seps;         // String delimiter for tokenization
 const int maxBufferSize = 1024;  // Maximum buffer size for incoming data
-const char StepperStepsPins[] = { 0, 1, 2, 4, 5, 6 };
-const char SepperDirPins[] = { 23, 7, 8, 9, 24, 25 };
+const char StepperStepsPins[] = {  0, 1, 2, 4,  5,  6};
+const char SepperDirPins[] =    { 26, 7, 8, 9, 24, 25};
 
 // Error codes
 #define NO_ERROR 0                    // No error

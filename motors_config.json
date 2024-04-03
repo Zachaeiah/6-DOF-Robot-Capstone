@@ -1,58 +1,58 @@
 {
-    "Bace Motor": {
+    "Shoulder Rotate Motor": {
         "name": "Shoulder Rotate Motor",
         "index": 0,
-        "max_speed": 0.5,
+        "max_speed": 2,
         "max_acceleration": 9.5493,
         "max_torqu": 40.0,
         "is_activate": true,
         "type": "Stepper Motor",
-        "steps_per_revolution": 699840
+        "steps_per_revolution": 777600
     },
-    "Sholder Motor": {
+    "Shoulder Lift Motor": {
         "name": "Shoulder Lift Motor",
         "index": 1,
-        "max_speed": 0.5,
+        "max_speed": 2,
         "max_acceleration": 9.5493,
         "max_torqu": 40.0,
         "is_activate": true,
         "type": "Stepper Motor",
-        "steps_per_revolution": 653184
+        "steps_per_revolution": 662080
     },
     "Elbow Motor": {
         "name": "Elbow Motor",
         "index": 2,
-        "max_speed": 0.5,
+        "max_speed": 2,
         "max_acceleration": 9.5493,
         "max_torqu": 40.0,
         "is_activate": true,
         "type": "Stepper Motor",
-        "steps_per_revolution": 699840
+        "steps_per_revolution": 777600
     },
-    "Elbow revolut Motor": {
+    "Forearm Rotate Motor": {
         "name": "Forearm Rotate Motor",
         "index": 3,
-        "max_speed": 0.5,
+        "max_speed": 2,
         "max_acceleration": 9.5493,
         "max_torqu": 40.0,
         "is_activate": true,
         "type": "Stepper Motor",
         "steps_per_revolution": 597196.8
     },
-    "Wirist Motor": {
+    "Wrist Motor": {
         "name": "Wrist Motor",
         "index": 4,
-        "max_speed": 0.5,
+        "max_speed": 2,
         "max_acceleration": 9.5493,
         "max_torqu": 40.0,
         "is_activate": true,
         "type": "Stepper Motor",
         "steps_per_revolution": 597196.8
     },
-    "Wirist revolut Motor": {
+    "Wrist Rotate Motor": {
         "name": "Wrist Rotate Motor",
         "index": 5,
-        "max_speed": 0.5,
+        "max_speed": 2,
         "max_acceleration": 9.5493,
         "max_torqu": 40.0,
         "is_activate": true,
