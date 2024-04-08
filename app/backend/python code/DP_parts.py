@@ -448,17 +448,17 @@ WEST_WALL = (-1.0, 0.0, 0.0)
 SOUTH_WALL = (0.0, -1.0, 0.0)
 
 def main():
-    box_w = 0.2
-    box_h = 0.25
-    num_boxes = 20
+    box_w = 0.100
+    box_h = 0.092
+    num_boxes = 12
 
     # Initialize the PartsDatabase instance
-    db = PartsDatabase("parts_db", shelf_height=0.04, margin=0.015, offset_x=(box_w / 2), offset_y=(box_h / 2))
+    db = PartsDatabase("parts_db", shelf_height=0.12, margin=0.100, offset_x=(box_w/2), offset_y=0.3)
     
     # Create the Parts table
     db.create_parts_table()
 
-    orientations = [NORTH_WALL, EAST_WALL, WEST_WALL]
+    orientations = [NORTH_WALL]
 
     Box_n = 0
 
@@ -467,7 +467,7 @@ def main():
         for i in range(num_boxes):
             box_id = f"box_{Box_n + 1}"
             name = f"Box {Box_n + 1}"
-            current_box = Box(box_id, name, box_w, box_h, 0, 0, 0, 0, True, [], orientation)
+            current_box = Box(box_id, name, box_w, box_h, 0, 0, 0, 0, False, [], orientation)
             Box_n += 1
             
             if db.add_part(current_box):

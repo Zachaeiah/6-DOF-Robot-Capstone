@@ -29,8 +29,8 @@ class RobotArm:
     def calculate_ik(
         self,
         target_positions: list,
-        target_orientations: list,
-        orientation_modes: list,
+        target_orientations: list = [np.eye(3)],
+        orientation_modes: list = ["all"],
         batch_size: int = 1
     ) -> iter:
         """Perform inverse kinematics calculations.
@@ -52,9 +52,9 @@ class RobotArm:
                 try:
                     # Use last angles if available
                     if self.last_angles is not None:
-                        ik = self.my_chain.inverse_kinematics(np.array(target_position, dtype=np.float32), target_orientation, orientation_mode=orientation_mode, initial_position=self.last_angles)
+                        ik = self.my_chain.inverse_kinematics(target_position, target_orientation, orientation_mode=orientation_mode, initial_position=self.last_angles)
                     else:
-                        ik = self.my_chain.inverse_kinematics(np.array(target_position, dtype=np.float32), target_orientation, orientation_mode=orientation_mode)
+                        ik = self.my_chain.inverse_kinematics(target_position, target_orientation, orientation_mode=orientation_mode)
                     fk = self.my_chain.forward_kinematics(ik)
                     achieved_position = fk[:3, 3]
                     achieved_orientation = fk[:3, :3]
@@ -137,7 +137,8 @@ class RobotArm:
             joint_angles = joint_angles_trajectory[frame]
 
             # Plot the robot arm with the updated joint angles
-            self.my_chain.plot(joint_angles, ax, target=self.my_chain.forward_kinematics(joint_angles))
+            target = self.my_chain.forward_kinematics(joint_angles)
+            self.my_chain.plot(joint_angles, ax, target = target)
             self.last_angles = joint_angles
 
             # Add arrows at the origin for the axes
@@ -145,13 +146,14 @@ class RobotArm:
             ax.quiver(0, 0, 0, 0, 1, 0, color=(0.36, 0.96, 0.96), arrow_length_ratio=0.05)
             ax.quiver(0, 0, 0, 0, 0, 1, color=(1.0 , 0.64, 0.0), arrow_length_ratio=0.05)
 
+
             ax.set_xlabel('X')
             ax.set_ylabel('Y')
             ax.set_zlabel('Z')
             ax.set_xlim(-1, 1)
             ax.set_ylim(-1, 1)
             ax.set_zlim(-1, 1)
-            plt.title(f'Frame {frame}')
+            plt.title(f'Frame {frame}\n{target[:3, 3]}')
 
         ani = animation.FuncAnimation(fig, update, frames=len(joint_angles_trajectory), interval=interval, repeat=False)
         plt.show()
@@ -281,14 +283,21 @@ def rotate_z(matrix, angle_z):
 
 def main():
     urdf_file_path = "app\\backend\\python code\\urdf_tes2.urdf"
-    initial_position = [ 0.00000000e+00,  2.35449960e-02,  8.50596010e-01,  0.00000000e+00, 2.29225520e+00,  2.35453414e-02,  0.00000000e+00, -1.57205453e+00,2.96303678e-05]
+    initial_position = np.array([0, 0.0, np.pi/4, 0, np.pi*(3/4), -np.pi/2, 0.0, -np.pi/2, 0])
     robot = RobotArm(urdf_file_path, initial_position)
     num_positions = 1
 
 
     # robot.animate_fk([[0, 0, 138.6653286, 17.4672121, 0, -14.51805191, -8.8323662, 0, 0]]) 
-    robot.animate_fk([[0, 0.0, np.deg2rad(41.1334671), 0, np.deg2rad(113.7), np.deg2rad(-14.51805191), 0, np.deg2rad(8.6), 0]]) 
-    
+    robot.animate_fk([[0, 0.0, np.pi/4, 0, np.pi*(3/4), 0, 0.0, -np.pi/2, 0]]) 
+    num_samples = 2
+
+
+    # target_positions = [[-0.0729999, 0.29180822, 0.17683316] for _ in range(num_samples)]
+    # target_orientations = [rotate_x(rotate_y(np.eye(3),-np.pi/2),np.pi/2) for _ in range(num_samples)]
+    # orientation_modes = ['all' for _ in range(num_samples)]
+
+    # robot.animate_ik(target_positions, target_orientations, orientation_modes)
        
 
     

@@ -22,6 +22,10 @@ const int maxBufferSize = 1024;  // Maximum buffer size for incoming data
 const char StepperStepsPins[] = {  0, 1, 2, 4,  5,  6};
 const char SepperDirPins[] =    { 26, 7, 8, 9, 24, 25};
 
+#define RetrieveBTN 23
+#define ReturnBTN 22
+#define OPMT 21
+
 // Error codes
 #define NO_ERROR 0                    // No error
 #define COMMAND_INDEX_NOT_FOUND -1    // Command index does not exist
@@ -32,7 +36,7 @@ const char SepperDirPins[] =    { 26, 7, 8, 9, 24, 25};
 #define MEMORY_ALLOCATION_FAILD -6    // Memory allocation failed
 #define MISSING_DATA -7               // Missing data for a command argument
 #define BAD_TIMMER_SETUP -8           // the timmer for trasishiong moshion did not get setup right
-#define TIMER_INIT_FAILURE -10        // when the moshion timer fasils to intit
+#define TIMER_INIT_FAILURE -9        // when the moshion timer fasils to intit
 
 
 // Structure to hold error information
@@ -70,7 +74,7 @@ const ERROR_COMMAND SYSTEM_ERROR[] = {
   { EXECUTEFUNCTION_FAILD, "Error in %s, cmd command with index %d was unsuccessful in its execution\n" },
   { MEMORY_ALLOCATION_FAILD, "Error in %s, Memory allocation failed\n" },
   { MISSING_DATA, "Error in %s, The %d command argument was not provided\n" },
-  { BAD_TIMMER_SETUP,  "Error in %s, Moshion Timme did not setup all hardwear timmers are being used"},
+  { BAD_TIMMER_SETUP,  "Error in %s, Motion Timme did not setup all hardware timers are being used"},
 };
 
 //----------------------------- Function Prototypes -------------------------------------------------------------------
