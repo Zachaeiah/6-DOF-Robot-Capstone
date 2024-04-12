@@ -73,8 +73,8 @@ void readSerialData(char* inputBuffer) {
         inputBuffer[bufferIndex++] = inChar;
       } else {
         print_error(INPUT_BUFFER_FULL);
-        ErrorState = STATE;
-        STATE = ERROR;  // Transition to the ERROR state
+        ErrorState = SYS_registor;
+        SYS_registor = ERROR;  // Transition to the ERROR state
       }
     }
   }

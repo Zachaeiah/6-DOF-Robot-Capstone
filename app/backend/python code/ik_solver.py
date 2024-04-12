@@ -195,9 +195,9 @@ class RobotArm:
             """
             ax.clear()
 
-            trailing_x = [tup[0] for tup in target_positions[frame-7:frame]]
-            trailing_y = [tup[1] for tup in target_positions[frame-7:frame]]
-            trailing_z = [tup[2] for tup in target_positions[frame-7:frame]]
+            trailing_x = [tup[0] for tup in target_positions[frame-15:frame]]
+            trailing_y = [tup[1] for tup in target_positions[frame-15:frame]]
+            trailing_z = [tup[2] for tup in target_positions[frame-15:frame]]
             ax.scatter(trailing_x, trailing_y, trailing_z, color="red", s=10, marker='o', alpha=0.1)
 
             target_position = target_positions[frame]
@@ -283,22 +283,26 @@ def rotate_z(matrix, angle_z):
 
 def main():
     urdf_file_path = "app\\backend\\python code\\urdf_tes2.urdf"
-    initial_position = np.array([0, 0.0, np.pi/4, 0, np.pi*(3/4), -np.pi/2, 0.0, -np.pi/2, 0])
+    initial_position = np.array([0, 0.0, np.pi/2, 0, np.pi/2, -np.pi/2, 0, -np.pi/2, 0])
     robot = RobotArm(urdf_file_path, initial_position)
     num_positions = 1
 
 
-    # robot.animate_fk([[0, 0, 138.6653286, 17.4672121, 0, -14.51805191, -8.8323662, 0, 0]]) 
-    robot.animate_fk([[0, 0.0, np.pi/4, 0, np.pi*(3/4), 0, 0.0, -np.pi/2, 0]]) 
-    num_samples = 2
+    # # robot.animate_fk([[0, 0, 138.6653286, 17.4672121, 0, -14.51805191, -8.8323662, 0, 0]]) 
+    robot.animate_fk([[0, 0.0, np.pi/2, 0, np.pi/2, -np.pi/2, 0, -np.pi/2, 0]]) 
+    num_samples = 1
 
 
-    # target_positions = [[-0.0729999, 0.29180822, 0.17683316] for _ in range(num_samples)]
+    # target_positions = [[-0.0729999, 0.45, (-0.3+0.0508)] for _ in range(num_samples)]
     # target_orientations = [rotate_x(rotate_y(np.eye(3),-np.pi/2),np.pi/2) for _ in range(num_samples)]
     # orientation_modes = ['all' for _ in range(num_samples)]
 
     # robot.animate_ik(target_positions, target_orientations, orientation_modes)
        
+    # IK = robot.calculate_ik(target_positions, target_orientations, orientation_modes)
+
+    # for ik in IK:
+    #     print(ik)
 
     
         

@@ -79,7 +79,7 @@ class PathPlanner:
         sys_time = self.linearVelocityProfile.move_time
 
         # Generate time values for motion profile
-        time_values = np.arange(0, sys_time, 0.01)
+        time_values = np.arange(0, sys_time, 0.001)
         self.linearVelocityProfile.Generator_profile(time_values)
         t_values = self.linearVelocityProfile.displacement
 
@@ -148,7 +148,7 @@ class PathPlanner:
             angle_profile.Set_move_time(sys_time)
 
             # Generate time values for motion profiles
-            time_values = np.arange(0, sys_time, 0.1)
+            time_values = np.arange(0, sys_time, 0.01)
 
             # Generate motion profiles for each dimension
             height_profile.Generator_profile(time_values)

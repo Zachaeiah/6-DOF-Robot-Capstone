@@ -3,7 +3,6 @@
 
 #include "Gloabls.h"
 #include "EXECUTION.h"
-#include "Scale"
 
 #define MAX_LINE_SIZE 128  // Size of array to store a line from a file.
                             // NOTE: 2 elements must be reserved for trailing '\n' and '\0'

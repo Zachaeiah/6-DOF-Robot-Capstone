@@ -30,8 +30,8 @@ bool allocateMoveData(char* strCommandLine) {
 
       if (token == NULL) {
         print_error(MISSING_DATA, "allocateMoveData", i);
-        ErrorState = STATE;
-        STATE = ERROR;  // Transition to the ERROR state
+        ErrorState = SYS_registor;
+        SYS_registor = ERROR;  // Transition to the ERROR state
         return false;
       }
 
@@ -48,8 +48,8 @@ bool allocateMoveData(char* strCommandLine) {
     // If memory allocation fails, print an error message and transition to the ERROR state
     if (RobotMoshionPlan.Points == NULL) {
       print_error(MEMORY_ALLOCATION_FAILD, "allocateMoveData");
-      ErrorState = STATE;
-      STATE = ERROR;  // Transition to the ERROR state
+      ErrorState = SYS_registor;
+      SYS_registor = ERROR;  // Transition to the ERROR state
       return false;
     }
     MOSHIOSTATE = SETUP;                                          // update the Moshion States machine that the moshion is setup
@@ -112,8 +112,8 @@ bool storeMoshioin(char* strCommandLine) {
           } else {
             // Print an error if the buffer is full
             print_error(INPUT_BUFFER_FULL, "storeMoshioin");
-            ErrorState = STATE;
-            STATE = ERROR;  // Transition to the ERROR state
+            ErrorState = SYS_registor;
+            SYS_registor = ERROR;  // Transition to the ERROR state
             return false;
           }
         }
@@ -129,8 +129,8 @@ bool storeMoshioin(char* strCommandLine) {
         // Check if any data is missing
         if (token == NULL) {
           print_error(MISSING_DATA, "storeMoshioin", paramater);
-          ErrorState = STATE;
-          STATE = ERROR;  // Transition to the ERROR state
+          ErrorState = SYS_registor;
+          SYS_registor = ERROR;  // Transition to the ERROR state
           return false;
         }
         if (paramater == paramaterNnumber - 1) pointMoshion.TIME = (int)atoi(token);

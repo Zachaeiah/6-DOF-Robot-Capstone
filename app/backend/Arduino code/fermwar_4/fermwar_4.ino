@@ -1,6 +1,7 @@
 
 #include "Gloabls.h"
 #include "CMD_PARSER.h"
+#include "Pannle.h"
 
 // Constants for communication
 const int baudRate = 115200;            // Serial communication baud rate
@@ -8,7 +9,7 @@ const int chipSelect = BUILTIN_SDCARD;  // where to stor the log file
 const char* seps = "\t,\n ;:";          // Declare seps as an external constant
 int error_index = NO_ERROR;             // the indx of witch error to handle
 bool ReadDataDump = false;              // has the memory bean allowcated for a moshion
-int STATE = 0;                          // Current state of the system
+int SYS_registor = 0x0;                 // Current state of the system
 int ErrorState = 0;                     // the state an error happend
 
 // Structure to hold a motion path
@@ -29,6 +30,7 @@ void INITuC();               // Initialize microcontroller
 // RETURN VALUE: None
 void setup() {
   Serial.begin(baudRate);        // Initialize serial communication
+  initPannle();
 
   for(int pin = 0; pin < 6; pin++){
     pinMode(SepperDirPins[pin], OUTPUT);

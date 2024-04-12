@@ -11,20 +11,16 @@
 #include <SD.h>       // SD card library
 #include <Arduino.h>  // Arduino core library
 
-extern bool ReadDataDump;        // Declare connected as an external variable
-extern int error_index;          // Index of the current error
-extern int STATE;                // Current state of the system state machine
+extern bool ReadDataDump;       // Declare connected as an external variable
+extern int error_index;         // Index of the current error
+extern int SYS_registor;        // Current state of the system state machine
 extern int MOSHIOSTATE;         // the state of the moishion
-extern int ErrorState;           // State at which an error occurred
-extern File dataFile;            // File for error logging
-extern const char* seps;         // String delimiter for tokenization
+extern int ErrorState;          // State at which an error occurred
+extern File dataFile;           // File for error logging
+extern const char* seps;        // String delimiter for tokenization
 const int maxBufferSize = 1024;  // Maximum buffer size for incoming data
 const char StepperStepsPins[] = {  0, 1, 2, 4,  5,  6};
 const char SepperDirPins[] =    { 26, 7, 8, 9, 24, 25};
-
-#define RetrieveBTN 23
-#define ReturnBTN 22
-#define OPMT 21
 
 // Error codes
 #define NO_ERROR 0                    // No error

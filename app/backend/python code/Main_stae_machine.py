@@ -369,10 +369,10 @@ def quaternion_slerp(q1: np.ndarray, q2: np.ndarray, t: float) -> np.ndarray:
 LARGE_FONT = ("Verdana", 12)
 DROP_OFF_ZONE = (0, -0.58780819, 0.17683316)
 DROP_OFF_ORIENTATION = rotate_quaternion([1, 0, 0, 0], np.pi/2, 0, np.pi)
-IDLE_POSITION = (-0.0729999, 0.29180822, 0.17683316)
+IDLE_POSITION = (-0.0729999, 0.45699999, -0.22197503)
 IDLE_ORIENTATION  = rotate_quaternion([1, 0, 0, 0], 0, -np.pi/2, np.pi/2)
-IDLE_AGLE_POSITION = np.array([0, 0.0, np.pi/4, 0, np.pi*(3/4), -np.pi/2, 0.0, -np.pi/2, 0])
-WORKING_HIGHT = 0.3
+IDLE_AGLE_POSITION = np.array([0, 0.0, np.pi/2, 0, np.pi/2, -np.pi/2, 0, -np.pi/2, 0])
+WORKING_HIGHT = 0.22197503
 WORKING_POSITION = (*IDLE_POSITION[:-1], IDLE_POSITION[-1] + WORKING_HIGHT)
 JOGGING_START = (-0.58780819, 0, 0.17683316)
 JOGGING_START_ORIENTATION = IDLE_ORIENTATION
@@ -683,7 +683,7 @@ def state3(pickip_dropoff,locations, orientations, drop_off_zone, planner):
 
             if depbug_stage > 6:
                 insershion_point = np.dot(quaternion_to_rotation_matrix(T4_orientation[-1]), (0, 0, insershion_distance)) + T4[-1]
-                T5 = planner.generate_path(location, insershion_point, linear=False)
+                T5 = planner.generate_path(location, insershion_point, linear=True)
 
                 T5_orientation =  [T4_orientation[-1] for _ in range(len(T5))]
                 travle_paths.extend(T5)
@@ -710,7 +710,7 @@ def state3(pickip_dropoff,locations, orientations, drop_off_zone, planner):
                 travle_orientation.extend(T8_orientation)
 
             if depbug_stage > 10:
-                T9 = planner.generate_path(JOGGING_START, WORKING_POSITION, linear=True)
+                T9 = planner.generate_path(JOGGING_START, WORKING_POSITION, linear=False)
                 T9_orientation = [JOGGING_START_ORIENTATION for _ in range(len(T9))]
                 travle_paths.extend(T9)
                 travle_orientation.extend(T9_orientation)
@@ -723,7 +723,7 @@ def state3(pickip_dropoff,locations, orientations, drop_off_zone, planner):
 
     travle_alinements = ["all"] * len(travle_paths)
 
-    #planner.plot_3d_path()
+    planner.plot_3d_path()
     
     return travle_paths, travle_orientation, travle_alinements
 
@@ -741,7 +741,9 @@ def state4(travle_paths, travle_orientation, travle_alinements, urdf_file_path):
     robot = RobotArm(urdf_file_path, IDLE_AGLE_POSITION)
     travle_orientation = list(map(quaternion_to_rotation_matrix, travle_orientation))
 
-    robot.animate_ik(travle_paths, travle_orientation, travle_alinements, interval=1)
+    print(len(travle_paths))
+
+    #robot.animate_ik(travle_paths, travle_orientation, travle_alinements)
 
 
 
@@ -766,8 +768,8 @@ def main():
         #urdf_file_path = "//home//zachl//Capstone//app/backend//python code//urdf_tes2.urdf"
         
 
-        max_acc = 50
-        max_vel = 50
+        max_acc = 1000
+        max_vel = 1000
         planner = PathPlanner(max_acc, max_vel)
 
         Mode = True
