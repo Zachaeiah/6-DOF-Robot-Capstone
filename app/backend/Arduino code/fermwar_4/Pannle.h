@@ -7,12 +7,12 @@
 #define ReturnBTN 22
 #define OPMT 21
 
-extern unsigned long lastRetrieveBTNTime;
-extern unsigned long lastReturnBTNTime;
-extern unsigned long lastOPMTTime;
+extern unsigned long EndterBTNTime;
 extern unsigned long debounceDelay;
 
-extern int lastOPMTState;
+extern bool Pre_OMPT_STATE;
+extern bool Pre_RetrieveBTN_STATE;
+extern bool Pre_ReturnBTN_STATE;
 
 void initPannle();
 void RetrieveBTNInterrupt();

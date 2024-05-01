@@ -7,7 +7,7 @@
         "max_torqu": 40.0,
         "is_activate": true,
         "type": "Stepper Motor",
-        "steps_per_revolution": 777600
+        "steps_per_revolution": 680400
     },
     "Shoulder Lift Motor": {
         "name": "Shoulder Lift Motor",
@@ -17,7 +17,7 @@
         "max_torqu": 40.0,
         "is_activate": true,
         "type": "Stepper Motor",
-        "steps_per_revolution": 662080
+        "steps_per_revolution": 793800
     },
     "Elbow Motor": {
         "name": "Elbow Motor",
@@ -27,7 +27,7 @@
         "max_torqu": 40.0,
         "is_activate": true,
         "type": "Stepper Motor",
-        "steps_per_revolution": 777600
+        "steps_per_revolution": 680400
     },
     "Forearm Rotate Motor": {
         "name": "Forearm Rotate Motor",

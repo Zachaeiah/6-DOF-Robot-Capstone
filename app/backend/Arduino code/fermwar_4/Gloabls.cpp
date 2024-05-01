@@ -30,7 +30,7 @@ void print_error(int error_index, ...) {
 
   char buffer[256];  // Buffer to hold the formatted error message
   vsnprintf(buffer, sizeof(buffer), error->strError, args);  // Format the error message
-  dsprintf("Error `%d`: `%s` `Putting systems back into RESEVING_COMMAND state`\n", error_index, buffer);  // Print the error message
+  dsprintf("Error %d:`%s Putting systems back into IDLE state\n", error_index, buffer);  // Print the error message
 
   va_end(args);  // End variable argument list
 }
@@ -73,8 +73,8 @@ void readSerialData(char* inputBuffer) {
         inputBuffer[bufferIndex++] = inChar;
       } else {
         print_error(INPUT_BUFFER_FULL);
-        ErrorState = SYS_registor;
-        SYS_registor = ERROR;  // Transition to the ERROR state
+        ErrorState = STATE;
+        STATE = ERROR;  // Transition to the ERROR state
       }
     }
   }

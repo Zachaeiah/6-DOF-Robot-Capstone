@@ -21,8 +21,9 @@ class RobotArm:
         try:
             # Create a robot chain from the URDF file
             self.my_chain = ikpy.chain.Chain.from_urdf_file(urdf_file_path, active_links_mask=[False, True, True, False, True, True, False, True, True])
-            self.last_angles = None
+            self.last_angles = initial_position
             self.initial_position = initial_position
+            self.is_animating = False
         except Exception as e:
             raise ValueError(f"Error initializing the robot arm: {e}")
 
@@ -221,6 +222,8 @@ class RobotArm:
             ax.set_ylim(-1, 1)
             ax.set_zlim(-1, 1)
 
+            
+
         anim = animation.FuncAnimation(fig, update, frames=len(target_positions), interval=interval, repeat=False)
 
         if save_as_gif:
@@ -281,6 +284,116 @@ def rotate_z(matrix, angle_z):
     rotated_matrix = np.dot(rotation_matrix_z, matrix)
     return rotated_matrix
 
+def quaternion_multiply_2q(q1: np.ndarray, q2: np.ndarray) -> np.ndarray :
+    """
+    Multiply two quaternions.
+
+    Args:
+        q1 (np.array): The first quaternion [w, x, y, z].
+        q2 (np.array): The second quaternion [w, x, y, z].
+
+    Returns:
+        np.array: The resulting quaternion.
+    """
+    w1, x1, y1, z1 = q1
+    w2, x2, y2, z2 = q2
+    w = w1 * w2 - x1 * x2 - y1 * y2 - z1 * z2
+    x = w1 * x2 + x1 * w2 + y1 * z2 - z1 * y2
+    y = w1 * y2 - x1 * z2 + y1 * w2 + z1 * x2
+    z = w1 * z2 + x1 * y2 - y1 * x2 + z1 * w2
+    return np.array([w, x, y, z])
+
+def rotate_quaternion(quat: np.ndarray, angle_x:float, angle_y:float, angle_z:float) -> np.ndarray :
+    """
+    Rotate a quaternion around the unit vectors.
+
+    Args:
+        quat (np.array): The original quaternion [w, x, y, z].
+        angle_x (float): Angle to rotate around the x-axis (in radians).
+        angle_y (float): Angle to rotate around the y-axis (in radians).
+        angle_z (float): Angle to rotate around the z-axis (in radians).
+
+    Returns:
+        np.array: The rotated quaternion [w, x, y, z].
+    """
+    # Quaternion representing the rotation around x-axis
+    qx = np.array([np.cos(angle_x / 2), np.sin(angle_x / 2), 0, 0])
+    
+    # Quaternion representing the rotation around y-axis
+    qy = np.array([np.cos(angle_y / 2), 0, np.sin(angle_y / 2), 0])
+    
+    # Quaternion representing the rotation around z-axis
+    qz = np.array([np.cos(angle_z / 2), 0, 0, np.sin(angle_z / 2)])
+    
+    # Combine the rotations by quaternion multiplication
+    rotated_quat = quaternion_multiply_2q(quaternion_multiply_2q(quaternion_multiply_2q(quat, qx), qy), qz)
+
+    return rotated_quat
+
+def quaternion_to_rotation_matrix(quaternion: np.ndarray) -> np.ndarray:
+    """
+    Convert a quaternion into a 3x3 rotation matrix.
+
+    Args:
+        quaternion (list or np.array): A 4-element list or array representing the quaternion.
+
+    Returns:
+        np.array: A 3x3 rotation matrix.
+    """
+    q = np.array(quaternion, dtype=np.float64)
+    q = q / np.linalg.norm(q)
+
+    w, x, y, z = q
+    rotation_matrix = np.array([[1 - 2*y*y - 2*z*z, 2*x*y - 2*w*z, 2*x*z + 2*w*y],
+                                 [2*x*y + 2*w*z, 1 - 2*x*x - 2*z*z, 2*y*z - 2*w*x],
+                                 [2*x*z - 2*w*y, 2*y*z + 2*w*x, 1 - 2*x*x - 2*y*y]])
+
+    return rotation_matrix
+
+def rotation_matrix_to_quaternion(rotation_matrix: np.ndarray) -> np.ndarray:
+    """
+    Convert a 3x3 rotation matrix into a quaternion.
+
+    Args:
+        rotation_matrix (np.array): A 3x3 rotation matrix.
+
+    Returns:
+        np.array: A 4-element array representing the quaternion.
+    """
+    R = np.array(rotation_matrix, dtype=np.float64)
+    
+    trace = np.trace(R)
+    
+    if trace > 0:
+        S = 2.0 * np.sqrt(trace + 1.0)
+        qw = 0.25 * S
+        qx = (R[2, 1] - R[1, 2]) / S
+        qy = (R[0, 2] - R[2, 0]) / S
+        qz = (R[1, 0] - R[0, 1]) / S
+    elif (R[0, 0] > R[1, 1]) and (R[0, 0] > R[2, 2]):
+        S = 2.0 * np.sqrt(1.0 + R[0, 0] - R[1, 1] - R[2, 2])
+        qw = (R[2, 1] - R[1, 2]) / S
+        qx = 0.25 * S
+        qy = (R[0, 1] + R[1, 0]) / S
+        qz = (R[0, 2] + R[2, 0]) / S
+    elif R[1, 1] > R[2, 2]:
+        S = 2.0 * np.sqrt(1.0 + R[1, 1] - R[0, 0] - R[2, 2])
+        qw = (R[0, 2] - R[2, 0]) / S
+        qx = (R[0, 1] + R[1, 0]) / S
+        qy = 0.25 * S
+        qz = (R[1, 2] + R[2, 1]) / S
+    else:
+        S = 2.0 * np.sqrt(1.0 + R[2, 2] - R[0, 0] - R[1, 1])
+        qw = (R[1, 0] - R[0, 1]) / S
+        qx = (R[0, 2] + R[2, 0]) / S
+        qy = (R[1, 2] + R[2, 1]) / S
+        qz = 0.25 * S
+    
+    quaternion = np.array([qw, qx, qy, qz])
+
+    return quaternion
+
+
 def main():
     urdf_file_path = "app\\backend\\python code\\urdf_tes2.urdf"
     initial_position = np.array([0, 0.0, np.pi/2, 0, np.pi/2, -np.pi/2, 0, -np.pi/2, 0])
@@ -289,12 +402,19 @@ def main():
 
 
     # # robot.animate_fk([[0, 0, 138.6653286, 17.4672121, 0, -14.51805191, -8.8323662, 0, 0]]) 
-    robot.animate_fk([[0, 0.0, np.pi/2, 0, np.pi/2, -np.pi/2, 0, -np.pi/2, 0]]) 
-    num_samples = 1
+    IDLE_AGLE_POSITION = np.array([0, -(1/96)*np.pi, (3601/7200)*np.pi, 0, -(39/80)*np.pi, -np.pi/2, 0, -(481/960)*np.pi, 0])
+    robot.animate_fk([IDLE_AGLE_POSITION]) 
+    FK = robot.calculate_fk([IDLE_AGLE_POSITION], 1)
+    for fk in FK:
+        print(fk[0])
+        print(fk[1])
+        print(rotation_matrix_to_quaternion(fk[1]))
+
+    # num_samples = 1
 
 
-    # target_positions = [[-0.0729999, 0.45, (-0.3+0.0508)] for _ in range(num_samples)]
-    # target_orientations = [rotate_x(rotate_y(np.eye(3),-np.pi/2),np.pi/2) for _ in range(num_samples)]
+    # target_positions = [[-0.07299985,  0.45699999, -0.22197503] for _ in range(num_samples)]
+    # target_orientations = [quaternion_to_rotation_matrix(rotate_quaternion([1, 0, 0, 0], 0, -np.pi/2, np.pi/2)) for _ in range(num_samples)]
     # orientation_modes = ['all' for _ in range(num_samples)]
 
     # robot.animate_ik(target_positions, target_orientations, orientation_modes)

@@ -98,8 +98,8 @@ class MotionProfileGenerator:
         """
 
         self.time_values = time_values
-        # self.accelerations = self.generate_accelerations_profile()
-        # self.velocity = self.generate_velocity_profile()
+        self.accelerations = self.generate_accelerations_profile()
+        self.velocity = self.generate_velocity_profile()
         self.displacement = self.generate_displacement_profile()
 
 
@@ -254,12 +254,12 @@ def plot_profiles(time_values, accelerations, velocities, displacements):
         velocities (numpy.ndarray): Array of velocities.
         displacements (numpy.ndarray): Array of displacements.
     """
-    plt.plot(time_values, accelerations, color="purple", label="Acceleration")
-    plt.plot(time_values, velocities, color="black", label="Velocity")
-    plt.plot(time_values, displacements, color="red", label="Displacement")
+    plt.plot(time_values, accelerations, color="purple", label="Acceleration $\\frac{m}{s^2}$")
+    plt.plot(time_values, velocities, color="black", label="Velocity $\\frac{m}{s}$")
+    plt.plot(time_values, displacements, color="red", label="Displacement $m$")
     plt.title('Motion Profiles over Time')
-    plt.xlabel("Time")
-    plt.ylabel("Profiles")
+    plt.xlabel("Time [Sec]")
+    plt.ylabel("unet type")
     plt.grid(True)
     plt.legend()
     plt.show()
@@ -362,17 +362,27 @@ def plot_trajectory_3d(start, end, angle_values, magnitudes_values, height_value
     plt.show()
 
 def main():
-    # Example values
-    start = (5, 5, -5)
-    end = (5, -5, 5)
-    max_acc = 25
-    max_vel = 50
+    # # Example values
+    # start = (5, 5, -5)
+    # end = (5, -5, 5)
+    # max_acc = 25
+    # max_vel = 50
 
-    # Calculate trajectory values
-    angle_values, magnitudes_values, height_values = calculate_trajectory_values(start, end, max_acc, max_vel)
+    # # Calculate trajectory values
+    # angle_values, magnitudes_values, height_values = calculate_trajectory_values(start, end, max_acc, max_vel)
 
-    # Plot the 3D trajectory
-    plot_trajectory_3d(start, end, angle_values, magnitudes_values, height_values)
+    # # Plot the 3D trajectory
+    # plot_trajectory_3d(start, end, angle_values, magnitudes_values, height_values)
+
+    MP = MotionProfileGenerator()
+    MP.Set_displacement(50)
+    
+    time_values = np.arange(0, MP.move_time, 0.01)
+    MP.Generator_profile(time_values)
+    acc = MP.accelerations
+    vel = MP.velocity
+    dis = MP.displacement
+    plot_profiles(time_values, acc, vel, dis)
 
 if __name__ == "__main__":
     main()

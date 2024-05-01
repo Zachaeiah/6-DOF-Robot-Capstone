@@ -155,7 +155,7 @@ class PathPlanner:
             magnitude_profile.Generator_profile(time_values)
             angle_profile.Generator_profile(time_values)
 
-             # Calculate final values for each dimension
+            # Calculate final values for each dimension
             angle_values = angle_init + angle_profile.displacement if angle_final - angle_init > 0 else angle_init - angle_profile.displacement
             magnitudes_values = magnitude_init + magnitude_profile.displacement if magnitude_final - magnitude_init > 0 else magnitude_init - magnitude_profile.displacement
             height_values = start[2] + height_profile.displacement if end[-1] - start[-1] > 0 else start[2] - height_profile.displacement
@@ -232,11 +232,13 @@ class PathPlanner:
         y_min, y_max = float('inf'), float('-inf')
         z_min, z_max = float('inf'), float('-inf')
 
+        pathNum = 0
         for path in self.saved_paths:
             x_coords, y_coords, z_coords = zip(*path)
+            pathNum += 1
 
             # Customize marker size and transparency
-            ax.scatter(x_coords, y_coords, z_coords, s=20, marker='o', alpha=0.5)
+            ax.scatter(x_coords, y_coords, z_coords, s=20, marker='o', alpha=0.5, label = f"P{pathNum}")
 
             # Update min and max values for each axis
             x_min, x_max = min(x_min, np.min(x_coords)), max(x_max, np.max(x_coords))
@@ -244,6 +246,7 @@ class PathPlanner:
             z_min, z_max = min(z_min, np.min(z_coords)), max(z_max, np.max(z_coords))
 
         ax.scatter([0], [0], color="red")
+        ax.scatter([-1.7, 1.7, 0, 0], [0, 0, -1.7, 1.7], color="white")
 
         # Customize azimuth (horizontal viewing angle) and elevation (vertical viewing angle)
         ax.view_init(azim=-45, elev=20)
@@ -251,10 +254,11 @@ class PathPlanner:
         # Add grid lines
         ax.grid(True)
 
-        ax.set_title(f'3D path plan')
-        ax.set_xlabel('X')
-        ax.set_ylabel('Y')
-        ax.set_zlabel('Z')
+        ax.set_title(f'3D Mostion Plan')
+        ax.set_xlabel('X [m]')
+        ax.set_ylabel('Y [m]')
+        ax.set_zlabel('Z [m]')
+        #plt.legend(['linear Path', 'circular Path'])
 
         # Show the plot
         plt.show()
@@ -282,86 +286,6 @@ def main():
     # Plot all saved paths
     path_planner.plot_3d_path()
 
-def main1():
-    def bezier_curve(p0, p1, p2, t):
-        # Bézier curve equation for 3D
-        return (1-t)**2 * p0 + 2*(1-t)*t*p1 + t**2 * p2
-
-    def generate_curve(p0, p1, p2, num_points=100):
-        t = np.linspace(0, 1, num_points)
-        x_curve = bezier_curve(p0[0], p1[0], p2[0], t)
-        y_curve = bezier_curve(p0[1], p1[1], p2[1], t)
-        z_curve = bezier_curve(p0[2], p1[2], p2[2], t)
-        return x_curve, y_curve, z_curve
-
-    # Example points in 3D
-    point1 = np.array([-0.51, -0.50, 0.0])
-    point2 = np.array([0.0, 0.7, 0.6])
-    displacement = point2 - point1
-    cross = np.cross(point2, point1)
-
-    dcross = np.cross(cross, point2)
-
-    # Calculate the current magnitude of the vector
-    current_magnitude = np.linalg.norm(dcross)
-
-    # Normalize the vector
-    normalized_vector = dcross / current_magnitude
-
-    control_point = normalized_vector * (np.linalg.norm(displacement) / 2) + (point2 + point1)/2
-
-    # Generate curve
-    x_curve, y_curve, z_curve = generate_curve(point1, control_point, point2)
-
-    # Plotting in 3D
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-    ax.plot([point1[0], control_point[0]], [point1[1], control_point[1]], [point1[2], control_point[2]], 'ro')  # Starting point to control point
-    ax.plot([control_point[0], point2[0]], [control_point[1], point2[1]], [control_point[2], point2[2]], 'ro')  # Control point to end point
-    ax.scatter(0, 0, 0, color="g", label="Origin")  # Origin
-    ax.scatter(x_curve, y_curve, z_curve, 'b-', label="Bézier Curve")
-    ax.scatter(point1[0], point1[1], point1[2], c='g')  # Starting point
-    ax.scatter(point2[0], point2[1], point2[2], c='g')  # End point
-
-    # Label the starting and ending points
-    ax.text(point1[0], point1[1], point1[2], "Start", color='g')
-    ax.text(point2[0], point2[1], point2[2], "End", color='g')
-
-
-    # Initialize PathPlanner with maximum acceleration
-    max_acc = 25
-    max_vel = 50
-    start =  (-0.51, -0.50, 0.0)
-    end = (0.0, 0.7, 0.6)
-
-    path_planner = PathPlanner(max_acc, max_vel)
-
-    # Generate and plot a linear path
-    path_planner.generate_path(start, end, linear=True)
-    
-    # Generate and plot a circular path
-    points = path_planner.generate_path(start, end, linear=False)
-
-    x_coords, y_coords, z_coords = zip(*points)
-
-    # Customize marker size and transparency
-    ax.scatter(x_coords, y_coords, z_coords, s=20, marker='o', alpha=0.5)
-
-
-
-
-
-
-
-
-
-
-    ax.set_xlabel('X')
-    ax.set_ylabel('Y')
-    ax.set_zlabel('Z')
-    ax.set_title('Bézier Curve in 3D')
-    ax.legend()
-    plt.show()
 
 if __name__ == "__main__":
-    main1()
+    main()

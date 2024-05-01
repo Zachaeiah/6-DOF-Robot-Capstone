@@ -450,7 +450,7 @@ SOUTH_WALL = (0.0, -1.0, 0.0)
 def main():
     box_w = 0.100
     box_h = 0.092
-    num_boxes = 12
+    num_boxes = 6
 
     # Initialize the PartsDatabase instance
     db = PartsDatabase("parts_db", shelf_height=0.12, margin=0.100, offset_x=(box_w/2), offset_y=0.3)
@@ -458,22 +458,33 @@ def main():
     # Create the Parts table
     db.create_parts_table()
 
-    orientations = [NORTH_WALL]
+    
+    first_box_cor = [-0.30, 0.70, 0.2]
+    x_offset = 0.30
+    z_offset = 0.46
+    Box_1 = Box("box 1", "box 1", box_w, box_h, 0, 0, 0, 0, False, [-0.30,              0.73, 0.215], NORTH_WALL)
+    Box_2 = Box("box 2", "box 2", box_w, box_h, 0, 0, 0, 0, False, [-0.30 + x_offset,   0.73, 0.215], NORTH_WALL)
+    Box_3 = Box("box 3", "box 3", box_w, box_h, 0, 0, 0, 0, False, [-0.30 + 2*x_offset, 0.73, 0.215], NORTH_WALL)
+    Box_4 = Box("box 4", "box 4", box_w, box_h, 0, 0, 0, 0, False, [-0.30,              0.73, 0.215 + z_offset], NORTH_WALL)
+    Box_5 = Box("box 5", "box 5", box_w, box_h, 0, 0, 0, 0, False, [-0.30 + 2*x_offset, 0.73, 0.215 + z_offset], NORTH_WALL)
+    db.store_part(Box_1)
+    db.store_part(Box_2)
+    db.store_part(Box_3)
+    db.store_part(Box_4)
+    db.store_part(Box_5)
 
-    Box_n = 0
-
-    # Create and add 30 boxes
-    for orientation in orientations:
-        for i in range(num_boxes):
-            box_id = f"box_{Box_n + 1}"
-            name = f"Box {Box_n + 1}"
-            current_box = Box(box_id, name, box_w, box_h, 0, 0, 0, 0, False, [], orientation)
-            Box_n += 1
+    # # Create and add 30 boxes
+    # for orientation in orientations:
+    #     for i in range(num_boxes):
+    #         box_id = f"box_{Box_n + 1}"
+    #         name = f"Box {Box_n + 1}"
+    #         current_box = Box(box_id, name, box_w, box_h, 0, 0, 0, 0, False, [], orientation)
+    #         Box_n += 1
             
-            if db.add_part(current_box):
-                print(f"Box {box_id} added successfully.")
-            else:
-                print(f"Failed to add Box {box_id}.")
+    #         if db.add_part(current_box):
+    #             print(f"Box {box_id} added successfully.")
+    #         else:
+    #             print(f"Failed to add Box {box_id}.")
 
 if __name__ == "__main__":
     main()

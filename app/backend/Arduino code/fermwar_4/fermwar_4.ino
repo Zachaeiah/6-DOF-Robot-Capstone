@@ -1,7 +1,7 @@
 
 #include "Gloabls.h"
 #include "CMD_PARSER.h"
-#include "Pannle.h"
+// #include "Pannle.h"
 
 // Constants for communication
 const int baudRate = 115200;            // Serial communication baud rate
@@ -9,7 +9,7 @@ const int chipSelect = BUILTIN_SDCARD;  // where to stor the log file
 const char* seps = "\t,\n ;:";          // Declare seps as an external constant
 int error_index = NO_ERROR;             // the indx of witch error to handle
 bool ReadDataDump = false;              // has the memory bean allowcated for a moshion
-int SYS_registor = 0x0;                 // Current state of the system
+int STATE = 0;                          // Current state of the system
 int ErrorState = 0;                     // the state an error happend
 
 // Structure to hold a motion path
@@ -19,20 +19,18 @@ typedef struct MOTION_PLAN {
 } MOTION_PLAN;
 
 
-
 //----------------------------- Function Prototypes -------------------------------------------------------------------
-void INITuC();               // Initialize microcontroller
-
+void INITuC();  // Initialize microcontroller
 
 //---------------------------------------------------------------------------------------------------------------------
 // DESCRIPTION: Setup function called once on boot-up
 // ARGUMENTS:   None
 // RETURN VALUE: None
 void setup() {
-  Serial.begin(baudRate);        // Initialize serial communication
-  initPannle();
 
-  for(int pin = 0; pin < 6; pin++){
+  Serial.begin(baudRate);  // Initialize serial communication
+
+  for (int pin = 0; pin < 6; pin++) {
     pinMode(SepperDirPins[pin], OUTPUT);
     pinMode(StepperStepsPins[pin], OUTPUT);
   }
@@ -44,7 +42,8 @@ void setup() {
     Serial.println("SD card initialization failed!");
     return;
   }
-  STATE = IFIS;  // Set initial state to IFIS (ON BOOT UP)
+  STATE = INIT;
+  // Set initial state to IFIS (ON BOOT UP)
 
   Serial.println("setting up\n");  // send a mesage telling it uP its geting ready
 }
@@ -58,22 +57,19 @@ void loop() {
   char inputBuffer[maxBufferSize];  // Static array to hold input
   char* token;
   int commandIndex = COMMAND_INDEX_NOT_FOUND;
-
   switch (STATE) {
-    case IFIS:
-      STATE = INIT;  // Transition to INIT state
-      break;
 
     case INIT:
-      INITuC();  // Initialize microcontroller
+      INITuC();
+      // initPannle();
       break;
 
-    case RESEVING_COMMAND:
+    case IDLE:
       if (Serial.available() > 0) {
         readSerialData(inputBuffer);  // Get what's on the serial line
-
         STATE = PROCESSING_COMMAND;
       }
+
       break;
 
     case PROCESSING_COMMAND:
@@ -90,7 +86,7 @@ void loop() {
       }
 
       // Get the rest of the line as the next token
-      token = strtok(NULL, seps);  
+      token = strtok(NULL, seps);
 
       // Handle case when no command arguments are provided
       if (token == NULL) {
@@ -101,12 +97,12 @@ void loop() {
       }
 
       // Process the command
-      processCommand(commandIndex, token);  
-      STATE = RESEVING_COMMAND;
+      processCommand(commandIndex, token);
+      STATE = IDLE;
       break;
 
     case ERROR:
-      STATE = RESEVING_COMMAND;
+      STATE = IDLE;
       ErrorState = 0;
       break;
 
@@ -121,16 +117,14 @@ void loop() {
 // ARGUMENTS:   None
 // RETURN VALUE: None
 void INITuC() {
-
   while (Serial.available() > 0) {
-    
     String receivedMessage = Serial.readStringUntil('\n');
 
     // Check if the received message matches the expected connection message
     if (receivedMessage == "leftHand") {
       // Send a confirmation message back to Python
       dsprintf("rightHand\n");
-      STATE = RESEVING_COMMAND;  // Transition to RECEIVING COMMAND state
+      STATE = IDLE;  // Transition to RECEIVING COMMAND state
     }
   }
   //  flush Serial input

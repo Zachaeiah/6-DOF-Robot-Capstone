@@ -13,7 +13,7 @@
 
 extern bool ReadDataDump;       // Declare connected as an external variable
 extern int error_index;         // Index of the current error
-extern int SYS_registor;        // Current state of the system state machine
+extern int STATE;               // Current state of the system state machine
 extern int MOSHIOSTATE;         // the state of the moishion
 extern int ErrorState;          // State at which an error occurred
 extern File dataFile;           // File for error logging
@@ -44,19 +44,9 @@ typedef struct ERROR_COMMAND {
 // Enumeration for state machine
 enum States {
   IFIS,                // ON BOOT UP
+  INIT,
   IDLE,                // IDLE STATE
-  INIT,                // INITIALIZATION
-  RESEVING_COMMAND,    // RECEIVING COMMAND FROM SERIAL
   PROCESSING_COMMAND,  // PROCESSING RECEIVED COMMAND
-  DATA_DUMP,           // THE DATA DUMP OF THE MOTION
-  EXECUTING_COMMAND,   // EXECUTING THE RECEIVED COMMAND
-  LOADING_PART,        // LOADING THE PART FROM THE PART BIN INTO THE BASKET
-  WEIGHING_DIPARCHER,  // WEIGHING THE FULL BASKET OF PARTS
-  DEPARTING,           // SENDING THE FULL BASKET OUT
-  ARRIVING,            // A PART HAS ARRIVED AT ARRIVALS
-  DUMPING_ARRIVAL,     // EMPTYING THE PART OUT OF THE CELLED BASKET
-  WEIGHING_ARRIVAL,    // WEIGHING THE BASKET WITH THE EXCESS PARTS
-  ESTOP,               // EMERGENCY STOP STATE
   ERROR,               // When an error occurs
 };
 

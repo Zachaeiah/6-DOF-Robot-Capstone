@@ -30,8 +30,8 @@ bool allocateMoveData(char* strCommandLine) {
 
       if (token == NULL) {
         print_error(MISSING_DATA, "allocateMoveData", i);
-        ErrorState = SYS_registor;
-        SYS_registor = ERROR;  // Transition to the ERROR state
+        ErrorState = STATE;
+        STATE = ERROR;  // Transition to the ERROR state
         return false;
       }
 
@@ -48,12 +48,12 @@ bool allocateMoveData(char* strCommandLine) {
     // If memory allocation fails, print an error message and transition to the ERROR state
     if (RobotMoshionPlan.Points == NULL) {
       print_error(MEMORY_ALLOCATION_FAILD, "allocateMoveData");
-      ErrorState = SYS_registor;
-      SYS_registor = ERROR;  // Transition to the ERROR state
+      ErrorState = STATE;
+      STATE = ERROR;  // Transition to the ERROR state
       return false;
     }
     MOSHIOSTATE = SETUP;                                          // update the Moshion States machine that the moshion is setup
-    Serial.printf("MoshionState changed to: %d\n", MOSHIOSTATE);  // tell the uP that the MoshionState has changed
+    Serial.printf("\nMoshionState changed to: %d\n", MOSHIOSTATE);  // tell the uP that the MoshionState has changed
     return true;                                                  // Return true to indicate successful allocation
   }
   return false;
@@ -112,8 +112,8 @@ bool storeMoshioin(char* strCommandLine) {
           } else {
             // Print an error if the buffer is full
             print_error(INPUT_BUFFER_FULL, "storeMoshioin");
-            ErrorState = SYS_registor;
-            SYS_registor = ERROR;  // Transition to the ERROR state
+            ErrorState = STATE;
+            STATE = ERROR;  // Transition to the ERROR state
             return false;
           }
         }
@@ -124,26 +124,32 @@ bool storeMoshioin(char* strCommandLine) {
         // Get the current token or continue from the last position
         token = strtok((paramater == 0) ? inputBuffer : NULL, seps);
 
-        Serial.printf("Par%d: %s ", paramater, token);
-
         // Check if any data is missing
         if (token == NULL) {
           print_error(MISSING_DATA, "storeMoshioin", paramater);
-          ErrorState = SYS_registor;
-          SYS_registor = ERROR;  // Transition to the ERROR state
+          ErrorState = STATE;
+          STATE = ERROR;  // Transition to the ERROR state
           return false;
         }
         if (paramater == paramaterNnumber - 1) pointMoshion.TIME = (int)atoi(token);
         else pointMoshion.Frequency[paramater] = (int)atoi(token);
       }
-      Serial.println();
       // Store pointMoshion struct in RobotMoshionPlan.Points array
       pointMoshion.INDEX = pointCNT;
       RobotMoshionPlan.Points[pointCNT] = pointMoshion;
     }
+    // Serial.print("data Reacap\n");
+    // int CurrentFrequency = 0;
+    // for ( int point = 0; point <RobotMoshionPlan.MOVECNT; point++){
+    //   for ( int frequency = 0; frequency < 6; frequency++){
+    //     CurrentFrequency= RobotMoshionPlan.Points[point].Frequency[frequency];
+    //     Serial.printf("Par%d %d ", frequency, CurrentFrequency);
+    //   }
+    //   Serial.printf("Par6 %d Point %d\n", RobotMoshionPlan.Points[point].TIME, RobotMoshionPlan.Points[point].INDEX);
+    // }
     // update the Moshion States machine that the moshion READY to run
     MOSHIOSTATE = READY;
-    Serial.printf("MoshionState changed to: %d\n", MOSHIOSTATE);  // tell the uP that the MoshionState has changed
+    Serial.printf("\nMoshionState changed to: %d\n", MOSHIOSTATE);  // tell the uP that the MoshionState has changed
     return true;                                                  // Return true to indicate successful allocation
   }
   return false;
@@ -154,8 +160,6 @@ bool storeMoshioin(char* strCommandLine) {
 // ARGUMENTS:   strCommandLine - Not used in this function.
 // RETURN VALUE: Always returns false.
 bool executPlanedMove(char* strCommandLine) {
-
-
   if (isState(MOSHIOSTATE, READY)) {
     if (RobotMoshionPlan.Points[0].TIME == 0) {
       MOSHIOSTATE = SETTINGUP;
@@ -243,6 +247,7 @@ void newPointISR() {
     // update the Moshion States machine that the moshion has finished and ready for the nest one
     MOSHIOSTATE = SETTINGUP;
     Serial.printf("MoshionState changed to: %d\n", MOSHIOSTATE);  // tell the uP that the MoshionState has changed
+    free(RobotMoshionPlan.Points);
     return;
   }
 

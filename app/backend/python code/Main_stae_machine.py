@@ -7,6 +7,9 @@ from queue import LifoQueue
 import ast
 from scipy.spatial.transform import Rotation
 import random
+import threading
+import queue
+import time
 from DP_parts import *
 from ik_solver import *
 from intrerpolation import *
@@ -15,6 +18,8 @@ from Motors import *
 from VelocityPFP import *
 from moshionPlanning import *
 from Messager import *
+
+# plt.ion()
 
 def rotate_x(matrix, angle_x):
     """_summary_
@@ -124,23 +129,31 @@ def Hrotate_z(matrix, angle_z):
     ])
     return np.dot(rotation_matrix_z, matrix)
 
-def Htranslation(matrix, translation_vector):
+def Htranslation(input_matrix, tx, ty, tz):
     """
-    Create a 4x4 homogeneous translation matrix.
+    Translate a given matrix using a homogeneous translation matrix.
 
-    Args:
-        translation_vector (array-like): The translation vector, e.g., [x, y, z].
+    Parameters:
+    input_matrix (numpy.ndarray): Input matrix to be translated.
+    tx (float): Translation in the x-axis.
+    ty (float): Translation in the y-axis.
+    tz (float): Translation in the z-axis.
 
     Returns:
-        numpy.ndarray: The 4x4 homogeneous translation matrix.
+    numpy.ndarray: Translated matrix.
     """
-
-    if len(translation_vector) != 3:
-        raise ValueError("Translation vector must have three elements (x, y, z).")
+    # Create the homogeneous translation matrix
+    translation_mat = np.array([
+        [1, 0, 0, tx],
+        [0, 1, 0, ty],
+        [0, 0, 1, tz],
+        [0, 0, 0, 1]
+    ])
     
-    translation_matrix = np.eye(4)
-    translation_matrix[:3, 3] = translation_vector
-    return np.dot(translation_matrix, np.transpose(matrix))
+    # Perform matrix multiplication to translate the input matrix
+    translated_matrix_homogeneous = np.dot(translation_mat, input_matrix)
+    
+    return translated_matrix_homogeneous
 
 def translate_point_along_z(point, orientation_matrix, translation_distance):
     """_summary_
@@ -211,6 +224,7 @@ def handle_response(expected_r: str = None, expected_prefix: str = None, dataWri
                 return  # Exit the function since the expected response is received
             else:
                 print(f">>> {response}")
+                continue
 
         elif expected_r is None and expected_prefix is not None:  # If expected_r is not provided but expected_prefix is
             if response.startswith(expected_prefix):  # Check if the response starts with the expected prefix
@@ -218,6 +232,7 @@ def handle_response(expected_r: str = None, expected_prefix: str = None, dataWri
                 return  # Exit the function since the response with the expected prefix is received
             else:
                 print(f">>> {response}")
+                continue
 
 def rotation_matrix_to_quaternion(rotation_matrix: np.ndarray) -> np.ndarray:
     """
@@ -366,32 +381,102 @@ def quaternion_slerp(q1: np.ndarray, q2: np.ndarray, t: float) -> np.ndarray:
     
     return (s0 * q1) + (s1 * q2)
 
+def quaternion_to_euler(quaternion):
+    """Convert quaternion to Euler angles.
+
+    Args:
+        quaternion (np.array): Quaternion in the form [w, x, y, z].
+
+    Returns:
+        np.array: Euler angles in the form [roll, pitch, yaw].
+    """
+    w, x, y, z = quaternion
+    # Roll (x-axis rotation)
+    sinr_cosp = 2.0 * (w * x + y * z)
+    cosr_cosp = 1.0 - 2.0 * (x * x + y * y)
+    roll = np.arctan2(sinr_cosp, cosr_cosp)
+
+    # Pitch (y-axis rotation)
+    sinp = 2.0 * (w * y - z * x)
+    if np.abs(sinp) >= 1:
+        pitch = np.sign(sinp) * np.pi / 2  # Use +/-90 degrees if out of range
+    else:
+        pitch = np.arcsin(sinp)
+
+    # Yaw (z-axis rotation)
+    siny_cosp = 2.0 * (w * z + x * y)
+    cosy_cosp = 1.0 - 2.0 * (y * y + z * z)
+    yaw = np.arctan2(siny_cosp, cosy_cosp)
+
+    return np.array([roll, pitch, yaw])
+
+def rotation_matrix_to_euler_angles(R: np.ndarray):
+    """
+    Convert a 3x3 rotation matrix to Euler angles.
+
+    Parameters:
+    R : numpy.ndarray
+        3x3 rotation matrix.
+
+    Returns:
+    numpy.ndarray
+        Euler angles in radians as [roll, pitch, yaw].
+        
+    Notes:
+        - This function assumes the rotation matrix represents a proper rotation (orthogonal matrix).
+        - Gimbal lock may occur when the pitch angle approaches ±90 degrees.
+          In such cases, the resulting roll and yaw angles may become ambiguous.
+          Consider handling gimbal lock cases accordingly in your application.
+    """
+    # Input validation
+    if R.shape != (3, 3):
+        raise ValueError("Input matrix must be a 3x3 array.")
+
+    # Calculate sin of pitch angle
+    sy = np.sqrt(R[0, 0] ** 2 + R[1, 0] ** 2)
+    
+    # Check for gimbal lock
+    singular = sy < 1e-6
+
+    if not singular:
+        roll = np.arctan2(R[2, 1], R[2, 2])
+        pitch = np.arctan2(-R[2, 0], sy)
+        yaw = np.arctan2(R[1, 0], R[0, 0])
+    else:
+        roll = np.arctan2(-R[1, 2], R[1, 1])
+        pitch = np.arctan2(-R[2, 0], sy)
+        yaw = 0
+
+    return np.array([roll, pitch, yaw])
+
 LARGE_FONT = ("Verdana", 12)
-DROP_OFF_ZONE = (0, -0.58780819, 0.17683316)
+DROP_OFF_ZONE = (0, -0.73, 0.03)
 DROP_OFF_ORIENTATION = rotate_quaternion([1, 0, 0, 0], np.pi/2, 0, np.pi)
-IDLE_POSITION = (-0.0729999, 0.45699999, -0.22197503)
-IDLE_ORIENTATION  = rotate_quaternion([1, 0, 0, 0], 0, -np.pi/2, np.pi/2)
-IDLE_AGLE_POSITION = np.array([0, 0.0, np.pi/2, 0, np.pi/2, -np.pi/2, 0, -np.pi/2, 0])
+IDLE_POSITION = (-0.08847695,  0.47161316, -0.22542325)
+IDLE_ORIENTATION  = [ 0.00211846, -0.70549629, -0.02529774,  0.7082588 ]
+IDLE_AGLE_POSITION = np.array([0, -(1/96)*np.pi, (3601/7200)*np.pi, 0, -(39/80)*np.pi, -np.pi/2, 0, -(481/960)*np.pi, 0])
 WORKING_HIGHT = 0.22197503
 WORKING_POSITION = (*IDLE_POSITION[:-1], IDLE_POSITION[-1] + WORKING_HIGHT)
 JOGGING_START = (-0.58780819, 0, 0.17683316)
 JOGGING_START_ORIENTATION = IDLE_ORIENTATION
+WEIGHTING_POSITION = (-0.2, -0.73, 0.115)
+WEIGHTING_ORIENTATION = DROP_OFF_ORIENTATION
 
-PICK_UP_ZONE = (0.35, -0.70, 0.0)
-insershion_distance =  0.123
-lifting_distance = 0.00725
-Hight_drop_off_box = 0.092
-Gripper_offset = (-0.00725, 0, -0.123)
+RROTASHION_BUFFER_DIS = 0.1
+insershion_distance =  0.2 + RROTASHION_BUFFER_DIS
+lifting_distance = 0.015
+Hight_drop_off_box = 0.1
+Gripper_offset = [0, -0.2, 0.006]
 
 NORTH_WALL = (0.0, 1.0, 0.0)
 EAST_WALL = (1.0, 0.0, 0.0)
 WEST_WALL = (-1.0, 0.0, 0.0)
 SOUTH_WALL = (0.0, -1.0, 0.0)
 
-NORTH_WALL_TRANFORM = Htranslation(np.eye(4), [0.7, 0.7, -0.3])
-SOUTH_WALL_TRANFORM = Hrotate_x(Hrotate_z(Htranslation(np.eye(4), [0.7, -0.7, -0.3]), -np.pi), -np.pi/2)
-EAST_WALL_TRANFORM = Hrotate_x(Hrotate_z(Htranslation(np.eye(4), [0.7, 0.7, -0.3]), -np.pi/2), -np.pi/2)
-WEST_WALL_TRANFORM = Hrotate_x(Hrotate_z(Htranslation(np.eye(4), [-0.7, -0.7, -0.3]), np.pi/2), -np.pi/2)
+NORTH_WALL_TRANFORM = Htranslation(Hrotate_x(np.eye(4), np.pi/2), -0.7, -0.7, -0.3)
+# SOUTH_WALL_TRANFORM = Hrotate_x(Hrotate_z(Htranslation(np.eye(4), [0.7, -0.7, -0.3]), -np.pi), -np.pi/2)
+# EAST_WALL_TRANFORM = Hrotate_x(Hrotate_z(Htranslation(np.eye(4), [0.7, 0.7, -0.3]), -np.pi/2), -np.pi/2)
+# WEST_WALL_TRANFORM = Hrotate_x(Hrotate_z(Htranslation(np.eye(4), [-0.7, -0.7, -0.3]), np.pi/2), -np.pi/2)
 
 
 AllMotorNames = ["Bace Motor", "Sholder Motor", "Elbow Motor", "Elbow revolut Motor", "Wirist Motor", "Wirist revolut Motor"]
@@ -405,12 +490,12 @@ ERRORmsg = [
 
 def state0():
     """
-    Initialize the state machine to fetch part names and determine whether to pick up or drop off.
+    Initialize the state machine to fetch part names.
 
     Returns:
-        tuple: A tuple containing part names to fetch and a flag indicating pickup/dropoff.
+        list: A list containing part names to fetch.
     """
-    part_names_to_fetch = [f'Box {i+1}' for i in range(1, 2)]
+    part_names_to_fetch = [f'box {i}' for i in [1]]
     pickip_dropoff = True
     return part_names_to_fetch, pickip_dropoff
 
@@ -446,7 +531,7 @@ def state1(part_names_to_fetch, parts_db):
                 'PartName': part.name,
                 'LocationX': ast.literal_eval(part.position)[0],
                 'LocationY': ast.literal_eval(part.position)[1],
-                'LocationZ': 0,  # Assuming Z-coordinate is 0
+                'LocationZ': ast.literal_eval(part.position)[2],
                 'Orientation': ast.literal_eval(part.orientation),
                 'FullWeight': part.FullWeight,
                 'HalfWeight': part.HalfWeight,
@@ -501,10 +586,12 @@ def state3(pickip_dropoff,locations, orientations, drop_off_zone, planner):
             - travle_orientation (list): List of orientations corresponding to the travel paths.
             - travle_alinements (list): List of alignment flags for the robotic arm.
     """
-    depbug_stage = 12
+    depbug_stage = 14
     travle_paths = []
     travle_orientation = []
     travle_alinements = []
+    travle_stop = []
+    over_wrap = False
 
 
     # leav the idle position and 
@@ -512,241 +599,307 @@ def state3(pickip_dropoff,locations, orientations, drop_off_zone, planner):
         T0 = planner.generate_path(IDLE_POSITION, WORKING_POSITION, linear=True)
         T0_orientation = [IDLE_ORIENTATION for _ in range(len(T0))]
 
-        travle_paths.extend(T0)
-        travle_orientation.extend(T0_orientation)
+        travle_paths.append(T0)
+        travle_orientation.append(T0_orientation)
 
     # go to the drop off zone
     if depbug_stage > 1:
         T0 = planner.generate_path(WORKING_POSITION, JOGGING_START, linear=False)
         T0_orientation = [T0_orientation[-1] for _ in range(len(T0))]
 
-        travle_paths.extend(T0)
-        travle_orientation.extend(T0_orientation)
+        travle_paths.append(T0)
+        travle_orientation.append(T0_orientation)
 
     if pickip_dropoff:
         for index, (location, orientation) in enumerate(zip(locations.values(), orientations.values())):
-            location = np.array(location)
-            location = np.dot(quaternion_to_rotation_matrix(T0_orientation[-1]), Gripper_offset) + location
-            location = np.append(location, [0])
-            
-            if (orientation == EAST_WALL):
-                location = [0.7, 0.7 - location[0], location[1]-0.3]
-
-            elif (orientation == NORTH_WALL):
-                location = [location[0]-0.7, 0.7, location[1]-0.3]
-                
-            elif (orientation == WEST_WALL):
-                location = [-0.7, location[0]-0.7, location[1]-0.3]
-                
-            elif (orientation == SOUTH_WALL):
-                location = [0.7-location[0], -0.7, location[1]-0.3]
-            else:
-                print("No angle")
+            over_wrap = False
+            location = np.array(location) + Gripper_offset + [0, -RROTASHION_BUFFER_DIS, 0]
 
             if depbug_stage > 2:
                 T1 = planner.generate_path(JOGGING_START, location, linear=False)
 
                 delta_angles = XY_angle(JOGGING_START, location)
                 if (-np.pi/2 > delta_angles >= -np.pi):
-                    delta_angles =  np.linspace(0, np.pi, len(T1))
+                    delta_angles =  np.linspace(0, np.pi/2, len(T1), endpoint=True)
+                    over_wrap = True
                 elif (0 > delta_angles >= -np.pi/2):
-                    delta_angles =  np.linspace(0, np.pi/2, len(T1))
+                    delta_angles =  np.linspace(0, np.pi/2, len(T1), endpoint=True)
                 elif (0 < delta_angles <= np.pi/2):
-                    delta_angles =  np.linspace(0, -np.pi/2, len(T1))
+                    delta_angles =  np.linspace(0, -np.pi/2, len(T1), endpoint=True)
                 elif (np.pi/2 < delta_angles <= np.pi):
-                    delta_angles =  np.linspace(0, -np.pi, len(T1))
+                    delta_angles =  np.linspace(0, -np.pi, len(T1), endpoint=True)
 
                 T1_orientation = [rotate_quaternion(T0_orientation[-1], 0, rad, 0) for rad in delta_angles]
                 insershion_point = np.dot(quaternion_to_rotation_matrix(T1_orientation[-1]), (0, 0, insershion_distance)) + T1[-1]
-                travle_paths.extend(T1)
-                travle_orientation.extend(T1_orientation)
+                travle_paths.append(T1)
+                travle_orientation.append(T1_orientation)
 
             if depbug_stage > 3:
                 T2 = planner.generate_path(T1[-1], insershion_point, linear=True)
                 T2_orientation = [T1_orientation[-1] for _ in range(len(T2))]
-                travle_paths.extend(T2)
-                travle_orientation.extend(T2_orientation)
+                travle_paths.append(T2)
+                travle_orientation.append(T2_orientation)
 
             if depbug_stage > 4:
                 lifing_point = np.dot(quaternion_to_rotation_matrix(T2_orientation[-1]), (0, -lifting_distance, 0)) + T2[-1]
                 T3 = planner.generate_path(insershion_point, lifing_point, linear=True)
                 T3_orientation = [T2_orientation[-1] for _ in range(len(T3))]
-                travle_paths.extend(T3)
-                travle_orientation.extend(T3_orientation)
+                travle_paths.append(T3)
+                travle_orientation.append(T3_orientation)
 
             if depbug_stage > 5:
                 retracked_point = np.dot(quaternion_to_rotation_matrix(T3_orientation[-1]), (0, 0, -insershion_distance)) + T3[-1]
                 T4 = planner.generate_path(lifing_point, retracked_point, linear=True)
                 T4_orientation = [T3_orientation[-1] for _ in range(len(T4))]
-                travle_paths.extend(T4)
-                travle_orientation.extend(T4_orientation)
+                travle_paths.append(T4)
+                travle_orientation.append(T4_orientation)
 
-            if depbug_stage > 6:
+            if over_wrap:
+                TOW = planner.generate_path(T4[-1], JOGGING_START, linear=False)
+                TOW_orientation = [rotate_quaternion(T4_orientation[-1], 0, -rad, 0) for rad in delta_angles]
+                travle_paths.append(TOW)
+                travle_orientation.append(TOW_orientation)
+
                 Drop_off_hight = np.dot(quaternion_to_rotation_matrix(T4_orientation[-1]), (0, -Hight_drop_off_box, 0)) + drop_off_zone
-                T5 = planner.generate_path(retracked_point, Drop_off_hight, linear=False)
-
-                delta_angles = XY_angle(retracked_point, Drop_off_hight)
-                if (-np.pi/2 > delta_angles >= -np.pi):
-                    delta_angles =  np.linspace(0, np.pi, len(T5))
-                elif (0 > delta_angles >= -np.pi/2):
-                    delta_angles =  np.linspace(0, np.pi/2, len(T5))
-                elif (0 < delta_angles <= np.pi/2):
-                    delta_angles =  np.linspace(0, -np.pi/2, len(T5))
-                elif (np.pi/2 < delta_angles <= np.pi):
-                    delta_angles =  np.linspace(0, -np.pi, len(T5))
-
-                T5_orientation = [rotate_quaternion(T4_orientation[-1], 0, rad, 0) for rad in delta_angles]
-                travle_paths.extend(T5)
-                travle_orientation.extend(T5_orientation)
+                T5 = planner.generate_path(TOW[-1], Drop_off_hight, linear=False)
+                delta_angles = np.linspace(0, -np.pi/2, len(T5), endpoint=True)
+                T5_orientation = [rotate_quaternion(TOW_orientation[-1], 0, rad, 0) for rad in delta_angles]
+                travle_paths.append(T5)
+                travle_orientation.append(T5_orientation)
+            else:
+                if depbug_stage > 6:
+                    Drop_off_hight = np.dot(quaternion_to_rotation_matrix(T4_orientation[-1]), (0, -Hight_drop_off_box, 0)) + drop_off_zone
+                    
+                    T5 = planner.generate_path(retracked_point, Drop_off_hight, linear=False)
+                    delta_angles = np.linspace(0, -np.pi, len(T5))
+                    T5_orientation = [rotate_quaternion(T4_orientation[-1], 0, rad, 0) for rad in delta_angles]
+                    travle_paths.append(T5)
+                    travle_orientation.append(T5_orientation)
 
             if depbug_stage > 7:
                 T6 = planner.generate_path(T5[-1], drop_off_zone, linear=True)
                 T6_orientation = [T5_orientation[-1] for _ in range(len(T6))]
-                travle_paths.extend(T6)
-                travle_orientation.extend(T6_orientation)
+                travle_paths.append(T6)
+                travle_orientation.append(T6_orientation)
 
             if depbug_stage > 8:
                 retracked_point = np.dot(quaternion_to_rotation_matrix(T6_orientation[-1]), (0, 0, -insershion_distance)) + T6[-1]
                 T7 = planner.generate_path(T6[-1], retracked_point, linear=True)
                 T7_orientation = [T6_orientation[-1] for _ in range(len(T7))]
-                travle_paths.extend(T7)
-                travle_orientation.extend(T7_orientation)
+                travle_paths.append(T7)
+                travle_orientation.append(T7_orientation)
 
             if depbug_stage > 9:
                 T8 = planner.generate_path(T7[-1], WORKING_POSITION, linear=False)
-                T8_orientation = [quaternion_slerp(T7_orientation[-1], IDLE_ORIENTATION, t) for t in np.linspace(0, 1, len(T8))]
-                travle_paths.extend(T8)
-                travle_orientation.extend(T8_orientation)
+                T8_orientation = [quaternion_slerp(T7_orientation[-1], IDLE_ORIENTATION, t) for t in np.linspace(0, 1, len(T8), endpoint=True)]
+                travle_paths.append(T8)
+                travle_orientation.append(T8_orientation)
 
             if depbug_stage > 10:
                 T9 = planner.generate_path(WORKING_POSITION, IDLE_POSITION, linear=True)
                 T9_orientation = [T8_orientation[-1] for _ in range(len(T9))]
-                travle_paths.extend(T9)
-                travle_orientation.extend(T9_orientation)
+                travle_paths.append(T9)
+                travle_orientation.append(T9_orientation)
     else:
         for index, (location, orientation) in enumerate(zip(locations.values(), orientations.values())):
-            location = np.array(location)
-            location = np.dot(quaternion_to_rotation_matrix(T0_orientation[-1]), Gripper_offset) + location
-            location = np.append(location, [0])
-            
-            if (orientation == EAST_WALL):
-                location = [0.7, 0.7 - location[0], location[1]-0.3]
-
-            elif (orientation == NORTH_WALL):
-                location = [location[0]-0.7, 0.7, location[1]-0.3]
-                
-            elif (orientation == WEST_WALL):
-                location = [-0.7, location[0]-0.7, location[1]-0.3]
-                
-            elif (orientation == SOUTH_WALL):
-                location = [0.7-location[0], -0.7, location[1]-0.3]
-            else:
-                print("No angle")
+            over_wrap = False
+            location = np.array(location) + Gripper_offset + [0, -RROTASHION_BUFFER_DIS, 0]
 
             if depbug_stage > 2:
                 Pickup_point = np.dot(quaternion_to_rotation_matrix(DROP_OFF_ORIENTATION), (0, 0, -insershion_distance)) + drop_off_zone
                 T1 = planner.generate_path(JOGGING_START, Pickup_point, linear=False)
-                T1_orientation = [quaternion_slerp(T0_orientation[-1], DROP_OFF_ORIENTATION, t) for t in np.linspace(0, 1, len(T1))]
-
-                travle_paths.extend(T1)
-                travle_orientation.extend(T1_orientation)
+                T1_orientation = [quaternion_slerp(T0_orientation[-1], DROP_OFF_ORIENTATION, t) for t in np.linspace(0, 1, len(T1), endpoint=True)]
+                travle_paths.append(T1)
+                travle_orientation.append(T1_orientation)
 
             if depbug_stage > 3:
                 T2 = planner.generate_path(T1[-1], drop_off_zone, linear=True)
                 T2_orientation = [T1_orientation[-1] for _ in range(len(T2))]
-                travle_paths.extend(T2)
-                travle_orientation.extend(T2_orientation)
+                travle_paths.append(T2)
+                travle_orientation.append(T2_orientation)
 
             if depbug_stage > 4:
                 Pickup_point = np.dot(quaternion_to_rotation_matrix(DROP_OFF_ORIENTATION), (0, -Hight_drop_off_box, 0)) + drop_off_zone
                 T3 = planner.generate_path(T2[-1], Pickup_point, linear=True)
                 T3_orientation = [T2_orientation[-1] for _ in range(len(T3))]
-                travle_paths.extend(T3)
-                travle_orientation.extend(T3_orientation)
+                travle_paths.append(T3)
+                travle_orientation.append(T3_orientation)
 
             if depbug_stage > 5:
-                T4 = planner.generate_path(T3[-1], location, linear=False)
+                T4 = planner.generate_path(T3[-1], WEIGHTING_POSITION, linear=True)
+                T4_orientation = [WEIGHTING_ORIENTATION for _ in range(len(T4))]
+                travle_paths.append(T4)
+                travle_orientation.append(T4_orientation)
+                travle_stop.append(5)
 
-                delta_angles = XY_angle(T3[-1], location)
-                if (-np.pi/2 > delta_angles >= -np.pi):
-                    delta_angles =  np.linspace(0, np.pi, len(T4))
-                elif (0 > delta_angles >= -np.pi/2):
-                    delta_angles =  np.linspace(0, np.pi/2, len(T4))
-                elif (0 < delta_angles <= np.pi/2):
-                    delta_angles =  np.linspace(0, -np.pi/2, len(T4))
-                elif (np.pi/2 < delta_angles <= np.pi):
-                    delta_angles =  np.linspace(0, -np.pi, len(T5))
-                
-                T4_orientation = [rotate_quaternion(T3_orientation[-1], 0, rad, 0) for rad in delta_angles]
-                travle_paths.extend(T4)
-                travle_orientation.extend(T4_orientation)
 
             if depbug_stage > 6:
-                insershion_point = np.dot(quaternion_to_rotation_matrix(T4_orientation[-1]), (0, 0, insershion_distance)) + T4[-1]
-                T5 = planner.generate_path(location, insershion_point, linear=True)
+                Pickup_point = np.dot(quaternion_to_rotation_matrix(DROP_OFF_ORIENTATION), (0, -Hight_drop_off_box, 0)) + WEIGHTING_POSITION
+                T5 = planner.generate_path(T4[-1], Pickup_point, linear=True)
+                T5_orientation = [WEIGHTING_ORIENTATION for _ in range(len(T5))]
+                travle_paths.append(T5)
+                travle_orientation.append(T5_orientation)
 
-                T5_orientation =  [T4_orientation[-1] for _ in range(len(T5))]
-                travle_paths.extend(T5)
-                travle_orientation.extend(T5_orientation)
 
             if depbug_stage > 7:
-                lifing_point = np.dot(quaternion_to_rotation_matrix(T5_orientation[-1]), (0, lifting_distance, 0)) + T5[-1]
-                T6 = planner.generate_path(T5[-1], lifing_point, linear=True)
-                T6_orientation = [T5_orientation[-1] for _ in range(len(T6))]
-                travle_paths.extend(T6)
-                travle_orientation.extend(T6_orientation)
+                T6 = planner.generate_path(T5[-1], location, linear=False)
+
+                delta_angles = XY_angle(T5[-1], location)
+                if (-np.pi/2 > delta_angles >= -np.pi):
+                    delta_angles =  np.linspace(0, np.pi, len(T6), endpoint=True)
+                elif (0 > delta_angles >= -np.pi/2):
+                    delta_angles =  np.linspace(0, np.pi/2, len(T6), endpoint=True)
+                elif (0 < delta_angles <= np.pi/2):
+                    delta_angles =  np.linspace(0, -np.pi/2, len(T6), endpoint=True)
+                elif (np.pi/2 < delta_angles <= np.pi):
+                    over_wrap = True
+                    delta_angles =  np.linspace(0, -np.pi, len(T6), endpoint=True)
+                
+                T6_orientation = [rotate_quaternion(T5_orientation[-1], 0, rad, 0) for rad in delta_angles]
+                travle_paths.append(T6)
+                travle_orientation.append(T6_orientation)
 
             if depbug_stage > 8:
-                retracked_point = np.dot(quaternion_to_rotation_matrix(T6_orientation[-1]), (0, 0, -insershion_distance)) + T6[-1]
-                T7 = planner.generate_path(T6[-1], retracked_point, linear=True)
-                T7_orientation = [T6_orientation[-1] for _ in range(len(T7))]
-                travle_paths.extend(T7)
-                travle_orientation.extend(T7_orientation)
+                insershion_point = np.dot(quaternion_to_rotation_matrix(T6_orientation[-1]), (0, 0, insershion_distance)) + location
+                T7 = planner.generate_path(location, insershion_point, linear=True)
+                T7_orientation =  [T6_orientation[-1] for _ in range(len(T7))]
+                travle_paths.append(T7)
+                travle_orientation.append(T7_orientation)
 
             if depbug_stage > 9:
-                T8 = planner.generate_path(T7[-1], JOGGING_START, linear=False)
-                T8_orientation = [quaternion_slerp(T7_orientation[-1], JOGGING_START_ORIENTATION, t) for t in np.linspace(0, 1, len(T8))]
-                travle_paths.extend(T8)
-                travle_orientation.extend(T8_orientation)
+                lifing_point = np.dot(quaternion_to_rotation_matrix(T7_orientation[-1]), (0, lifting_distance, 0)) + T7[-1]
+                T8 = planner.generate_path(T7[-1], lifing_point, linear=True)
+                T8_orientation = [T7_orientation[-1] for _ in range(len(T8))]
+                travle_paths.append(T8)
+                travle_orientation.append(T8_orientation)
 
             if depbug_stage > 10:
-                T9 = planner.generate_path(JOGGING_START, WORKING_POSITION, linear=False)
-                T9_orientation = [JOGGING_START_ORIENTATION for _ in range(len(T9))]
-                travle_paths.extend(T9)
-                travle_orientation.extend(T9_orientation)
+                retracked_point = np.dot(quaternion_to_rotation_matrix(T8_orientation[-1]), (0, 0, -insershion_distance)) + T8[-1]
+                T9 = planner.generate_path(T8[-1], retracked_point, linear=True)
+                T9_orientation = [T8_orientation[-1] for _ in range(len(T9))]
+                travle_paths.append(T9)
+                travle_orientation.append(T9_orientation)
 
-            if depbug_stage > 11:
-                T10 = planner.generate_path(WORKING_POSITION, IDLE_POSITION, linear=True)
-                T10_orientation = [T9_orientation[-1] for _ in range(len(T10))]
-                travle_paths.extend(T10)
-                travle_orientation.extend(T10_orientation)
+            if over_wrap:
+                TOW_MID_point = np.dot(quaternion_to_rotation_matrix(DROP_OFF_ORIENTATION), (0, -Hight_drop_off_box, 0)) + WEIGHTING_POSITION
+                TOW = planner.generate_path(T9[-1], TOW_MID_point, linear=False)
+                TOW_orientation = [rotate_quaternion(T9_orientation[-1], 0, -rad, 0) for rad in delta_angles]
+                travle_paths.append(TOW)
+                travle_orientation.append(TOW_orientation)
+
+                if depbug_stage > 11:
+                    T10= planner.generate_path(TOW[-1], JOGGING_START, linear=False)
+                    T10_orientation = [quaternion_slerp(TOW_orientation[-1], IDLE_ORIENTATION, t) for t in np.linspace(0, 1, len(T10), endpoint=True)]
+                    travle_paths.append(T10)
+                    travle_orientation.append(T10_orientation)
+
+                if depbug_stage > 12:
+                    T11 = planner.generate_path(JOGGING_START, WORKING_POSITION, linear=False)
+                    T11_orientation = [T10_orientation[-1] for _ in range(len(T11))]
+                    travle_paths.append(T11)
+                    travle_orientation.append(T11_orientation)
+
+                if depbug_stage > 13:
+                    T12 = planner.generate_path(WORKING_POSITION, IDLE_POSITION, linear=True)
+                    T12_orientation = [T11_orientation[-1] for _ in range(len(T12))]
+                    travle_paths.append(T12)
+                    travle_orientation.append(T12_orientation)
+            else:
+
+                if depbug_stage > 11:
+                    T10= planner.generate_path(T9[-1], JOGGING_START, linear=False)
+                    T10_orientation = [quaternion_slerp(T9_orientation[-1], IDLE_ORIENTATION, t) for t in np.linspace(0, 1, len(T10), endpoint=True)]
+                    travle_paths.append(T10)
+                    travle_orientation.append(T10_orientation)
+
+                if depbug_stage > 12:
+                    T11 = planner.generate_path(JOGGING_START, WORKING_POSITION, linear=False)
+                    T11_orientation = [T10_orientation[-1] for _ in range(len(T11))]
+                    travle_paths.append(T11)
+                    travle_orientation.append(T11_orientation)
+
+                if depbug_stage > 13:
+                    T12 = planner.generate_path(WORKING_POSITION, IDLE_POSITION, linear=True)
+                    T12_orientation = [T11_orientation[-1] for _ in range(len(T12))]
+                    travle_paths.append(T12)
+                    travle_orientation.append(T12_orientation)
 
     travle_alinements = ["all"] * len(travle_paths)
 
     planner.plot_3d_path()
     
-    return travle_paths, travle_orientation, travle_alinements
+    return travle_paths, travle_orientation, travle_alinements, travle_stop
 
-def state4(travle_paths, travle_orientation, travle_alinements, urdf_file_path):
+def state4(travle_paths, travle_orientation, travle_alinements, urdf_file_path, travle_stop):
     """
     Execute the robotic arm's travel paths and orientations using inverse kinematics.
 
     Args:
-        travle_paths (list): List of travel paths for the robotic arm.
-        travle_orientation (list): List of orientations corresponding to the travel paths.
+        travle_paths (list[list]): List of travel paths for the robotic arm.
+        travle_orientation (list[list]: List of orientations corresponding to the travel paths.
         travle_alinements (list): List of alignment flags for the robotic arm.
         urdf_file_path (str): The file path of the URDF file defining the robotic arm.
+        travle_stop (list): when to stop puase the robot
     """
     # Initialize the RobotArm with the URDF file path
     robot = RobotArm(urdf_file_path, IDLE_AGLE_POSITION)
-    travle_orientation = list(map(quaternion_to_rotation_matrix, travle_orientation))
 
-    print(len(travle_paths))
+    orientations_ani = []
+    for i in range(len(travle_orientation)):
+        for j in range(len(travle_orientation[i])):
+            ani = quaternion_to_rotation_matrix(travle_orientation[i][j])
+            orientations_ani.append(ani)
 
-    #robot.animate_ik(travle_paths, travle_orientation, travle_alinements)
+    positions_ani = []
+    for i in range(len(travle_paths)):
+        positions_ani.extend(travle_paths[i])
+
+    fig, ax = plt.subplots(subplot_kw={'projection': '3d'}, figsize=(12, 8))
+    ax.set_xlim3d(-1, 1)
+    ax.set_ylim3d(-1, 1)
+    ax.set_zlim3d(-1, 1)
+
+    travle_alinements = ["all"] * len(positions_ani)
+
+    robot.animate_ik(positions_ani, orientations_ani, travle_alinements, ax=ax, fig=fig)
 
 
 
+    # j = 0
+    # for i in range(0, len(travle_paths), 1):
+    #     positions_batch = travle_paths[i]
+    #     orientations_batch = travle_orientation[i]
+    #     orientation_batch = ["all"] * len(positions_batch)
+    #     if i == travle_stop[j]:
+    #         j += 1
+    #         time.sleep(3)
+
+    #     if j == len(travle_stop):
+    #         j = 0
+
+    #     animation_thread = threading.Thread(target=robot.is_animating)
+
+    #     # Start the animation thread
+    #     animation_thread.start()
+
+    #     robot.is_animating = True
+    #     robot.animate_ik(positions_batch, orientations_batch, orientation_batch, ax=ax, fig=fig)\
+        
+    #     # Wait until the animation is done
+    #     while robot.is_animating:
+    #         pass
+            
+           
+            
+        
+        # robot.is_animating = True
+        # while robot.is_animating == True:
+            
+        #     if robot.is_animating == False:
+        #         break
+
+        
+       
 def main():
     try:
         """Initialize the motors and the parts database."""
@@ -768,8 +921,8 @@ def main():
         #urdf_file_path = "//home//zachl//Capstone//app/backend//python code//urdf_tes2.urdf"
         
 
-        max_acc = 1000
-        max_vel = 1000
+        max_acc = 10000
+        max_vel = 10000
         planner = PathPlanner(max_acc, max_vel)
 
         Mode = True
@@ -791,11 +944,11 @@ def main():
                         state = 3
 
                     elif state == 3:
-                        travle_paths, travle_orientation, travle_alinements = state3(False, locations, orientations, DROP_OFF_ZONE, planner)
+                        travle_paths, travle_orientation, travle_alinements, travle_stop = state3(True, locations, orientations, DROP_OFF_ZONE, planner)
                         state = 4
 
                     elif state == 4:
-                        state4(travle_paths, travle_orientation, travle_alinements, urdf_file_path)
+                        state4(travle_paths, travle_orientation, travle_alinements, urdf_file_path, travle_stop)
                         state = 5
 
                     elif state == 5:
@@ -829,8 +982,6 @@ def joggingXYZ(init_angles):
             angle_entries.append(entry)
     
     def Send_orintashion():
-        nonlocal current_ORI_quater
-        _COR_path = []
         New_ORI = []
 
         #get the previos anle poshion
@@ -880,38 +1031,49 @@ def joggingXYZ(init_angles):
 
     def animationRobot(COR_path, New_ORI, New_ORI_MODE):
 
-        # IK_SOLUSHIONS = list(robot.calculate_ik(COR_path, New_ORI, New_ORI_MODE, 5))
-        # TRANFORM_MASK = np.array([False, True, True, False, True, True, False, True, True])
+        IK_SOLUSHIONS = list(robot.calculate_ik(COR_path, New_ORI, New_ORI_MODE, 5))
+        TRANFORM_MASK = np.array([False, True, True, False, True, True, False, True, True])
+        ANGLE_MASK = np.array([1, 1, 1, -1, 1, 1])
 
-        # new_angles = []
-        # for SOLUSHION in IK_SOLUSHIONS:
-        #     angles = np.rad2deg(SOLUSHION[0])
-        #     new_angles.append(angles[TRANFORM_MASK])
+        new_angles = []
+        for SOLUSHION in IK_SOLUSHIONS:
 
-        # movement_results = controller.move_motors(new_angles)
+            angles = np.rad2deg(SOLUSHION[0])
+            np.set_printoptions(precision=3)
+            np.set_printoptions(linewidth=np.inf)
+            new_angles.append(angles[TRANFORM_MASK])
 
-        # expected_response = "MoshionState changed to: 1"
-        # MSG.send_message(f"R_MOVES {len(movement_results)}")
-        # handle_response(expected_response, None, None,MSG.message_stack) # weight until i get the my response
+        movement_results = controller.move_motors(new_angles*ANGLE_MASK)
 
-        # expected_response = f"storing {len(movement_results)}"
-        # MSG.send_message(f"R_MOSHION {len(movement_results)}")
-        # handle_response(expected_response, None, None,MSG.message_stack) # weight until i get the my response
+        MoveTime = 0
+        for  move in movement_results:
+            MoveTime += [int(num) for num in move.strip().split(',')][-1]
+        print(f"Move time in seconts: {MoveTime * 1e-6} Sec")
 
-        # expected_response = "MoshionState changed to: 2"
-        # for move in movement_results:
-        #     print(move)
-        #     MSG.send_message(move)
-        # handle_response(expected_response, None, None, MSG.message_stack) # weight until i get the my response
 
-        # expected_response = "MoshionState changed to: 0"
-        # MSG.send_message(f"R_EXECUTE {len(movement_results)}")
-        # handle_response(expected_response, None, None, MSG.message_stack) # weight until i get the my response
-            
+        expected_response = "MoshionState changed to: 1"
+        MSG.send_message(f"R_MOVES {len(movement_results)}")
+        handle_response(expected_response, None, None, MSG.message_stack) # weight until i get the my response
+        
+
+        expected_response = f"storing {len(movement_results)}"
+        MSG.send_message(f"R_MOSHION {len(movement_results)}")
+        handle_response(expected_response, None, None,MSG.message_stack) # weight until i get the my response
+        
+
+        expected_response = "MoshionState changed to: 2"
+        for move in movement_results:
+            MSG.send_message(move)
+        handle_response(expected_response, None, None, MSG.message_stack) # weight until i get the my response
+
+        expected_response = "MoshionState changed to: 0"
+        MSG.send_message(f"R_EXECUTE {len(movement_results)}")
+        handle_response(expected_response, None, None, MSG.message_stack) # weight until i get the my response
+
         robot.animate_ik(COR_path, New_ORI, New_ORI_MODE, ax = ax, fig = fig)
 
-    # MSG = Mesageer("COM12")
-    # MSG.connect()
+    MSG = Mesageer("COM12")
+    MSG.connect()
 
     # Create an instance of MoshionController
     controller = MoshionController()
@@ -921,11 +1083,8 @@ def joggingXYZ(init_angles):
     root = tk.Tk()
     root.title("Enter Angles")
 
-    max_acc = 30
-    max_vel = 30
-
-    max_ang_acc = 1
-    max_ang_vel = 1
+    max_acc = 100
+    max_vel = 100
     COR_planner = PathPlanner(max_acc, max_vel)
 
     urdf_file_path = "app\\backend\\python code\\urdf_tes2.urdf"
@@ -935,9 +1094,8 @@ def joggingXYZ(init_angles):
     controll = []
     for fk in FK:
         current_COR = fk[0]
-        current_ORI_quater = rotation_matrix_to_quaternion(fk[1])
         controll.extend(current_COR)
-        controll.extend([0,0,0])
+        controll.extend([0, -np.pi/2, np.pi])
 
     angle_entries = [] 
     create_gui(controll)
@@ -959,13 +1117,18 @@ def joggingXYZ(init_angles):
     # Run the Tkinter event loop
     root.mainloop()
 
-def joggingAngles():
+def joggingAngles(init_angles):
 
     # Create an instance of MoshionController
     controller = MoshionController()
+    controller.Input_DEGREES()
 
     MSG = Mesageer("COM12")
     MSG.connect()
+
+    urdf_file_path = "app\\backend\\python code\\urdf_tes2.urdf"
+    robot = RobotArm(urdf_file_path, init_angles)
+    FK = robot.calculate_fk([init_angles], 1)
 
     # Create the Tkinter window
     root = tk.Tk()
@@ -973,7 +1136,8 @@ def joggingAngles():
 
     # Create entry fields for entering angles
     angle_entries = []
-    default_values = ["0"] * 6  # Default values set to 0
+    TRANFORM_MASK = np.array([False, True, True, False, True, True, False, True, True])
+    default_values = np.rad2deg(init_angles[TRANFORM_MASK]) # Default values set to 0
     for i, label in enumerate(['Shoulder Rotate Motor', 'Shoulder Lift Motor', 'Elbow Motor', 'Forearm Rotate Motor', 'Wrist Motor', 'Wrist Rotate Motor']):
         tk.Label(root, text=label).grid(row=i, column=0)
         entry = tk.Entry(root)
@@ -982,10 +1146,20 @@ def joggingAngles():
         angle_entries.append(entry)
     
     def send_angles():
-        angles = tuple(float(entry.get()) for entry in angle_entries)
+        nonlocal TRANFORM_MASK
+        new_angles = list(float(entry.get()) for entry in angle_entries)
+        last_angle = np.rad2deg([robot.last_angles[1],robot.last_angles[2], robot.last_angles[4], robot.last_angles[5], robot.last_angles[7], robot.last_angles[8]])
+
         
-        # Move motors based on the defined angles and get the results
-        movement_results = controller.move_motors([(0,0,0,0,0,0), angles])
+        movement_results = controller.move_motors([last_angle, new_angles])
+
+
+        new_angles = np.deg2rad([0, new_angles[0],new_angles[1], 0, new_angles[2], new_angles[3], 0, new_angles[4], new_angles[5]])
+        FK = robot.calculate_fk([new_angles], 1)
+
+        for fk in FK:
+            print(fk)
+
         print(movement_results[0])
 
         expected_response = "MoshionState changed to: 1"
@@ -1023,11 +1197,11 @@ if __name__ == "__main__":
     # print(quaternion_to_euler((0.7023, -0.06951, -0.01500, 0.0329)))
     # print(quaternion_to_euler((0.9866, 0.0035, -0.0667, 0.1486)))
 
-    main()
+    #main()
 
-    #joggingXYZ([0, 0, 0, 0, 0, 0, 0, 0, 0])
+    #joggingXYZ(IDLE_AGLE_POSITION)
 
-    #joggingAngles()
+    joggingAngles(IDLE_AGLE_POSITION)
 
     #init_angles = [0, 138.6653286, 17.4672121, -14.51805191, -8.8323662, 0]
 

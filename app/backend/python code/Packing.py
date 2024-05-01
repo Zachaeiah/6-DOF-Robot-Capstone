@@ -285,6 +285,8 @@ class BoxPlacer:
         fig, ax = plt.subplots()
         ax.set_xlim(0, self.grid_size[0])
         ax.set_ylim(0, self.grid_size[1])
+        ax.set_xlabel("X [m]")
+        ax.set_ylabel("Y [m]")
 
         for rect in self.no_go_rectangles:
             ax.add_patch(rect)
@@ -328,12 +330,12 @@ class BoxPlacer:
 
 def main():
     # Example usage
-    grid_size = (1.40, 1.40)
-    box_placer = BoxPlacer(grid_size, shelf_height=0.1, margin=0.01, offset=0.01)
+    grid_size = (1.40, 1.10)
+    box_placer = BoxPlacer(grid_size, shelf_height=0.015, margin=0.015, offset=0.01)
 
     num_boxes = 50
-    box_widths = 0.1*np.ones(num_boxes)
-    box_hights = 0.15*np.ones(num_boxes)
+    box_widths = 0.2*np.ones(num_boxes)
+    box_hights = 0.25*np.ones(num_boxes)
     box_names = [f"Box:{num}" for num in np.arange(0, num_boxes)]
 
     # Initial boxes
