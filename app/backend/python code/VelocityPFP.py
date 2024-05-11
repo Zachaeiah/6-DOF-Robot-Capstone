@@ -35,6 +35,7 @@ class MotionProfileGenerator:
         self.sys_max_vel: int = sys_max_vel
         self.move_time: float = 0
         self.displacement: float = 0
+        self.displacements: list = []
         self.MotionProfilename: str = MotionProfilename
         self.max_vel: float = 0
         self.time_values: List[float] = []
@@ -49,9 +50,11 @@ class MotionProfileGenerator:
         Args:
             move_time (float): Total time for the motion profile.
         """
+        
 
         if (move_time <= 0) or (self.is_moving == False):
             self.is_moving = False
+            self.move_time = 0
         else:
             self.move_time = move_time
             try:
@@ -81,8 +84,14 @@ class MotionProfileGenerator:
         Returns:
             bool: True if the displacement is valid and motion is possible, False otherwise.
         """
-        if (displacement <= 0.0001) or (self.is_moving == False):
+        if (displacement >= 0.00001) and (self.is_moving == False):
+            self.is_moving = True
+
+        if (displacement <= 0.00001) or (self.is_moving == False):
             self.is_moving = False
+            self.displacement = displacement
+            self.move_time = 0
+            self.max_vel = 0
         else:
             self.displacement = displacement
             self.max_vel = self.calculate_max_velocity()
@@ -100,7 +109,7 @@ class MotionProfileGenerator:
         self.time_values = time_values
         self.accelerations = self.generate_accelerations_profile()
         self.velocity = self.generate_velocity_profile()
-        self.displacement = self.generate_displacement_profile()
+        self.displacements = self.generate_displacement_profile()
 
 
     def calculate_max_velocity(self) -> float:
@@ -261,7 +270,7 @@ def plot_profiles(time_values, accelerations, velocities, displacements):
     plt.xlabel("Time [Sec]")
     plt.ylabel("unet type")
     plt.grid(True)
-    plt.legend()
+    plt.legend(fontsize='x-large')
     plt.show()
 
 def radius_function(angle, t0, t1, r0, r1):
@@ -326,9 +335,9 @@ def calculate_trajectory_values(start, end, max_acc, max_vel):
         angle_profile.Generator_profile(time_values)
 
         # Calculate final values for each dimension
-        angle_values = angle_init + angle_profile.displacement if angle_final - angle_init > 0 else angle_init - angle_profile.displacement
+        angle_values = angle_init + angle_profile.displacements if angle_final - angle_init > 0 else angle_init - angle_profile.displacements
         #magnitudes_values = magnitude_init + magnitude_profile.displacement if magnitude_final - magnitude_init > 0 else magnitude_init - magnitude_profile.displacement
-        height_values = start[2] + height_profile.displacement if end[-1] - start[-1] > 0 else start[2] - height_profile.displacement
+        height_values = start[2] + height_profile.displacements if end[-1] - start[-1] > 0 else start[2] - height_profile.displacements
 
         magnitudes_values = np.linspace(magnitude_init, magnitude_final, len(angle_values))
         return angle_values, magnitudes_values, height_values
@@ -374,14 +383,14 @@ def main():
     # # Plot the 3D trajectory
     # plot_trajectory_3d(start, end, angle_values, magnitudes_values, height_values)
 
-    MP = MotionProfileGenerator()
-    MP.Set_displacement(50)
+    MP = MotionProfileGenerator(180, 90)
+    MP.Set_displacement(90)
     
     time_values = np.arange(0, MP.move_time, 0.01)
     MP.Generator_profile(time_values)
     acc = MP.accelerations
     vel = MP.velocity
-    dis = MP.displacement
+    dis = MP.displacements
     plot_profiles(time_values, acc, vel, dis)
 
 if __name__ == "__main__":

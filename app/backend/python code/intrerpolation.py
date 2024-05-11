@@ -81,7 +81,7 @@ class PathPlanner:
         # Generate time values for motion profile
         time_values = np.arange(0, sys_time, 0.001)
         self.linearVelocityProfile.Generator_profile(time_values)
-        t_values = self.linearVelocityProfile.displacement
+        t_values = self.linearVelocityProfile.displacements
 
         t_values = np.interp(t_values, (t_values.min(), t_values.max()), (0, 1))
 
@@ -156,9 +156,9 @@ class PathPlanner:
             angle_profile.Generator_profile(time_values)
 
             # Calculate final values for each dimension
-            angle_values = angle_init + angle_profile.displacement if angle_final - angle_init > 0 else angle_init - angle_profile.displacement
-            magnitudes_values = magnitude_init + magnitude_profile.displacement if magnitude_final - magnitude_init > 0 else magnitude_init - magnitude_profile.displacement
-            height_values = start[2] + height_profile.displacement if end[-1] - start[-1] > 0 else start[2] - height_profile.displacement
+            angle_values = angle_init + angle_profile.displacements if angle_final - angle_init > 0 else angle_init - angle_profile.displacements
+            magnitudes_values = magnitude_init + magnitude_profile.displacements if magnitude_final - magnitude_init > 0 else magnitude_init - magnitude_profile.displacements
+            height_values = start[2] + height_profile.displacements if end[-1] - start[-1] > 0 else start[2] - height_profile.displacements
 
             return angle_values, magnitudes_values, height_values
 
@@ -262,6 +262,7 @@ class PathPlanner:
 
         # Show the plot
         plt.show()
+        self.clear_saved_paths()
 
     def clear_saved_paths(self)->None:
         """Clear the list of saved paths."""

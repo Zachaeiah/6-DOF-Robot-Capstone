@@ -2,6 +2,8 @@ import sqlite3
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
+import random
+import uuid
 import json
 
 
@@ -81,6 +83,9 @@ class PartsDatabase:
         self.EAST_WALL = (1.0, 0.0, 0.0)
         self.WEST_WALL = (-1.0, 0.0, 0.0)
         self.SOUTH_WALL = (0.0, -1.0, 0.0)
+
+        # Ensure that the 'Parts' table is created
+        self.create_parts_table()
     
     def SetWall_tranforms(self, NW:list[list], SW:list[list], EW:list[list], WW:list[list]) -> None:
         """_summary_
@@ -209,14 +214,7 @@ class PartsDatabase:
             unplaced_boxes = []
 
             box_pointer = []
-            if box.orientation == self.NORTH_WALL:
-                self.stacking_pointer = self.NorthWall_pointer
-            elif box.orientation == self.EAST_WALL:
-                self.stacking_pointer = self.EastWall_pointer
-            elif box.orientation == self.WEST_WALL:
-                self.stacking_pointer = self.WestWall_pointer
-            elif box.orientation == self.SOUTH_WALL:  # Corrected spelling of SOUTH_WALL
-                self.stacking_pointer = self.SouthWall_pointer
+            self.stacking_pointer = self.NorthWall_pointer
 
             # If the box already has a position, check if it exists in the database
             if box.position:
@@ -447,10 +445,16 @@ EAST_WALL = (1.0, 0.0, 0.0)
 WEST_WALL = (-1.0, 0.0, 0.0)
 SOUTH_WALL = (0.0, -1.0, 0.0)
 
+def generate_random_part_names(nouns):
+    # Generate random part names for nuts and bolts
+    random_nut_name = random.sample(nouns, 1)[0]
+    nouns.remove(random_nut_name)  # Remove the chosen noun from the list
+    return random_nut_name
+
 def main():
     box_w = 0.100
     box_h = 0.092
-    num_boxes = 6
+    num_boxes = 20
 
     # Initialize the PartsDatabase instance
     db = PartsDatabase("parts_db", shelf_height=0.12, margin=0.100, offset_x=(box_w/2), offset_y=0.3)
@@ -458,33 +462,39 @@ def main():
     # Create the Parts table
     db.create_parts_table()
 
+    # Predefined list of nouns for generating random part names
+    nouns = [
+        "Nut", "Bolt", "Screw", "Washer", "Pin", "Fastener", "Connector", "Clamp",
+        "Bracket", "Rivet", "Hook", "Joint", "Anchor", "Clip", "Plug", "Grommet",
+        "Hinge", "Latch", "Ring", "Spacer", "Strap", "Stud", "Tie", "Toggle"
+    ]
     
     first_box_cor = [-0.30, 0.70, 0.2]
-    x_offset = 0.30
-    z_offset = 0.46
-    Box_1 = Box("box 1", "box 1", box_w, box_h, 0, 0, 0, 0, False, [-0.30,              0.73, 0.215], NORTH_WALL)
-    Box_2 = Box("box 2", "box 2", box_w, box_h, 0, 0, 0, 0, False, [-0.30 + x_offset,   0.73, 0.215], NORTH_WALL)
-    Box_3 = Box("box 3", "box 3", box_w, box_h, 0, 0, 0, 0, False, [-0.30 + 2*x_offset, 0.73, 0.215], NORTH_WALL)
-    Box_4 = Box("box 4", "box 4", box_w, box_h, 0, 0, 0, 0, False, [-0.30,              0.73, 0.215 + z_offset], NORTH_WALL)
-    Box_5 = Box("box 5", "box 5", box_w, box_h, 0, 0, 0, 0, False, [-0.30 + 2*x_offset, 0.73, 0.215 + z_offset], NORTH_WALL)
+    Box_1 = Box(str(uuid.uuid4())[:5], generate_random_part_names(nouns), box_w, box_h, random.randint(10, 15), random.randint(5, 10), random.randint(0, 5), random.randint(0, 15), False, [-0.60, 0.73, 0.0], NORTH_WALL)
+    Box_2 = Box(str(uuid.uuid4())[:5], generate_random_part_names(nouns), box_w, box_h, random.randint(10, 15), random.randint(5, 10), random.randint(0, 5), random.randint(0, 15), False, [-0.40, 0.73, 0.0], NORTH_WALL)
+    Box_3 = Box(str(uuid.uuid4())[:5], generate_random_part_names(nouns), box_w, box_h, random.randint(10, 15), random.randint(5, 10), random.randint(0, 5), random.randint(0, 15), False, [-0.20, 0.73, 0.0], NORTH_WALL)
+    Box_4 = Box(str(uuid.uuid4())[:5], generate_random_part_names(nouns), box_w, box_h, random.randint(10, 15), random.randint(5, 10), random.randint(0, 5), random.randint(0, 15), False, [-0.60, 0.73, 0.5], NORTH_WALL)
+    Box_5 = Box(str(uuid.uuid4())[:5], generate_random_part_names(nouns), box_w, box_h, random.randint(10, 15), random.randint(5, 10), random.randint(0, 5), random.randint(0, 15), False, [-0.40, 0.73, 0.5], NORTH_WALL)
+    Box_6 = Box(str(uuid.uuid4())[:5], generate_random_part_names(nouns), box_w, box_h, random.randint(10, 15), random.randint(5, 10), random.randint(0, 5), random.randint(0, 15), False, [-0.20, 0.73, 0.5], NORTH_WALL)
+
     db.store_part(Box_1)
     db.store_part(Box_2)
     db.store_part(Box_3)
     db.store_part(Box_4)
     db.store_part(Box_5)
+    db.store_part(Box_6)
 
-    # # Create and add 30 boxes
-    # for orientation in orientations:
-    #     for i in range(num_boxes):
-    #         box_id = f"box_{Box_n + 1}"
-    #         name = f"Box {Box_n + 1}"
-    #         current_box = Box(box_id, name, box_w, box_h, 0, 0, 0, 0, False, [], orientation)
-    #         Box_n += 1
-            
-    #         if db.add_part(current_box):
-    #             print(f"Box {box_id} added successfully.")
-    #         else:
-    #             print(f"Failed to add Box {box_id}.")
+
+    
+    # for i in range(len(nouns)):
+    #     box_id = str(uuid.uuid4())[:5]
+    #     name =generate_random_part_names(nouns)
+    #     current_box = Box(box_id, name, box_w, box_h, box_w, random.randint(10, 15), random.randint(5, 10), random.randint(0, 5), random.randint(0, 15), random.choice([True, False]), orientation = NORTH_WALL)
+        
+    #     if db.add_part(current_box):
+    #         print(f"Box {name} added successfully.")
+    #     else:
+    #         print(f"Failed to add Box {name}.")
 
 if __name__ == "__main__":
     main()

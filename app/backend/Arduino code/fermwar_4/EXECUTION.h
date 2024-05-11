@@ -11,16 +11,16 @@ extern IntervalTimer PointTimer;   // Declare the timer object globally
 
 // Structure to hold a motion point with joint interpolations
 typedef struct POINT_INTERP {
-  int Frequency[6];  // Array of frequencies (assuming 6 joints)
+  int Frequency[6];  // Array of frequencies 
   int TIME;          // Time at which the frequencies are applied
   int INDEX;         // Index
 } POINT_INTERP;
 
 // Structure to hold a motion plan
-typedef struct MOSHION {
+typedef struct MOTION {
   POINT_INTERP* Points;  // Array of motion points
   int MOVECNT;           // Total number of motion points
-} MOSHION;
+} MOTION;
 
 // Enumeration for Moshion States machine
 enum MoshionStates {SETTINGUP, SETUP, READY, INMOSHION, MOSHIONERROR};

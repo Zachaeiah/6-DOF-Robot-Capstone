@@ -254,8 +254,8 @@ void newPointISR() {
   // Unroll the loop manually for better performance
   for (volatile int i = 0; i < 6; i++) {
     // Process two channels simultaneously
-    volatile int frequency = frequencies[i];  // FrequeR_EXECUTE 2ncy for current channel
-    volatile int step = StepperStepsPins[i];  // Pin for current channel
+    volatile int frequency = frequencies[i];  // Get the Frequency channel 
+    volatile int step = StepperStepsPins[i];  // step Pin for current channel 
     volatile int dir = SepperDirPins[i];      // Direction pin for current channel
 
     digitalWriteFast(dir, frequency <= 0 ? HIGH : LOW);      // Set direction based on frequency sign

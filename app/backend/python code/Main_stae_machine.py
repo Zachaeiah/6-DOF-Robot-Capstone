@@ -463,7 +463,7 @@ WEIGHTING_POSITION = (-0.2, -0.73, 0.115)
 WEIGHTING_ORIENTATION = DROP_OFF_ORIENTATION
 
 RROTASHION_BUFFER_DIS = 0.1
-insershion_distance =  0.2 + RROTASHION_BUFFER_DIS
+insershion_distance =  0.1 + RROTASHION_BUFFER_DIS
 lifting_distance = 0.015
 Hight_drop_off_box = 0.1
 Gripper_offset = [0, -0.2, 0.006]
@@ -495,7 +495,7 @@ def state0():
     Returns:
         list: A list containing part names to fetch.
     """
-    part_names_to_fetch = [f'box {i}' for i in [1]]
+    part_names_to_fetch = ["Pin", "Clamp"]
     pickip_dropoff = True
     return part_names_to_fetch, pickip_dropoff
 
@@ -620,17 +620,17 @@ def state3(pickip_dropoff,locations, orientations, drop_off_zone, planner):
 
                 delta_angles = XY_angle(JOGGING_START, location)
                 if (-np.pi/2 > delta_angles >= -np.pi):
-                    delta_angles =  np.linspace(0, np.pi/2, len(T1), endpoint=True)
+                    delta_angles =  np.linspace(0, np.pi/2, len(T1))
                     over_wrap = True
                 elif (0 > delta_angles >= -np.pi/2):
-                    delta_angles =  np.linspace(0, np.pi/2, len(T1), endpoint=True)
+                    delta_angles =  np.linspace(0, np.pi/2, len(T1))
                 elif (0 < delta_angles <= np.pi/2):
-                    delta_angles =  np.linspace(0, -np.pi/2, len(T1), endpoint=True)
+                    delta_angles =  np.linspace(0, -np.pi/2, len(T1))
                 elif (np.pi/2 < delta_angles <= np.pi):
-                    delta_angles =  np.linspace(0, -np.pi, len(T1), endpoint=True)
+                    delta_angles =  np.linspace(0, -np.pi, len(T1))
 
-                T1_orientation = [rotate_quaternion(T0_orientation[-1], 0, rad, 0) for rad in delta_angles]
-                insershion_point = np.dot(quaternion_to_rotation_matrix(T1_orientation[-1]), (0, 0, insershion_distance)) + T1[-1]
+                T1_orientation = [rotate_quaternion(T0_orientation[-1], rad, 0, 0) for rad in delta_angles]
+                insershion_point = np.dot(quaternion_to_rotation_matrix(T1_orientation[-1]), (0, 0, insershion_distance)) + location
                 travle_paths.append(T1)
                 travle_orientation.append(T1_orientation)
 
@@ -641,7 +641,7 @@ def state3(pickip_dropoff,locations, orientations, drop_off_zone, planner):
                 travle_orientation.append(T2_orientation)
 
             if depbug_stage > 4:
-                lifing_point = np.dot(quaternion_to_rotation_matrix(T2_orientation[-1]), (0, -lifting_distance, 0)) + T2[-1]
+                lifing_point = np.dot(quaternion_to_rotation_matrix(T2_orientation[-1]), (-lifting_distance, 0, 0)) + T2[-1]
                 T3 = planner.generate_path(insershion_point, lifing_point, linear=True)
                 T3_orientation = [T2_orientation[-1] for _ in range(len(T3))]
                 travle_paths.append(T3)
@@ -660,7 +660,7 @@ def state3(pickip_dropoff,locations, orientations, drop_off_zone, planner):
                 travle_paths.append(TOW)
                 travle_orientation.append(TOW_orientation)
 
-                Drop_off_hight = np.dot(quaternion_to_rotation_matrix(T4_orientation[-1]), (0, -Hight_drop_off_box, 0)) + drop_off_zone
+                Drop_off_hight = np.dot(quaternion_to_rotation_matrix(T4_orientation[-1]), (-Hight_drop_off_box, 0, 0)) + drop_off_zone
                 T5 = planner.generate_path(TOW[-1], Drop_off_hight, linear=False)
                 delta_angles = np.linspace(0, -np.pi/2, len(T5), endpoint=True)
                 T5_orientation = [rotate_quaternion(TOW_orientation[-1], 0, rad, 0) for rad in delta_angles]
@@ -668,11 +668,11 @@ def state3(pickip_dropoff,locations, orientations, drop_off_zone, planner):
                 travle_orientation.append(T5_orientation)
             else:
                 if depbug_stage > 6:
-                    Drop_off_hight = np.dot(quaternion_to_rotation_matrix(T4_orientation[-1]), (0, -Hight_drop_off_box, 0)) + drop_off_zone
+                    Drop_off_hight = np.dot(quaternion_to_rotation_matrix(T4_orientation[-1]), (-Hight_drop_off_box, 0, 0)) + drop_off_zone
                     
                     T5 = planner.generate_path(retracked_point, Drop_off_hight, linear=False)
                     delta_angles = np.linspace(0, -np.pi, len(T5))
-                    T5_orientation = [rotate_quaternion(T4_orientation[-1], 0, rad, 0) for rad in delta_angles]
+                    T5_orientation = [rotate_quaternion(T4_orientation[-1], rad, 0, 0) for rad in delta_angles]
                     travle_paths.append(T5)
                     travle_orientation.append(T5_orientation)
 
@@ -690,16 +690,22 @@ def state3(pickip_dropoff,locations, orientations, drop_off_zone, planner):
                 travle_orientation.append(T7_orientation)
 
             if depbug_stage > 9:
-                T8 = planner.generate_path(T7[-1], WORKING_POSITION, linear=False)
-                T8_orientation = [quaternion_slerp(T7_orientation[-1], IDLE_ORIENTATION, t) for t in np.linspace(0, 1, len(T8), endpoint=True)]
+                T8 = planner.generate_path(T7[-1], JOGGING_START, linear=False)
+                T8_orientation = [quaternion_slerp(T7_orientation[-1], JOGGING_START_ORIENTATION, t) for t in np.linspace(0, 1, len(T8), endpoint=True)]
                 travle_paths.append(T8)
                 travle_orientation.append(T8_orientation)
 
-            if depbug_stage > 10:
-                T9 = planner.generate_path(WORKING_POSITION, IDLE_POSITION, linear=True)
-                T9_orientation = [T8_orientation[-1] for _ in range(len(T9))]
-                travle_paths.append(T9)
-                travle_orientation.append(T9_orientation)
+        if depbug_stage > 10:
+            T9 = planner.generate_path(JOGGING_START, WORKING_POSITION, linear=False)
+            T9_orientation = [T8_orientation[-1] for _ in range(len(T9))]
+            travle_paths.append(T9)
+            travle_orientation.append(T9_orientation)
+
+        if depbug_stage > 11:
+            T10 = planner.generate_path(WORKING_POSITION, IDLE_POSITION, linear=True)
+            T10_orientation = [T9_orientation[-1] for _ in range(len(T10))]
+            travle_paths.append(T10)
+            travle_orientation.append(T10_orientation)
     else:
         for index, (location, orientation) in enumerate(zip(locations.values(), orientations.values())):
             over_wrap = False
@@ -792,18 +798,7 @@ def state3(pickip_dropoff,locations, orientations, drop_off_zone, planner):
                     T10_orientation = [quaternion_slerp(TOW_orientation[-1], IDLE_ORIENTATION, t) for t in np.linspace(0, 1, len(T10), endpoint=True)]
                     travle_paths.append(T10)
                     travle_orientation.append(T10_orientation)
-
-                if depbug_stage > 12:
-                    T11 = planner.generate_path(JOGGING_START, WORKING_POSITION, linear=False)
-                    T11_orientation = [T10_orientation[-1] for _ in range(len(T11))]
-                    travle_paths.append(T11)
-                    travle_orientation.append(T11_orientation)
-
-                if depbug_stage > 13:
-                    T12 = planner.generate_path(WORKING_POSITION, IDLE_POSITION, linear=True)
-                    T12_orientation = [T11_orientation[-1] for _ in range(len(T12))]
-                    travle_paths.append(T12)
-                    travle_orientation.append(T12_orientation)
+      
             else:
 
                 if depbug_stage > 11:
@@ -812,17 +807,17 @@ def state3(pickip_dropoff,locations, orientations, drop_off_zone, planner):
                     travle_paths.append(T10)
                     travle_orientation.append(T10_orientation)
 
-                if depbug_stage > 12:
-                    T11 = planner.generate_path(JOGGING_START, WORKING_POSITION, linear=False)
-                    T11_orientation = [T10_orientation[-1] for _ in range(len(T11))]
-                    travle_paths.append(T11)
-                    travle_orientation.append(T11_orientation)
+        if depbug_stage > 12:
+            T11 = planner.generate_path(JOGGING_START, WORKING_POSITION, linear=False)
+            T11_orientation = [T10_orientation[-1] for _ in range(len(T11))]
+            travle_paths.append(T11)
+            travle_orientation.append(T11_orientation)
 
-                if depbug_stage > 13:
-                    T12 = planner.generate_path(WORKING_POSITION, IDLE_POSITION, linear=True)
-                    T12_orientation = [T11_orientation[-1] for _ in range(len(T12))]
-                    travle_paths.append(T12)
-                    travle_orientation.append(T12_orientation)
+        if depbug_stage > 13:
+            T12 = planner.generate_path(WORKING_POSITION, IDLE_POSITION, linear=True)
+            T12_orientation = [T11_orientation[-1] for _ in range(len(T12))]
+            travle_paths.append(T12)
+            travle_orientation.append(T12_orientation)
 
     travle_alinements = ["all"] * len(travle_paths)
 
@@ -944,7 +939,7 @@ def main():
                         state = 3
 
                     elif state == 3:
-                        travle_paths, travle_orientation, travle_alinements, travle_stop = state3(True, locations, orientations, DROP_OFF_ZONE, planner)
+                        travle_paths, travle_orientation, travle_alinements, travle_stop = state3(False, locations, orientations, DROP_OFF_ZONE, planner)
                         state = 4
 
                     elif state == 4:
@@ -1031,49 +1026,49 @@ def joggingXYZ(init_angles):
 
     def animationRobot(COR_path, New_ORI, New_ORI_MODE):
 
-        IK_SOLUSHIONS = list(robot.calculate_ik(COR_path, New_ORI, New_ORI_MODE, 5))
-        TRANFORM_MASK = np.array([False, True, True, False, True, True, False, True, True])
-        ANGLE_MASK = np.array([1, 1, 1, -1, 1, 1])
+        # IK_SOLUSHIONS = list(robot.calculate_ik(COR_path, New_ORI, New_ORI_MODE, 5))
+        # TRANFORM_MASK = np.array([False, True, True, False, True, True, False, True, True])
+        # ANGLE_MASK = np.array([1, 1, 1, -1, 1, 1])
 
-        new_angles = []
-        for SOLUSHION in IK_SOLUSHIONS:
+        # new_angles = []
+        # for SOLUSHION in IK_SOLUSHIONS:
 
-            angles = np.rad2deg(SOLUSHION[0])
-            np.set_printoptions(precision=3)
-            np.set_printoptions(linewidth=np.inf)
-            new_angles.append(angles[TRANFORM_MASK])
+        #     angles = np.rad2deg(SOLUSHION[0])
+        #     np.set_printoptions(precision=3)
+        #     np.set_printoptions(linewidth=np.inf)
+        #     new_angles.append(angles[TRANFORM_MASK])
 
-        movement_results = controller.move_motors(new_angles*ANGLE_MASK)
+        # movement_results = controller.move_motors(new_angles*ANGLE_MASK)
 
-        MoveTime = 0
-        for  move in movement_results:
-            MoveTime += [int(num) for num in move.strip().split(',')][-1]
-        print(f"Move time in seconts: {MoveTime * 1e-6} Sec")
+        # MoveTime = 0
+        # for  move in movement_results:
+        #     MoveTime += [int(num) for num in move.strip().split(',')][-1]
+        # print(f"Move time in seconts: {MoveTime * 1e-6} Sec")
 
 
-        expected_response = "MoshionState changed to: 1"
-        MSG.send_message(f"R_MOVES {len(movement_results)}")
-        handle_response(expected_response, None, None, MSG.message_stack) # weight until i get the my response
+        # expected_response = "MoshionState changed to: 1"
+        # MSG.send_message(f"R_MOVES {len(movement_results)}")
+        # handle_response(expected_response, None, None, MSG.message_stack) # weight until i get the my response
         
 
-        expected_response = f"storing {len(movement_results)}"
-        MSG.send_message(f"R_MOSHION {len(movement_results)}")
-        handle_response(expected_response, None, None,MSG.message_stack) # weight until i get the my response
+        # expected_response = f"storing {len(movement_results)}"
+        # MSG.send_message(f"R_MOSHION {len(movement_results)}")
+        # handle_response(expected_response, None, None,MSG.message_stack) # weight until i get the my response
         
 
-        expected_response = "MoshionState changed to: 2"
-        for move in movement_results:
-            MSG.send_message(move)
-        handle_response(expected_response, None, None, MSG.message_stack) # weight until i get the my response
+        # expected_response = "MoshionState changed to: 2"
+        # for move in movement_results:
+        #     MSG.send_message(move)
+        # handle_response(expected_response, None, None, MSG.message_stack) # weight until i get the my response
 
-        expected_response = "MoshionState changed to: 0"
-        MSG.send_message(f"R_EXECUTE {len(movement_results)}")
-        handle_response(expected_response, None, None, MSG.message_stack) # weight until i get the my response
+        # expected_response = "MoshionState changed to: 0"
+        # MSG.send_message(f"R_EXECUTE {len(movement_results)}")
+        # handle_response(expected_response, None, None, MSG.message_stack) # weight until i get the my response
 
         robot.animate_ik(COR_path, New_ORI, New_ORI_MODE, ax = ax, fig = fig)
 
-    MSG = Mesageer("COM12")
-    MSG.connect()
+    # MSG = Mesageer("COM12")
+    # MSG.connect()
 
     # Create an instance of MoshionController
     controller = MoshionController()
@@ -1083,8 +1078,8 @@ def joggingXYZ(init_angles):
     root = tk.Tk()
     root.title("Enter Angles")
 
-    max_acc = 100
-    max_vel = 100
+    max_acc = 1000
+    max_vel = 1000
     COR_planner = PathPlanner(max_acc, max_vel)
 
     urdf_file_path = "app\\backend\\python code\\urdf_tes2.urdf"
@@ -1144,39 +1139,106 @@ def joggingAngles(init_angles):
         entry.insert(tk.END, default_values[i])  # Set default value
         entry.grid(row=i, column=1)
         angle_entries.append(entry)
+
+    BaceRotate = MotionProfileGenerator(13, 12, 'Shoulder Rotate Motor')
+    SholderLift = MotionProfileGenerator(13, 12, 'Shoulder Lift Motor')
+    Elbow = MotionProfileGenerator(13, 12, 'Elbow Motor')
+    ElbowRotate = MotionProfileGenerator(13, 12, 'Forearm Rotate Motor')
+    Wrist = MotionProfileGenerator(13, 12, 'Wrist Motor')
+    WristRotate = MotionProfileGenerator(13, 12, 'Wrist Rotate Motor')
     
     def send_angles():
         nonlocal TRANFORM_MASK
+
         new_angles = list(float(entry.get()) for entry in angle_entries)
         last_angle = np.rad2deg([robot.last_angles[1],robot.last_angles[2], robot.last_angles[4], robot.last_angles[5], robot.last_angles[7], robot.last_angles[8]])
 
+        BaceRotate.Set_displacement(abs(new_angles[0] - last_angle[0]))
+        SholderLift.Set_displacement(abs(new_angles[1] - last_angle[1]))
+        Elbow.Set_displacement(abs(new_angles[2] - last_angle[2]))
+        ElbowRotate.Set_displacement(abs(new_angles[3] - last_angle[3]))
+        Wrist.Set_displacement(abs(new_angles[4] - last_angle[4]))
+        WristRotate.Set_displacement(abs(new_angles[5] - last_angle[5]))
+
+
+
+        sys_time = max(BaceRotate.move_time, 
+                       SholderLift.move_time, 
+                       Elbow.move_time, 
+                       ElbowRotate.move_time, 
+                       Wrist.move_time, 
+                       WristRotate.move_time)
         
-        movement_results = controller.move_motors([last_angle, new_angles])
+        if sys_time >0:
+            BaceRotate.Set_move_time(sys_time)
+            SholderLift.Set_move_time(sys_time)
+            Elbow.Set_move_time(sys_time)
+            ElbowRotate.Set_move_time(sys_time)
+            Wrist.Set_move_time(sys_time)
+            WristRotate.Set_move_time(sys_time)
+
+            # Generate time values for motion profiles
+            time_values = np.linspace(0, sys_time, int(sys_time/0.05))
+
+            BaceRotate.Generator_profile(time_values)
+            SholderLift.Generator_profile(time_values)
+            Elbow.Generator_profile(time_values)
+            ElbowRotate.Generator_profile(time_values)
+            Wrist.Generator_profile(time_values)
+            WristRotate.Generator_profile(time_values)
+
+            BaceDisplacement = last_angle[0] + BaceRotate.displacements if new_angles[0] - last_angle[0] > 0 else last_angle[0] - BaceRotate.displacements
+            SholderLiftDisplacement = last_angle[1] + SholderLift.displacements if new_angles[1] - last_angle[1] > 0 else last_angle[1] - SholderLift.displacements
+            ElbowDisplacement = last_angle[2] + Elbow.displacements if new_angles[2] - last_angle[2] > 0 else last_angle[2] - Elbow.displacements
+            ElbowRotateDisplacement = last_angle[3] + ElbowRotate.displacements if new_angles[3] - last_angle[3] > 0 else last_angle[3] - ElbowRotate.displacements
+            WristDisplacement = last_angle[4] + Wrist.displacements if new_angles[4] - last_angle[4] > 0 else last_angle[4] - Wrist.displacements
+            WristRotateDisplacement = last_angle[5] + WristRotate.displacements if new_angles[5] - last_angle[5] > 0 else last_angle[5] - WristRotate.displacements
+
+            combined_arrays  = list(zip(BaceDisplacement, 
+                                        SholderLiftDisplacement, 
+                                        ElbowDisplacement, 
+                                        ElbowRotateDisplacement, 
+                                        WristDisplacement, 
+                                        WristRotateDisplacement))
+            
+            for move in combined_arrays:
+                print(move)
+            
+            movement_results = controller.move_motors(combined_arrays)
 
 
-        new_angles = np.deg2rad([0, new_angles[0],new_angles[1], 0, new_angles[2], new_angles[3], 0, new_angles[4], new_angles[5]])
+            for  move in movement_results:
+                print(move)
+
+            MoveTime = 0
+            for  move in movement_results:
+                MoveTime += [int(num) for num in move.strip().split(',')][-1]
+            print(f"Move time in seconts: {MoveTime * 1e-6} Sec")
+
+            expected_response = "MoshionState changed to: 1"
+            MSG.send_message(f"R_MOVES {len(movement_results)}")
+            handle_response(expected_response, None, None, MSG.message_stack) # weight until i get the my response
+            
+
+            expected_response = f"storing {len(movement_results)}"
+            MSG.send_message(f"R_MOSHION {len(movement_results)}")
+            handle_response(expected_response, None, None,MSG.message_stack) # weight until i get the my response
+            
+
+            expected_response = "MoshionState changed to: 2"
+            for move in movement_results:
+                MSG.send_message(move)
+            handle_response(expected_response, None, None, MSG.message_stack) # weight until i get the my response
+
+            expected_response = "MoshionState changed to: 0"
+            MSG.send_message(f"R_EXECUTE {len(movement_results)}")
+            handle_response(expected_response, None, None, MSG.message_stack) # weight until i get the my response
+
+        new_angles = np.deg2rad([0, new_angles[0], new_angles[1], 0, new_angles[2], new_angles[3], 0, new_angles[4], new_angles[5]])
         FK = robot.calculate_fk([new_angles], 1)
 
         for fk in FK:
             print(fk)
-
-        print(movement_results[0])
-
-        expected_response = "MoshionState changed to: 1"
-        MSG.send_message("R_MOVES 1")
-        handle_response(expected_response, None, None,MSG.message_stack) # weight until i get the my response
-
-        expected_response = "storing 1"
-        MSG.send_message("R_MOSHION 1")
-        handle_response(expected_response, None, None,MSG.message_stack) # weight until i get the my response
-
-        expected_response = "MoshionState changed to: 2"
-        MSG.send_message(movement_results[0])
-        handle_response(expected_response, None, None, MSG.message_stack) # weight until i get the my response
-
-        expected_response = "MoshionState changed to: 0"
-        MSG.send_message("R_EXECUTE 1")
-        handle_response(expected_response, None, None, MSG.message_stack) # weight until i get the my response
         
     # Create a button to send the entered angles
     send_button = tk.Button(root, text="Send Angles", command=send_angles)
